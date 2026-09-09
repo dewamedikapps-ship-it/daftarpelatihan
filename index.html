@@ -495,6 +495,8 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
       '<input id="dm-gb-nama" type="text" autocomplete="name">' +
       '<label for="dm-gb-wa">Nomor WhatsApp</label>' +
       '<input id="dm-gb-wa" type="tel" inputmode="numeric" autocomplete="tel" placeholder="08xxxxxxxxxx">' +
+      '<label for="dm-gb-surel">Email</label>' +
+      '<input id="dm-gb-surel" type="email" autocomplete="email" placeholder="nama@contoh.com">' +
       '<p class="dm-gb-galat" hidden></p>' +
       '<div class="dm-gb-aksi">' +
       '<button type="button" class="dm-gb-batal">Batal</button>' +
@@ -504,6 +506,7 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
 
     var nama = tirai.querySelector("#dm-gb-nama");
     var wa = tirai.querySelector("#dm-gb-wa");
+    var surel = tirai.querySelector("#dm-gb-surel");
     var galat = tirai.querySelector(".dm-gb-galat");
     var kirim = tirai.querySelector(".dm-gb-kirim");
     setTimeout(function () { nama.focus(); }, 50);
@@ -528,10 +531,15 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
         galat.textContent = "Masukkan nomor WhatsApp Indonesia, contoh 081234567890.";
         galat.hidden = false; return;
       }
+      var em = (surel.value || "").trim().toLowerCase();
+      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(em)) {
+        galat.textContent = "Alamat email belum benar. Contoh: nama@contoh.com";
+        galat.hidden = false; return;
+      }
       kirim.disabled = true;
       kirim.textContent = "Mohon tunggu…";
       try {
-        var hasil = await SB.rpc("lihat_biaya", { p_nama: n, p_wa: w });
+        var hasil = await SB.rpc("lihat_biaya", { p_nama: n, p_wa: w, p_email: em });
         if (hasil.error) throw new Error(hasil.error.message);
         var peta = {};
         (hasil.data || []).forEach(function (x) { peta[x.id] = Number(x.harga); });
@@ -546,7 +554,7 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
       }
     };
 
-    [nama, wa].forEach(function (el) {
+    [nama, wa, surel].forEach(function (el) {
       el.addEventListener("keydown", function (e) { if (e.key === "Enter") kirim.onclick(); });
     });
   };
@@ -4660,7 +4668,7 @@ function TabProspek({ beriTahu }) {
   const semua = baris || [];
   const kata = cari.trim().toLowerCase();
   const pakai = kata
-    ? semua.filter(r => (r.nama + " " + r.whatsapp).toLowerCase().indexOf(kata) > -1)
+    ? semua.filter(r => (r.nama + " " + r.whatsapp + " " + (r.email || "")).toLowerCase().indexOf(kata) > -1)
     : semua;
 
   const kini = Date.now();
@@ -4680,8 +4688,8 @@ function TabProspek({ beriTahu }) {
       const t = String(v == null ? "" : v);
       return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
     };
-    const isi = ["Nama;WhatsApp;Waktu"].concat(
-      semua.map(r => [r.nama, tampilWa(r.whatsapp), jam(r.dibuat_pada)].map(sel).join(";"))
+    const isi = ["Nama;WhatsApp;Email;Waktu"].concat(
+      semua.map(r => [r.nama, tampilWa(r.whatsapp), r.email || "", jam(r.dibuat_pada)].map(sel).join(";"))
     ).join("\r\n");
     simpanBerkas(new Blob(["﻿" + isi], { type: "text/csv;charset=utf-8" }),
                  "pelihat-harga-" + tgl + ".csv");
@@ -4708,10 +4716,11 @@ function TabProspek({ beriTahu }) {
       const baris = semua.map(r => ({
         Nama: r.nama,
         WhatsApp: tampilWa(r.whatsapp),
+        Email: r.email || "",
         Waktu: jam(r.dibuat_pada)
       }));
       const lembar = XLSX.utils.json_to_sheet(baris);
-      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 22 }];
+      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 22 }];
       const buku = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(buku, lembar, "Pelihat Harga");
       const isi = XLSX.write(buku, { bookType: "xlsx", type: "array" });
@@ -4760,6 +4769,7 @@ function TabProspek({ beriTahu }) {
               React.createElement("tr", null,
                 React.createElement("th", null, "Nama"),
                 React.createElement("th", null, "WhatsApp"),
+                React.createElement("th", null, "Email"),
                 React.createElement("th", null, "Waktu"),
                 React.createElement("th", null, "")
               )
@@ -4768,6 +4778,9 @@ function TabProspek({ beriTahu }) {
               pakai.map(r => React.createElement("tr", { key: r.id },
                 React.createElement("td", null, React.createElement("b", null, r.nama)),
                 React.createElement("td", { className: "dm-mono" }, tampilWa(r.whatsapp)),
+                React.createElement("td", null, r.email
+                  ? React.createElement("a", { href: "mailto:" + r.email }, r.email)
+                  : "—"),
                 React.createElement("td", null, jam(r.dibuat_pada)),
                 React.createElement("td", null,
                   React.createElement("a", {

@@ -4779,6 +4779,41 @@ function TabKeamanan({ beriTahu }) {
   const [yakin, setYakin] = useState(false);
   const [galat, setGalat] = useState("");
 
+  /* Ganti kata sandi. Ada di sini supaya pengelola yang masih
+     berhasil masuk bisa memasang kata sandi baru tanpa perlu
+     mengingat yang lama. */
+  const [sandiBaru, setSandiBaru] = useState("");
+  const [sandiUlang, setSandiUlang] = useState("");
+  const [sandiSibuk, setSandiSibuk] = useState(false);
+  const [sandiGalat, setSandiGalat] = useState("");
+  const [lihatSandi, setLihatSandi] = useState(false);
+
+  const syarat = [
+    ["Minimal 12 karakter", sandiBaru.length >= 12],
+    ["Ada huruf kecil (a-z)", /[a-z]/.test(sandiBaru)],
+    ["Ada huruf besar (A-Z)", /[A-Z]/.test(sandiBaru)],
+    ["Ada angka (0-9)", /[0-9]/.test(sandiBaru)],
+    ["Ada simbol, misal ! ? @ #", /[^A-Za-z0-9]/.test(sandiBaru)],
+    ["Kedua isian sama", sandiBaru.length > 0 && sandiBaru === sandiUlang]
+  ];
+  const sandiSiap = syarat.every(x => x[1]);
+
+  async function simpanSandi() {
+    setSandiGalat("");
+    setSandiSibuk(true);
+    try {
+      const { error } = await SB.auth.updateUser({ password: sandiBaru });
+      if (error) throw error;
+      setSandiBaru("");
+      setSandiUlang("");
+      setLihatSandi(false);
+      beriTahu("Kata sandi baru tersimpan. Pakai yang ini saat masuk berikutnya.");
+    } catch (e) {
+      setSandiGalat("Gagal menyimpan: " + e.message);
+    }
+    setSandiSibuk(false);
+  }
+
   async function muat() {
     const { data, error } = await SB.auth.mfa.listFactors();
     if (error) {
@@ -4935,14 +4970,66 @@ function TabKeamanan({ beriTahu }) {
           className: "dm-btn", onClick: mulai, disabled: sibuk
         }, sibuk ? "Menyiapkan…" : "Aktifkan dua langkah"));
 
-  return React.createElement("section", { className: "dm-card" },
+  const kartuSandi = React.createElement("section",
+    { className: "dm-card", style: { marginTop: 18 } },
     React.createElement("div", { className: "dm-toolbar" },
-      React.createElement("h3", null, "Keamanan akun")),
+      React.createElement("h3", null, "Ganti kata sandi")),
     React.createElement("p", { className: "dm-hint", style: { marginBottom: 14 } },
-      "Dua langkah masuk memakai aplikasi Authenticator di ponsel Anda — Google Authenticator, " +
-      "Microsoft Authenticator, atau sejenisnya. Setelah aktif, orang yang tahu kata sandi tetap " +
-      "tidak bisa membuka back office tanpa ponsel Anda."),
-    isi);
+      "Selama Anda masih berhasil masuk seperti sekarang, kata sandi baru bisa dipasang " +
+      "langsung di sini — tidak perlu mengingat yang lama. Setelah tersimpan, Anda tetap " +
+      "masuk; kata sandi baru dipakai pada masuk berikutnya."),
+    React.createElement(Field, { label: "Kata sandi baru" },
+      React.createElement("input", {
+        className: "dm-input",
+        style: { maxWidth: 340 },
+        type: lihatSandi ? "text" : "password",
+        autoComplete: "new-password",
+        value: sandiBaru,
+        onChange: e => setSandiBaru(e.target.value)
+      })),
+    React.createElement(Field, { label: "Ulangi kata sandi baru" },
+      React.createElement("input", {
+        className: "dm-input",
+        style: { maxWidth: 340 },
+        type: lihatSandi ? "text" : "password",
+        autoComplete: "new-password",
+        value: sandiUlang,
+        onChange: e => setSandiUlang(e.target.value),
+        onKeyDown: e => {
+          if (e.key === "Enter" && sandiSiap && !sandiSibuk) simpanSandi();
+        }
+      })),
+    React.createElement("label",
+      { className: "dm-hint", style: { display: "block", margin: "2px 0 14px", cursor: "pointer" } },
+      React.createElement("input", {
+        type: "checkbox",
+        checked: lihatSandi,
+        onChange: e => setLihatSandi(e.target.checked),
+        style: { marginRight: 7 }
+      }),
+      "Tampilkan kata sandi"),
+    React.createElement("ul",
+      { className: "dm-hint", style: { listStyle: "none", padding: 0, margin: "0 0 14px", lineHeight: 1.8 } },
+      syarat.map((x, i) => React.createElement("li",
+        { key: i, style: { color: x[1] ? "#166534" : undefined } },
+        (x[1] ? "\u2713 " : "\u2022 ") + x[0]))),
+    sandiGalat ? React.createElement("p", { className: "dm-err" }, sandiGalat) : null,
+    React.createElement("button", {
+      className: "dm-btn",
+      onClick: simpanSandi,
+      disabled: !sandiSiap || sandiSibuk
+    }, sandiSibuk ? "Menyimpan…" : "Simpan kata sandi baru"));
+
+  return React.createElement(React.Fragment, null,
+    React.createElement("section", { className: "dm-card" },
+      React.createElement("div", { className: "dm-toolbar" },
+        React.createElement("h3", null, "Keamanan akun")),
+      React.createElement("p", { className: "dm-hint", style: { marginBottom: 14 } },
+        "Dua langkah masuk memakai aplikasi Authenticator di ponsel Anda — Google Authenticator, " +
+        "Microsoft Authenticator, atau sejenisnya. Setelah aktif, orang yang tahu kata sandi tetap " +
+        "tidak bisa membuka back office tanpa ponsel Anda."),
+      isi),
+    kartuSandi);
 }
 
 function TabProspek({ beriTahu }) {

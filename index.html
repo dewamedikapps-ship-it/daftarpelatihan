@@ -532,13 +532,40 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
         galat.hidden = false; return;
       }
       var em = (surel.value || "").trim().toLowerCase();
-      if (!/^[^@\s]+@[^@\s]+\.[a-z]{2,}$/.test(em)) {
-        galat.textContent = "Alamat email belum benar. Contoh: nama@contoh.com";
+      var polaSurel = /^[a-z0-9]([a-z0-9._%+-]{0,62}[a-z0-9])?@([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,24}$/;
+      if (!polaSurel.test(em) || em.indexOf("..") > -1) {
+        galat.textContent = "Alamat email tidak wajar. Contoh yang benar: nama@gmail.com";
         galat.hidden = false; return;
       }
       kirim.disabled = true;
       kirim.textContent = "Mohon tunggu…";
       try {
+        /* Periksa apakah domain emailnya sungguh ada dan siap menerima surat.
+           Kalau pemeriksaannya sendiri gagal (jaringan), jangan hambat orang. */
+        kirim.textContent = "Memeriksa email…";
+        var domain = em.split("@")[1];
+        var domainAda = true;
+        try {
+          var tanya = async function (jenis) {
+            var jw = await fetch("https://dns.google/resolve?name=" +
+              encodeURIComponent(domain) + "&type=" + jenis);
+            if (!jw.ok) return null;
+            var isi = await jw.json();
+            return Array.isArray(isi.Answer) ? isi.Answer : [];
+          };
+          var mx = await tanya("MX");
+          if (mx !== null) {
+            domainAda = mx.some(function (x) { return x.type === 15; });
+            if (!domainAda) {
+              var aa = await tanya("A");
+              domainAda = aa !== null && aa.length > 0;
+            }
+          }
+        } catch (e) { domainAda = true; }
+        if (!domainAda) {
+          throw new Error("Domain \"" + domain + "\" tidak ditemukan. Periksa lagi alamat email Anda.");
+        }
+        kirim.textContent = "Mohon tunggu…";
         var hasil = await SB.rpc("lihat_biaya", { p_nama: n, p_wa: w, p_email: em });
         if (hasil.error) throw new Error(hasil.error.message);
         var peta = {};
@@ -547,7 +574,9 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
         try { sessionStorage.setItem(KUNCI, JSON.stringify(peta)); } catch (e) {}
         location.reload();
       } catch (e) {
-        galat.textContent = "Gagal menampilkan biaya: " + e.message;
+        galat.textContent = /tidak ditemukan|tidak wajar|belum benar|belum diisi|benar-benar Anda pakai/.test(e.message)
+          ? e.message
+          : "Gagal menampilkan biaya: " + e.message;
         galat.hidden = false;
         kirim.disabled = false;
         kirim.textContent = "Tampilkan biaya";

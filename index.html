@@ -2725,7 +2725,7 @@ function BackOffice({
     onClick: keluar
   }, "Keluar")), /*#__PURE__*/React.createElement("div", {
     className: "dm-subtab"
-  }, [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Voucher"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Prospek"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["setelan", "Pengaturan"]].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
+  }, [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Voucher"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["setelan", "Pengaturan"]].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
     key: k,
     className: tab === k ? "dm-tab dm-tab-on" : "dm-tab",
     onClick: () => setTab(k)
@@ -4667,7 +4667,15 @@ function TabProspek({ beriTahu }) {
   const hariIni = semua.filter(r => kini - new Date(r.dibuat_pada).getTime() < 86400000).length;
   const pekanIni = semua.filter(r => kini - new Date(r.dibuat_pada).getTime() < 604800000).length;
 
-  function unduh() {
+  function simpanBerkas(blob, namaBerkas) {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = namaBerkas;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  }
+
+  function unduhCsv(tgl) {
     const sel = v => {
       const t = String(v == null ? "" : v);
       return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
@@ -4675,11 +4683,46 @@ function TabProspek({ beriTahu }) {
     const isi = ["Nama;WhatsApp;Waktu"].concat(
       semua.map(r => [r.nama, tampilWa(r.whatsapp), jam(r.dibuat_pada)].map(sel).join(";"))
     ).join("\r\n");
-    const a = document.createElement("a");
-    a.href = URL.createObjectURL(new Blob(["﻿" + isi], { type: "text/csv;charset=utf-8" }));
-    a.download = "prospek-" + new Date().toISOString().slice(0, 10) + ".csv";
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+    simpanBerkas(new Blob(["﻿" + isi], { type: "text/csv;charset=utf-8" }),
+                 "pelihat-harga-" + tgl + ".csv");
+  }
+
+  /* Pustaka Excel diambil hanya saat tombolnya ditekan, supaya
+     halaman tidak jadi berat untuk pengunjung biasa. */
+  function muatPustakaExcel() {
+    if (window.XLSX) return Promise.resolve(window.XLSX);
+    return new Promise((selesai, gagal) => {
+      const sc = document.createElement("script");
+      sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+      sc.onload = () => window.XLSX ? selesai(window.XLSX) : gagal(new Error("Pustaka tidak siap"));
+      sc.onerror = () => gagal(new Error("Pustaka gagal diunduh"));
+      document.head.appendChild(sc);
+    });
+  }
+
+  async function unduh() {
+    const tgl = new Date().toISOString().slice(0, 10);
+    if (!semua.length) return beriTahu("Belum ada data untuk diunduh.");
+    try {
+      const XLSX = await muatPustakaExcel();
+      const baris = semua.map(r => ({
+        Nama: r.nama,
+        WhatsApp: tampilWa(r.whatsapp),
+        Waktu: jam(r.dibuat_pada)
+      }));
+      const lembar = XLSX.utils.json_to_sheet(baris);
+      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 22 }];
+      const buku = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(buku, lembar, "Pelihat Harga");
+      const isi = XLSX.write(buku, { bookType: "xlsx", type: "array" });
+      simpanBerkas(
+        new Blob([isi], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }),
+        "pelihat-harga-" + tgl + ".xlsx"
+      );
+    } catch (e) {
+      beriTahu("Excel gagal dibuat, diunduh sebagai CSV.");
+      unduhCsv(tgl);
+    }
   }
 
   if (baris === null) {
@@ -4689,14 +4732,14 @@ function TabProspek({ beriTahu }) {
 
   return React.createElement("div", { className: "dm-kartu" },
     React.createElement("div", { className: "dm-kartu-kepala" },
-      React.createElement("h3", null, "Prospek — peminat yang membuka biaya"),
+      React.createElement("h3", null, "Pelihat Harga — orang yang membuka biaya pelatihan"),
       React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
         React.createElement("button", { className: "dm-btn-line", onClick: muat }, "Muat ulang"),
-        React.createElement("button", { className: "dm-btn-line", onClick: unduh }, "Unduh CSV")
+        React.createElement("button", { className: "dm-btn-line", onClick: unduh }, "Unduh Excel")
       )
     ),
     React.createElement("p", { className: "dm-hint" },
-      semua.length + " prospek tercatat · " + hariIni + " dalam 24 jam terakhir · " +
+      semua.length + " orang tercatat · " + hariIni + " dalam 24 jam terakhir · " +
       pekanIni + " dalam 7 hari terakhir. Nomor sudah dipastikan nomor seluler Indonesia."
     ),
     React.createElement("input", {

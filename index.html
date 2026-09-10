@@ -431,6 +431,37 @@ function bersihkanUrl(u) {
 const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(window.DMN_CONFIG.anonKey || "").trim());
 
 /* ============================================================
+   Link khusus per kampanye.
+
+   Alamat seperti  ...?k=solo-september  membuka halaman yang
+   sama persis, tetapi hanya menampilkan kelas yang dipilih
+   pengurus untuk kampanye itu. Gerbang biaya dan alur
+   pendaftaran tidak berubah sedikit pun.
+   ============================================================ */
+window.DM_SLUG = (function () {
+  try {
+    var v = new URLSearchParams(window.location.search).get("k") || "";
+    v = String(v).trim().toLowerCase();
+    return /^[a-z0-9][a-z0-9-]{0,58}[a-z0-9]$/.test(v) ? v : null;
+  } catch (e) {
+    return null;
+  }
+})();
+
+/* Dicatat diam-diam; kalau gagal, tidak boleh mengganggu pengunjung. */
+window.dmCatatAsal = async function (nomor, wa) {
+  if (!window.DM_SLUG) return;
+  try {
+    await SB.rpc("catat_asal", {
+      p_nomor: nomor || null,
+      p_wa: wa || null,
+      p_slug: window.DM_SLUG
+    });
+  } catch (e) {}
+};
+
+
+/* ============================================================
    Gerbang biaya.
 
    Biaya pelatihan tidak ikut dikirim ke halaman. Pengunjung
@@ -572,6 +603,7 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
         (hasil.data || []).forEach(function (x) { peta[x.id] = Number(x.harga); });
         window.DM_BIAYA = peta;
         try { sessionStorage.setItem(KUNCI, JSON.stringify(peta)); } catch (e) {}
+        if (window.dmCatatAsal) { try { await window.dmCatatAsal(null, wn); } catch (e) {} }
         location.reload();
       } catch (e) {
         galat.textContent = /tidak ditemukan|tidak wajar|belum benar|belum diisi|benar-benar Anda pakai/.test(e.message)
@@ -1467,6 +1499,7 @@ function App() {
   const [testimoni, setTestimoni] = useState([]);
   const [lowongan, setLowongan] = useState([]);
   const [fasilitas, setFasilitas] = useState([]);
+  const [kampanye, setKampanye] = useState(null);
   const [sisi, setSisi] = useState("daftar");
   const [toast, setToast] = useState("");
   const ketukRef = useRef([]);
@@ -1476,14 +1509,23 @@ function App() {
     setTimeout(() => setToast(""), 2600);
   }
   async function muatPublik() {
-    const [a, b, c, d, f] = await Promise.all([SB.from("pengaturan").select("*").eq("id", 1).single(), SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,format,kuota,status,sisa").order("tanggal_mulai"), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12)]);
+    const [a, b, c, d, f, g] = await Promise.all([SB.from("pengaturan").select("*").eq("id", 1).single(), SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,format,kuota,status,sisa").order("tanggal_mulai"), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12), window.DM_SLUG ? SB.from("kampanye").select("*").eq("slug", window.DM_SLUG).eq("aktif", true).maybeSingle() : Promise.resolve({ data: null })]);
     if (a.error) throw new Error("Pengaturan gagal dimuat: " + a.error.message);
     if (b.error) throw new Error("Jadwal gagal dimuat: " + b.error.message);
     setSetelan(a.data);
-    setKelas((b.data || []).map(function (x) {
+    /* Kampanye yang tidak ditemukan atau sudah dimatikan diperlakukan
+       seperti tidak ada — pengunjung tetap melihat halaman biasa,
+       bukan halaman kosong. */
+    const kmp = g && !g.error ? g.data : null;
+    setKampanye(kmp);
+    let daftarKelas = (b.data || []).map(function (x) {
       var h = (window.DM_BIAYA || {})[x.id];
       return Object.assign({}, x, { harga: h == null ? null : Number(h) });
-    }));
+    });
+    if (kmp && Array.isArray(kmp.kelas_id) && kmp.kelas_id.length) {
+      daftarKelas = daftarKelas.filter(x => kmp.kelas_id.indexOf(x.id) > -1);
+    }
+    setKelas(daftarKelas);
     setTestimoni(c.error ? [] : c.data || []);
     setLowongan(d.error ? [] : d.data || []);
     setFasilitas(f.error ? [] : f.data || []);
@@ -1611,6 +1653,7 @@ function App() {
     beriTahu: beriTahu
   })) : /*#__PURE__*/React.createElement(Pendaftaran, {
     setelan: setelan,
+    kampanye: kampanye,
     kelas: kelas,
     testimoni: testimoni,
     lowongan: lowongan,
@@ -1630,6 +1673,7 @@ function App() {
 /* ================= SISI PESERTA ================= */
 function Pendaftaran({
   setelan,
+  kampanye,
   kelas,
   testimoni,
   lowongan,
@@ -1916,6 +1960,7 @@ function Pendaftaran({
       });
       if (error) throw new Error(error.message);
       if (!h || !h.ok) throw new Error(h && h.pesan || "Pendaftaran gagal dikirim.");
+      if (window.dmCatatAsal) window.dmCatatAsal(h.nomor, null);
       setHasil({
         ...h,
         nama: data.nama,
@@ -2057,13 +2102,15 @@ function Pendaftaran({
     className: "dm-wrap dm-hero-in"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: "dm-eyebrow"
-  }, "Portal Pendaftaran Pelatihan"), /*#__PURE__*/React.createElement("h1", null, /*#__PURE__*/React.createElement("span", {
+  }, kampanye ? "Pendaftaran Kelas Pilihan" : "Portal Pendaftaran Pelatihan"), kampanye ? /*#__PURE__*/React.createElement("h1", null, /*#__PURE__*/React.createElement("span", {
+    className: "dm-baris1"
+  }, kampanye.judul)) : /*#__PURE__*/React.createElement("h1", null, /*#__PURE__*/React.createElement("span", {
     className: "dm-baris1"
   }, "Kalender Pelatihan Dewa Medik"), "Pelatihan Kesehatan dan Sertifikasi Profesional,", /*#__PURE__*/React.createElement("span", {
     className: "dm-baris2"
   }, "Lebih Mudah Diakses")), /*#__PURE__*/React.createElement("p", {
     className: "dm-hero-sub"
-  }, "Pilih jadwal, selesaikan pendaftaran, dan tingkatkan kompetensi Anda bersama Akademia DEWAMEDIK."), /*#__PURE__*/React.createElement("ul", {
+  }, kampanye ? kampanye.subjudul || "Pilih jadwal yang tersedia, lalu selesaikan pendaftaran Anda." : "Pilih jadwal, selesaikan pendaftaran, dan tingkatkan kompetensi Anda bersama Akademia DEWAMEDIK."), /*#__PURE__*/React.createElement("ul", {
     className: "dm-trust"
   }, /*#__PURE__*/React.createElement("li", null, /*#__PURE__*/React.createElement("span", {
     className: "dm-cek-kecil"
@@ -2918,7 +2965,7 @@ function BackOffice({
     onClick: keluar
   }, "Keluar")), /*#__PURE__*/React.createElement("div", {
     className: "dm-subtab"
-  }, [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Voucher"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["setelan", "Pengaturan"], ["keamanan", "Keamanan"]].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
+  }, [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Voucher"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["linkkelas", "Link Kelas"], ["setelan", "Pengaturan"], ["keamanan", "Keamanan"]].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
     key: k,
     className: tab === k ? "dm-tab dm-tab-on" : "dm-tab",
     onClick: () => setTab(k)
@@ -2943,6 +2990,8 @@ function BackOffice({
   }), tab === "setelan" && /*#__PURE__*/React.createElement(TabSetelan, {
     beriTahu: beriTahu
   }), tab === "keamanan" && /*#__PURE__*/React.createElement(TabKeamanan, {
+    beriTahu: beriTahu
+  }), tab === "linkkelas" && /*#__PURE__*/React.createElement(TabLinkKelas, {
     beriTahu: beriTahu
   }));
 }
@@ -3022,7 +3071,7 @@ function TabPendaftar({
   function unduhCsv() {
     const data = tampil.length ? tampil : baris || [];
     if (!data.length) return beriTahu("Tidak ada data untuk diekspor.");
-    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Profesi", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Jadwal", "Harga awal", "Voucher", "Persen diskon", "Diskon", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Status", "Catatan"];
+    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Profesi", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Jadwal", "Harga awal", "Voucher", "Persen diskon", "Diskon", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
     const tglRingkas = v => {
       if (!v) return "";
       const d = new Date(v);
@@ -3038,7 +3087,7 @@ function TabPendaftar({
     // apostrof agar NIK tidak berubah jadi notasi ilmiah
     r.email, "'" + (r.hp || ""),
     // agar angka 0 di depan tidak hilang
-    r.instansi, r.profesi, r.plataran, r.pelatihan ? r.pelatihan.judul : "", r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "", Number(r.harga_awal) || 0, r.voucher_kode || "", Number(r.persen) || 0, Number(r.diskon) || 0, Number(r.total) || 0, r.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh", Number(r.jumlah_bayar != null ? r.jumlah_bayar : r.total) || 0, Number(r.sisa_bayar) || 0, r.minta_invoice ? "Ya" : "Tidak", r.invoice_instansi || "", statusTeks[r.status] || r.status, r.catatan || ""]);
+    r.instansi, r.profesi, r.plataran, r.pelatihan ? r.pelatihan.judul : "", r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "", Number(r.harga_awal) || 0, r.voucher_kode || "", Number(r.persen) || 0, Number(r.diskon) || 0, Number(r.total) || 0, r.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh", Number(r.jumlah_bayar != null ? r.jumlah_bayar : r.total) || 0, Number(r.sisa_bayar) || 0, r.minta_invoice ? "Ya" : "Tidak", r.invoice_instansi || "", r.kampanye || "", statusTeks[r.status] || r.status, r.catatan || ""]);
     const sel = v => {
       if (typeof v === "number") return String(v); // angka polos, siap dijumlahkan
       const t = String(v ?? "");
@@ -4836,6 +4885,261 @@ var KS_BENTUK_LABEL = {
    sesi yang hanya lolos kata sandi begitu akun punya aplikasi
    Authenticator terdaftar. Halaman ini cuma pintu pendaftarannya.
    ============================================================ */
+
+/* ============================================================
+   Tab Link Kelas — satu alamat khusus per kampanye.
+
+   Pengurus mencentang batch mana saja yang ikut, memberi nama
+   alamatnya sendiri, lalu menyalin tautannya untuk disebar.
+   Halaman yang dibuka tetap halaman pendaftaran yang sama —
+   termasuk gerbang biaya — hanya daftar kelasnya yang disaring.
+   ============================================================ */
+function TabLinkKelas({ beriTahu }) {
+  const [baris, setBaris] = useState(null);
+  const [kelas, setKelas] = useState([]);
+  const [edit, setEdit] = useState(null);
+  const [sibuk, setSibuk] = useState(false);
+  const [galat, setGalat] = useState("");
+
+  const kosong = { slug: "", judul: "", subjudul: "", kelas_id: [], aktif: true };
+
+  async function muat() {
+    const [a, b] = await Promise.all([
+      SB.from("kampanye").select("*").order("dibuat", { ascending: false }),
+      SB.from("pelatihan").select("id,judul,jenis,lokasi,tanggal_mulai,tanggal_selesai,status")
+        .order("tanggal_mulai", { ascending: false }).limit(200)
+    ]);
+    if (a.error) return beriTahu("Gagal memuat: " + a.error.message);
+    setBaris(a.data || []);
+    setKelas(b.error ? [] : b.data || []);
+  }
+  useEffect(() => { muat(); }, []);
+
+  function rapikanSlug(t) {
+    return String(t || "").toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60);
+  }
+
+  function alamat(slug) {
+    return window.location.origin + window.location.pathname + "?k=" + slug;
+  }
+
+  function salin(slug) {
+    const t = alamat(slug);
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => beriTahu("Tautan disalin."));
+    else beriTahu(t);
+  }
+
+  function ubahPilihan(id) {
+    const ada = edit.kelas_id.indexOf(id) > -1;
+    setEdit({
+      ...edit,
+      kelas_id: ada ? edit.kelas_id.filter(x => x !== id) : edit.kelas_id.concat([id])
+    });
+  }
+
+  async function simpan() {
+    setGalat("");
+    const slug = rapikanSlug(edit.slug);
+    if (slug.length < 3) return setGalat("Nama alamat minimal 3 huruf, contoh: solo-september.");
+    if (!edit.judul.trim()) return setGalat("Judul halaman belum diisi.");
+    if (!edit.kelas_id.length) return setGalat("Centang dulu kelas mana saja yang masuk.");
+    setSibuk(true);
+    const isi = {
+      slug,
+      judul: edit.judul.trim(),
+      subjudul: edit.subjudul.trim() || null,
+      kelas_id: edit.kelas_id,
+      aktif: !!edit.aktif
+    };
+    const { error } = edit.id
+      ? await SB.from("kampanye").update(isi).eq("id", edit.id)
+      : await SB.from("kampanye").insert(isi);
+    setSibuk(false);
+    if (error) {
+      return setGalat(/duplicate|unique/i.test(error.message)
+        ? "Nama alamat \"" + slug + "\" sudah dipakai kampanye lain. Pilih nama lain."
+        : "Gagal menyimpan: " + error.message);
+    }
+    setEdit(null);
+    beriTahu("Tersimpan.");
+    muat();
+  }
+
+  async function ubahAktif(r) {
+    const { error } = await SB.from("kampanye").update({ aktif: !r.aktif }).eq("id", r.id);
+    if (error) return beriTahu("Gagal mengubah: " + error.message);
+    muat();
+  }
+
+  function tgl(a, b) {
+    try { return rentang(a, b); } catch (e) { return ""; }
+  }
+
+  if (baris === null) {
+    return React.createElement("p", { className: "dm-load" }, "Memuat link kelas…");
+  }
+
+  /* ---------- kotak ubah ---------- */
+  if (edit) {
+    return React.createElement("section", { className: "dm-card" },
+      React.createElement("div", { className: "dm-toolbar" },
+        React.createElement("h3", null, edit.id ? "Ubah link kelas" : "Buat link kelas baru")),
+
+      React.createElement(Field, {
+        label: "Judul halaman",
+        hint: "Tampil sebagai judul besar, contoh: Pelatihan BTCLS Solo September 2026."
+      }, React.createElement("input", {
+        className: "dm-input",
+        value: edit.judul,
+        onChange: e => setEdit({ ...edit, judul: e.target.value })
+      })),
+
+      React.createElement(Field, {
+        label: "Kalimat pendukung",
+        hint: "Satu kalimat di bawah judul. Boleh dikosongkan."
+      }, React.createElement("input", {
+        className: "dm-input",
+        value: edit.subjudul,
+        onChange: e => setEdit({ ...edit, subjudul: e.target.value })
+      })),
+
+      React.createElement(Field, {
+        label: "Nama alamat",
+        hint: "Huruf kecil dan tanda hubung saja. Inilah yang muncul di tautan."
+      }, React.createElement("input", {
+        className: "dm-input dm-mono",
+        value: edit.slug,
+        placeholder: "solo-september",
+        onChange: e => setEdit({ ...edit, slug: e.target.value })
+      })),
+
+      React.createElement("p", { className: "dm-hint", style: { marginTop: -6, marginBottom: 16 } },
+        "Tautannya nanti: ",
+        React.createElement("b", { className: "dm-mono" },
+          alamat(rapikanSlug(edit.slug) || "nama-alamat"))),
+
+      React.createElement("p", { className: "dm-kelompok-judul" }, "Kelas yang ikut"),
+      React.createElement("p", { className: "dm-hint", style: { marginBottom: 10 } },
+        edit.kelas_id.length
+          ? edit.kelas_id.length + " kelas dicentang."
+          : "Belum ada yang dicentang. Halaman tidak akan menampilkan apa pun sampai ada yang dipilih."),
+
+      kelas.length === 0
+        ? React.createElement("p", { className: "dm-kosong" }, "Belum ada kelas di jadwal.")
+        : React.createElement("div", { className: "dm-tabel-bungkus", style: { maxHeight: 340, overflowY: "auto" } },
+            React.createElement("table", { className: "dm-tabel" },
+              React.createElement("tbody", null,
+                kelas.map(k => React.createElement("tr", { key: k.id },
+                  React.createElement("td", { style: { width: 34 } },
+                    React.createElement("input", {
+                      type: "checkbox",
+                      checked: edit.kelas_id.indexOf(k.id) > -1,
+                      onChange: () => ubahPilihan(k.id),
+                      style: { width: 16, height: 16 }
+                    })),
+                  React.createElement("td", null,
+                    React.createElement("b", null, k.judul),
+                    React.createElement("div", { className: "dm-hint" },
+                      [k.jenis, k.lokasi, tgl(k.tanggal_mulai, k.tanggal_selesai)]
+                        .filter(Boolean).join(" · "))),
+                  React.createElement("td", { style: { textAlign: "right" } },
+                    k.status === "buka"
+                      ? React.createElement("span", { className: "dm-hint" }, "dibuka")
+                      : React.createElement("span", { className: "dm-hint" }, k.status))
+                ))
+              ))),
+
+      React.createElement("label",
+        { className: "dm-hint", style: { display: "block", margin: "16px 0 4px", cursor: "pointer" } },
+        React.createElement("input", {
+          type: "checkbox",
+          checked: !!edit.aktif,
+          onChange: e => setEdit({ ...edit, aktif: e.target.checked }),
+          style: { marginRight: 7 }
+        }),
+        "Aktif — tautannya bisa dibuka orang"),
+
+      galat ? React.createElement("p", { className: "dm-err" }, galat) : null,
+
+      React.createElement("div", { className: "dm-row dm-row-akhir", style: { marginTop: 16 } },
+        React.createElement("button", {
+          className: "dm-btn-line", onClick: () => { setEdit(null); setGalat(""); }
+        }, "Batal"),
+        React.createElement("button", {
+          className: "dm-btn", onClick: simpan, disabled: sibuk
+        }, sibuk ? "Menyimpan…" : "Simpan")));
+  }
+
+  /* ---------- daftar ---------- */
+  return React.createElement("section", { className: "dm-card" },
+    React.createElement("div", { className: "dm-toolbar" },
+      React.createElement("h3", null, "Link Kelas"),
+      React.createElement("button", {
+        className: "dm-btn",
+        onClick: () => { setGalat(""); setEdit(Object.assign({}, kosong)); }
+      }, "Buat link baru")),
+
+    React.createElement("p", { className: "dm-hint", style: { marginBottom: 14 } },
+      "Satu tautan khusus yang hanya menampilkan kelas pilihan Anda — cocok untuk broadcast " +
+      "satu kota atau satu angkatan. Halamannya sama dengan halaman pendaftaran biasa, " +
+      "gerbang biaya tetap berlaku, dan pendaftar yang masuk lewat tautan ini tercatat asalnya."),
+
+    baris.length === 0
+      ? React.createElement("p", { className: "dm-kosong" },
+          "Belum ada link kelas. Tekan “Buat link baru” untuk mulai.")
+      : React.createElement("div", { className: "dm-tabel-bungkus" },
+          React.createElement("table", { className: "dm-tabel" },
+            React.createElement("thead", null,
+              React.createElement("tr", null,
+                React.createElement("th", null, "Judul"),
+                React.createElement("th", null, "Tautan"),
+                React.createElement("th", null, "Kelas"),
+                React.createElement("th", null, "Status"),
+                React.createElement("th", null, ""))),
+            React.createElement("tbody", null,
+              baris.map(r => React.createElement("tr", { key: r.id },
+                React.createElement("td", null, React.createElement("b", null, r.judul)),
+                React.createElement("td", { className: "dm-mono" }, "?k=" + r.slug),
+                React.createElement("td", null, (r.kelas_id || []).length),
+                React.createElement("td", null,
+                  React.createElement("span", {
+                    style: { fontWeight: 600, color: r.aktif ? "#166534" : "#8a6d3b" }
+                  }, r.aktif ? "Aktif" : "Nonaktif")),
+                React.createElement("td", null,
+                  React.createElement("div", { className: "dm-row" },
+                    React.createElement("button", {
+                      className: "dm-btn-line", onClick: () => salin(r.slug)
+                    }, "Salin tautan"),
+                    React.createElement("a", {
+                      className: "dm-btn-line",
+                      style: { textDecoration: "none" },
+                      href: alamat(r.slug),
+                      target: "_blank",
+                      rel: "noreferrer"
+                    }, "Lihat"),
+                    React.createElement("button", {
+                      className: "dm-btn-line",
+                      onClick: () => {
+                        setGalat("");
+                        setEdit({
+                          id: r.id,
+                          slug: r.slug,
+                          judul: r.judul,
+                          subjudul: r.subjudul || "",
+                          kelas_id: (r.kelas_id || []).slice(),
+                          aktif: r.aktif
+                        });
+                      }
+                    }, "Ubah"),
+                    React.createElement("button", {
+                      className: "dm-btn-line", onClick: () => ubahAktif(r)
+                    }, r.aktif ? "Matikan" : "Aktifkan")))
+              ))))));
+}
+
 function TabKeamanan({ beriTahu }) {
   const [faktor, setFaktor] = useState(undefined);
   const [baru, setBaru] = useState(null);
@@ -5126,7 +5430,7 @@ function TabProspek({ beriTahu }) {
   const semua = baris || [];
   const kata = cari.trim().toLowerCase();
   const pakai = kata
-    ? semua.filter(r => (r.nama + " " + r.whatsapp + " " + (r.email || "")).toLowerCase().indexOf(kata) > -1)
+    ? semua.filter(r => (r.nama + " " + r.whatsapp + " " + (r.email || "") + " " + (r.kampanye || "")).toLowerCase().indexOf(kata) > -1)
     : semua;
 
   const kini = Date.now();
@@ -5146,8 +5450,8 @@ function TabProspek({ beriTahu }) {
       const t = String(v == null ? "" : v);
       return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
     };
-    const isi = ["Nama;WhatsApp;Email;Waktu"].concat(
-      semua.map(r => [r.nama, tampilWa(r.whatsapp), r.email || "", jam(r.dibuat_pada)].map(sel).join(";"))
+    const isi = ["Nama;WhatsApp;Email;Asal;Waktu"].concat(
+      semua.map(r => [r.nama, tampilWa(r.whatsapp), r.email || "", r.kampanye || "", jam(r.dibuat_pada)].map(sel).join(";"))
     ).join("\r\n");
     simpanBerkas(new Blob(["﻿" + isi], { type: "text/csv;charset=utf-8" }),
                  "pelihat-harga-" + tgl + ".csv");
@@ -5175,10 +5479,11 @@ function TabProspek({ beriTahu }) {
         Nama: r.nama,
         WhatsApp: tampilWa(r.whatsapp),
         Email: r.email || "",
+        Asal: r.kampanye || "",
         Waktu: jam(r.dibuat_pada)
       }));
       const lembar = XLSX.utils.json_to_sheet(baris);
-      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 22 }];
+      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 20 }, { wch: 22 }];
       const buku = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(buku, lembar, "Pelihat Harga");
       const isi = XLSX.write(buku, { bookType: "xlsx", type: "array" });
@@ -5227,6 +5532,7 @@ function TabProspek({ beriTahu }) {
                 React.createElement("th", null, "Nama"),
                 React.createElement("th", null, "WhatsApp"),
                 React.createElement("th", null, "Email"),
+                React.createElement("th", null, "Asal"),
                 React.createElement("th", null, "Waktu"),
                 React.createElement("th", null, "")
               )
@@ -5238,6 +5544,7 @@ function TabProspek({ beriTahu }) {
                 React.createElement("td", null, r.email
                   ? React.createElement("a", { href: "mailto:" + r.email }, r.email)
                   : "—"),
+                React.createElement("td", { className: "dm-mono" }, r.kampanye || "—"),
                 React.createElement("td", null, jam(r.dibuat_pada)),
                 React.createElement("td", null,
                   React.createElement("a", {

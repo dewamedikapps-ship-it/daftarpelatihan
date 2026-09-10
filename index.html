@@ -1663,6 +1663,9 @@ function Pendaftaran({
     member: false
   });
   const [tipeBayar, setTipeBayar] = useState("lunas");
+  /* Peserta harus menyatakan paham bahwa biaya tidak dapat dikembalikan.
+     Dicentang sendiri, bukan dicentang otomatis, supaya benar-benar dibaca. */
+  const [setuju, setSetuju] = useState(false);
   /* Saringan bekerja di sisi browser atas data pelatihan_publik yang sudah diterima.
      Tidak ada query database baru dan tidak ada perubahan logika bisnis. */
   const [cari, setCari] = useState("");
@@ -1867,11 +1870,22 @@ function Pendaftaran({
     if (!berkas.foto) s.foto = "Pas foto belum diunggah.";
     if (!berkas.transfer) s.transfer = "Foto bukti transfer belum diunggah.";
     if (mintaInvoice && !invInstansi.trim()) s.invInstansi = "Tulis nama instansi yang akan ditagihkan.";
+    if (!setuju) s.setuju = "Centang dulu pernyataan bahwa biaya tidak dapat dikembalikan.";
     setSalah(s);
     if (Object.keys(s).length) {
-      (s.kelas ? refKelas : refData).current.scrollIntoView({
-        behavior: "smooth"
-      });
+      if (Object.keys(s).length === 1 && s.setuju) {
+        const kotak = document.getElementById("dm-setuju-kotak");
+        if (kotak) kotak.scrollIntoView({
+          behavior: "smooth",
+          block: "center"
+        });else refData.current.scrollIntoView({
+          behavior: "smooth"
+        });
+      } else {
+        (s.kelas ? refKelas : refData).current.scrollIntoView({
+          behavior: "smooth"
+        });
+      }
       return;
     }
     setMengirim(true);
@@ -2466,12 +2480,13 @@ function Pendaftaran({
     className: "dm-btn-line",
     onClick: salinRekening
   }, "Salin nomor")), /*#__PURE__*/React.createElement("div", {
+    id: "dm-setuju-kotak",
     style: {
       marginTop: 14,
       padding: "13px 15px",
       borderRadius: 11,
-      border: "1px solid #f0d9b5",
-      background: "#fdf7ec",
+      border: "1px solid " + (salah.setuju ? "#e0b4b4" : "#f0d9b5"),
+      background: salah.setuju ? "#fdf1f1" : "#fdf7ec",
       color: "#6b4a12"
     }
   }, /*#__PURE__*/React.createElement("b", {
@@ -2482,11 +2497,38 @@ function Pendaftaran({
     }
   }, "Biaya pendaftaran tidak dapat dikembalikan"), /*#__PURE__*/React.createElement("p", {
     style: {
-      margin: 0,
+      margin: "0 0 10px",
       fontSize: 13,
       lineHeight: 1.6
     }
-  }, "Biaya yang sudah dibayarkan bersifat non-refundable, kecuali terjadi keadaan kahar (force majeure) \u2014 antara lain bencana alam, wabah penyakit, kerusuhan, atau kebijakan pemerintah yang menyebabkan pelatihan tidak dapat diselenggarakan.")), /*#__PURE__*/React.createElement("p", {
+  }, "Biaya yang sudah dibayarkan bersifat non-refundable, kecuali terjadi keadaan kahar (force majeure) \u2014 antara lain bencana alam, wabah penyakit, kerusuhan, atau kebijakan pemerintah yang menyebabkan pelatihan tidak dapat diselenggarakan, atau panitia melakukan perubahan tanggal pelaksanaan."), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: "flex",
+      alignItems: "flex-start",
+      gap: 9,
+      fontSize: 13.5,
+      fontWeight: 600,
+      lineHeight: 1.5,
+      cursor: "pointer"
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: setuju,
+    onChange: e => setSetuju(e.target.checked),
+    style: {
+      marginTop: 2,
+      width: 17,
+      height: 17,
+      flex: "0 0 auto"
+    }
+  }), "Saya sudah membaca dan menyetujui ketentuan ini."), salah.setuju ? /*#__PURE__*/React.createElement("p", {
+    style: {
+      margin: "9px 0 0",
+      fontSize: 13,
+      fontWeight: 600,
+      color: "#a3271f"
+    }
+  }, salah.setuju) : null), /*#__PURE__*/React.createElement("p", {
     className: "dm-kelompok-judul",
     style: {
       marginTop: 26
@@ -3996,6 +4038,8 @@ function LembarInvoice({
   }, "NPWP"), /*#__PURE__*/React.createElement("td", {
     className: "dm-inv-titik"
   }, ":"), /*#__PURE__*/React.createElement("td", null, KOP.npwp)))), /*#__PURE__*/React.createElement("p", {
+    className: "dm-inv-paragraf"
+  }, /*#__PURE__*/React.createElement("b", null, "Ketentuan: "), "Biaya pelatihan yang telah dibayarkan tidak dapat dikembalikan (non-refundable), kecuali terjadi keadaan kahar (force majeure) yang menyebabkan pelatihan tidak dapat diselenggarakan, atau panitia melakukan perubahan tanggal pelaksanaan."), /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-paragraf"
   }, inv.catatan_akhir || "Sebagai bahan kelengkapan administrasi, bersama surat ini kami lampirkan invoice, daftar hadir peserta, dan dokumentasi kegiatan.", " ", "Demikian surat penagihan ini kami sampaikan. Atas perhatian dan kerja sama Bapak/Ibu, kami ucapkan terima kasih."), /*#__PURE__*/React.createElement("div", {
     className: "dm-inv-ttd"

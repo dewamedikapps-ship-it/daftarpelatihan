@@ -591,10 +591,25 @@ window.dmCatatAsal = async function (nomor, wa) {
    ============================================================ */
 (function () {
   var KUNCI = "dm-biaya-sesi";
+  var UMUR = 10 * 60 * 60 * 1000; /* 10 jam */
+
+  /* Harga yang sudah dibuka hanya bertahan 10 jam. Lewat itu
+     pengunjung mengisi datanya lagi — supaya satu kali isi tidak
+     jadi jalan masuk permanen untuk mengintip harga. */
   try {
     var simpan = sessionStorage.getItem(KUNCI);
-    if (simpan) window.DM_BIAYA = JSON.parse(simpan);
-  } catch (e) {}
+    if (simpan) {
+      var isi = JSON.parse(simpan);
+      var segar = isi && isi.waktu && (Date.now() - Number(isi.waktu) < UMUR);
+      if (segar && isi.peta) {
+        window.DM_BIAYA = isi.peta;
+      } else {
+        sessionStorage.removeItem(KUNCI);
+      }
+    }
+  } catch (e) {
+    try { sessionStorage.removeItem(KUNCI); } catch (e2) {}
+  }
 
   var sedang = false;
 
@@ -720,7 +735,7 @@ window.dmCatatAsal = async function (nomor, wa) {
         var peta = {};
         (hasil.data || []).forEach(function (x) { peta[x.id] = Number(x.harga); });
         window.DM_BIAYA = peta;
-        try { sessionStorage.setItem(KUNCI, JSON.stringify(peta)); } catch (e) {}
+        try { sessionStorage.setItem(KUNCI, JSON.stringify({ peta: peta, waktu: Date.now() })); } catch (e) {}
         if (window.dmCatatAsal) { try { await window.dmCatatAsal(null, wn); } catch (e) {} }
         location.reload();
       } catch (e) {

@@ -462,8 +462,9 @@ window.DM_SLUG = (function () {
    dialog berlangganan, bukan mengunduh satu berkas mati.
    ============================================================ */
 (function () {
-  var ALAMAT = "https://pczylrzlymkipgpismua.supabase.co/functions/v1/kalender-ics";
-  var WEBCAL = ALAMAT.replace(/^https:\/\//, "webcal://");
+  var DASAR = "https://pczylrzlymkipgpismua.supabase.co/functions/v1/kalender-ics";
+  var ALAMAT = "";
+  var WEBCAL = "";
 
   function gaya() {
     if (document.getElementById("dm-gaya-kal")) return;
@@ -490,8 +491,22 @@ window.DM_SLUG = (function () {
     document.head.appendChild(g);
   }
 
-  window.dmLanggananKalender = function () {
+  /* Kunci kalender disimpan di tabel yang hanya bisa dibaca pengurus,
+     jadi ia tidak pernah ikut tercetak di halaman umum. Diambil saat
+     tombol ditekan, bukan saat halaman dimuat. */
+  window.dmLanggananKalender = async function () {
     gaya();
+    var kunci = "";
+    try {
+      var h = await SB.from("kalender_kunci").select("kunci").eq("id", 1).maybeSingle();
+      kunci = h && h.data && h.data.kunci ? String(h.data.kunci) : "";
+    } catch (e) {}
+    if (!kunci) {
+      alert("Kunci kalender tidak terbaca. Pastikan Anda masuk sebagai pengurus, lalu coba lagi.");
+      return;
+    }
+    ALAMAT = DASAR + "?k=" + encodeURIComponent(kunci);
+    WEBCAL = ALAMAT.replace(/^https:\/\//, "webcal://");
     var tirai = document.createElement("div");
     tirai.className = "dm-kal-tirai";
     tirai.innerHTML =
@@ -504,6 +519,8 @@ window.DM_SLUG = (function () {
       "<li><b>Google Calendar:</b> salin alamatnya, lalu tambahkan lewat " +
       "Setelan &rsaquo; Tambahkan kalender &rsaquo; Dari URL.</li>" +
       "</ol>" +
+      '<p style="color:#9a5b00">Alamat ini memuat kunci. Bagikan hanya ke pengurus &mdash; ' +
+      "siapa pun yang memegangnya bisa ikut melihat jadwal internal.</p>" +
       '<p style="margin-bottom:6px">Alamat kalender:</p>' +
       '<div class="dm-kal-alamat">' + ALAMAT + "</div>" +
       '<div class="dm-kal-aksi">' +

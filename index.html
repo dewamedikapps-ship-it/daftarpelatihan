@@ -953,6 +953,14 @@ function pesanTerverifikasi(r, setelan) {
     b.push("");
     b.push(`Catatan: ${r.catatan.trim()}`);
   }
+  const grup = r.pelatihan && r.pelatihan.wa_grup ? String(r.pelatihan.wa_grup).trim() : "";
+  if (grup) {
+    b.push("");
+    b.push("*GRUP KELAS*");
+    b.push("Silakan bergabung ke grup WhatsApp kelas Kakak di tautan berikut:");
+    b.push(grup);
+    b.push("Permintaan bergabung akan kami setujui setelah kami cocokkan dengan data pendaftaran Kakak.");
+  }
   b.push("");
   b.push("Mohon simpan pesan ini sebagai bukti pendaftaran ya Kak. Informasi teknis pelaksanaan akan kami sampaikan menjelang hari pelatihan.");
   b.push("");
@@ -3282,7 +3290,7 @@ function TabPendaftar({
     const {
       data,
       error
-    } = await SB.from("pendaftaran").select("*, pelatihan(judul, jenis, tanggal_mulai, tanggal_selesai)").order("dibuat", {
+    } = await SB.from("pendaftaran").select("*, pelatihan(judul, jenis, tanggal_mulai, tanggal_selesai, wa_grup)").order("dibuat", {
       ascending: false
     });
     if (error) return beriTahu("Data gagal dimuat: " + error.message);

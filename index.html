@@ -1272,7 +1272,9 @@ function CekPendaftaran({
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState("");
   const [hasil, setHasil] = useState(null);
+  const [linkGrup, setLinkGrup] = useState("");
   async function periksa() {
+    setLinkGrup("");
     setPesan("");
     setHasil(null);
     if (!nomor.trim()) return setPesan("Masukkan nomor registrasi Anda.");
@@ -1289,6 +1291,12 @@ function CekPendaftaran({
     if (error) return setPesan("Gagal menghubungi server. Coba lagi sebentar.");
     if (!data || !data.ok) return setPesan(data && data.pesan || "Data tidak ditemukan.");
     setHasil(data);
+    if (data.status === "terverifikasi") {
+      try {
+        const g = await SB.rpc("link_grup", { p_nomor: nomor.trim() });
+        if (!g.error && g.data) setLinkGrup(String(g.data));
+      } catch (e) {}
+    }
   }
   const keterangan = {
     menunggu: ["Menunggu verifikasi", "Bukti pembayaran Anda sedang kami periksa. Biasanya selesai kurang dari 1×24 jam kerja."],
@@ -1340,7 +1348,25 @@ function CekPendaftaran({
     nama: hasil.status === "terverifikasi" ? "centang" : hasil.status === "ditolak" ? "saring" : "kalender",
     ukuran: 20,
     tebal: 2.2
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, (keterangan[hasil.status] || [hasil.status])[0]), /*#__PURE__*/React.createElement("p", null, (keterangan[hasil.status] || ["", ""])[1]))), hasil.status === "ditolak" && hasil.catatan ? /*#__PURE__*/React.createElement("p", {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("b", null, (keterangan[hasil.status] || [hasil.status])[0]), /*#__PURE__*/React.createElement("p", null, (keterangan[hasil.status] || ["", ""])[1]))), linkGrup ? /*#__PURE__*/React.createElement("div", {
+    className: "dm-catatan",
+    style: {
+      display: "flex",
+      flexWrap: "wrap",
+      alignItems: "center",
+      justifyContent: "space-between",
+      gap: 10
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Grup WhatsApp kelas Anda sudah dibuka. Permintaan bergabung disetujui pengurus."), /*#__PURE__*/React.createElement("a", {
+    className: "dm-btn",
+    href: linkGrup,
+    target: "_blank",
+    rel: "noopener noreferrer",
+    style: {
+      textDecoration: "none",
+      whiteSpace: "nowrap"
+    }
+  }, "Gabung grup WhatsApp")) : null, hasil.status === "ditolak" && hasil.catatan ? /*#__PURE__*/React.createElement("p", {
     className: "dm-catatan"
   }, "Catatan dari tim kami: ", hasil.catatan) : null, /*#__PURE__*/React.createElement("div", {
     className: "dm-detail-list"
@@ -3744,6 +3770,7 @@ function TabJadwal({
     format: "3 hari daring + 3 hari luring",
     kuota: 30,
     harga: 2500000,
+    wa_grup: "",
     status: "buka"
   };
   async function muat() {
@@ -3770,6 +3797,7 @@ function TabJadwal({
       format: edit.format,
       kuota: Number(edit.kuota),
       harga: Number(edit.harga),
+      wa_grup: (edit.wa_grup || "").trim() || null,
       status: edit.status
     };
     const {
@@ -3844,6 +3872,7 @@ function TabJadwal({
       judul: t.judul + " (salinan)",
       tanggal_mulai: "",
       tanggal_selesai: "",
+      wa_grup: "",
       status: "buka"
     })
   }, "Duplikat"), /*#__PURE__*/React.createElement("button", {
@@ -3903,6 +3932,18 @@ function TabJadwal({
     onChange: e => setEdit({
       ...edit,
       lokasi: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Link grup WhatsApp kelas",
+    hint: "Hanya diberikan kepada peserta yang sudah terverifikasi. Kosongkan bila kelas ini belum punya grup."
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "dm-input dm-mono",
+    type: "url",
+    placeholder: "https://chat.whatsapp.com/…",
+    value: edit.wa_grup || "",
+    onChange: e => setEdit({
+      ...edit,
+      wa_grup: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Format"

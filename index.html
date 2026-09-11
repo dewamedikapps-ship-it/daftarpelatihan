@@ -1660,6 +1660,12 @@ function App() {
     const cek = () => {
       const h = (window.location.hash || "").toLowerCase();
       if (h === "#admin" || h === "#backoffice") setSisi("admin");
+      /* Datang dari tautan pemulihan kata sandi: buka sisi pengurus,
+         karena di situlah layar setel sandi barunya berada. */
+      try {
+        if (new URLSearchParams(window.location.search).get("pulih") === "1" ||
+            String(window.location.hash || "").indexOf("type=recovery") > -1) setSisi("admin");
+      } catch (e) {}
     };
     cek();
     window.addEventListener("hashchange", cek);
@@ -2936,6 +2942,64 @@ function BackOffice({
      dinaikkan dulu dengan kode 6 angka sebelum bisa membuka apa pun. */
   const [perluKode, setPerluKode] = useState(false);
   const [kode, setKode] = useState("");
+
+  /* Lupa kata sandi. Dua tahap: kirim tautan ke email, lalu
+     setel sandi baru begitu tautannya dibuka. */
+  const [modePulih, setModePulih] = useState(false);
+  const [pesanPulih, setPesanPulih] = useState("");
+  const [sandiBaru, setSandiBaru] = useState("");
+  const [sandiUlang, setSandiUlang] = useState("");
+  const [lihatSandi, setLihatSandi] = useState(false);
+
+  const syaratPulih = [
+    ["Minimal 12 karakter", sandiBaru.length >= 12],
+    ["Ada huruf kecil (a-z)", /[a-z]/.test(sandiBaru)],
+    ["Ada huruf besar (A-Z)", /[A-Z]/.test(sandiBaru)],
+    ["Ada angka (0-9)", /[0-9]/.test(sandiBaru)],
+    ["Ada simbol, misal ! ? @ #", /[^A-Za-z0-9]/.test(sandiBaru)],
+    ["Kedua isian sama", sandiBaru.length > 0 && sandiBaru === sandiUlang]
+  ];
+  const pulihSiap = syaratPulih.every(x => x[1]);
+
+  /* Sengaja tidak membedakan email terdaftar dan tidak: jawaban yang
+     berbeda akan memberi tahu penebak alamat mana yang punya akun. */
+  async function kirimPemulihan() {
+    const alamat = String(email || "").trim();
+    if (!alamat) {
+      setErr("Isi dulu alamat email Anda di atas, baru tekan Lupa kata sandi.");
+      return;
+    }
+    setErr("");
+    setPesanPulih("");
+    setMasuk(true);
+    try {
+      await SB.auth.resetPasswordForEmail(alamat, {
+        redirectTo: location.origin + location.pathname + "?pulih=1"
+      });
+    } catch (e) {}
+    setMasuk(false);
+    setPesanPulih("Kalau alamat itu memang terdaftar, tautan pemulihan sudah dikirim ke sana. Periksa kotak masuk dan folder spam — tautannya berlaku satu jam.");
+  }
+
+  async function simpanSandiPulih() {
+    setErr("");
+    setMasuk(true);
+    try {
+      const { error } = await SB.auth.updateUser({ password: sandiBaru });
+      if (error) throw error;
+      setSandiBaru("");
+      setSandiUlang("");
+      setLihatSandi(false);
+      setModePulih(false);
+      setPesanPulih("Kata sandi baru tersimpan. Pakai yang ini untuk masuk berikutnya.");
+      try { history.replaceState(null, "", location.pathname + "#admin"); } catch (e) {}
+      try { await SB.auth.signOut(); } catch (e) {}
+    } catch (e) {
+      setErr("Gagal menyimpan: " + e.message);
+    }
+    setMasuk(false);
+  }
+
   async function periksaLapis() {
     try {
       const {
@@ -2947,6 +3011,13 @@ function BackOffice({
     }
   }
   useEffect(() => {
+    /* Tautan pemulihan membawa penanda di alamat. Diperiksa langsung,
+       karena pustaka Supabase kadang sudah menukarnya jadi sesi sebelum
+       pendengar di bawah sempat terpasang. */
+    try {
+      if (String(location.hash || "").indexOf("type=recovery") > -1 ||
+          new URLSearchParams(location.search).get("pulih") === "1") setModePulih(true);
+    } catch (e) {}
     SB.auth.getSession().then(async ({
       data
     }) => {
@@ -2957,6 +3028,7 @@ function BackOffice({
     const {
       data: sub
     } = SB.auth.onAuthStateChange((_e, s) => {
+      if (_e === "PASSWORD_RECOVERY") setModePulih(true);
       setSesi(s);
       if (s) periksaLapis();else setPerluKode(false);
     });
@@ -3016,6 +3088,49 @@ function BackOffice({
   if (cekSesi) return /*#__PURE__*/React.createElement("p", {
     className: "dm-load"
   }, "Memeriksa sesi…");
+  if (modePulih) return /*#__PURE__*/React.createElement("div", {
+    className: "dm-card dm-gate"
+  }, /*#__PURE__*/React.createElement("h3", null, "Setel kata sandi baru"), /*#__PURE__*/React.createElement("p", {
+    className: "dm-lead dm-lead-kecil"
+  }, "Tautan pemulihan Anda berlaku. Pasang kata sandi baru sekarang, lalu tautannya hangus."), /*#__PURE__*/React.createElement(Field, {
+    label: "Kata sandi baru"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "dm-input",
+    type: lihatSandi ? "text" : "password",
+    autoComplete: "new-password",
+    value: sandiBaru,
+    onChange: e => setSandiBaru(e.target.value)
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Ulangi kata sandi baru"
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "dm-input",
+    type: lihatSandi ? "text" : "password",
+    autoComplete: "new-password",
+    value: sandiUlang,
+    onChange: e => setSandiUlang(e.target.value),
+    onKeyDown: e => {
+      if (e.key === "Enter" && pulihSiap) simpanSandiPulih();
+    }
+  })), /*#__PURE__*/React.createElement("label", {
+    style: { display: "flex", alignItems: "center", gap: 8, margin: "4px 0 10px", fontSize: 13 }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: lihatSandi,
+    onChange: e => setLihatSandi(e.target.checked)
+  }), "Tampilkan kata sandi"), /*#__PURE__*/React.createElement("ul", {
+    style: { listStyle: "none", padding: 0, margin: "0 0 14px", fontSize: 13, lineHeight: 1.9 }
+  }, syaratPulih.map(([teks, lolos], i) => /*#__PURE__*/React.createElement("li", {
+    key: i,
+    style: { color: lolos ? "#186b4a" : "#7a8496" }
+  }, (lolos ? "\u2713 " : "\u25cb ") + teks))), err ? /*#__PURE__*/React.createElement("p", {
+    className: "dm-err"
+  }, err) : null, /*#__PURE__*/React.createElement("div", {
+    className: "dm-row dm-row-akhir"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "dm-btn",
+    onClick: simpanSandiPulih,
+    disabled: masuk || !pulihSiap
+  }, masuk ? "Menyimpan…" : "Simpan kata sandi")));
   if (!sesi) return /*#__PURE__*/React.createElement("div", {
     className: "dm-card dm-gate"
   }, /*#__PURE__*/React.createElement("h3", null, "Back office"), /*#__PURE__*/React.createElement("p", {
@@ -3038,9 +3153,18 @@ function BackOffice({
     onKeyDown: e => e.key === "Enter" && login()
   })), err ? /*#__PURE__*/React.createElement("p", {
     className: "dm-err"
-  }, err) : null, /*#__PURE__*/React.createElement("div", {
-    className: "dm-row dm-row-akhir"
+  }, err) : null, pesanPulih ? /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint",
+    style: { marginTop: 0 }
+  }, pesanPulih) : null, /*#__PURE__*/React.createElement("div", {
+    className: "dm-row dm-row-akhir",
+    style: { justifyContent: "space-between", alignItems: "center", gap: 10 }
   }, /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "dm-btn-ghost",
+    onClick: kirimPemulihan,
+    disabled: masuk
+  }, "Lupa kata sandi?"), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn",
     onClick: login,
     disabled: masuk

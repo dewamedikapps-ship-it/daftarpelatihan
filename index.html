@@ -449,6 +449,90 @@ window.DM_SLUG = (function () {
 })();
 
 /* Dicatat diam-diam; kalau gagal, tidak boleh mengganggu pengunjung. */
+
+/* ============================================================
+   Berlangganan kalender.
+
+   Alamat .ics dilayani Supabase Edge Function yang membaca tabel
+   jadwal secara langsung. Begitu pengurus mengubah tanggal,
+   lokasi, atau status sebuah kelas, kalender yang sudah
+   berlangganan ikut menyesuaikan pada penyegaran berikutnya.
+
+   webcal:// dipakai supaya Apple Calendar langsung menawarkan
+   dialog berlangganan, bukan mengunduh satu berkas mati.
+   ============================================================ */
+(function () {
+  var ALAMAT = "https://pczylrzlymkipgpismua.supabase.co/functions/v1/kalender-ics";
+  var WEBCAL = ALAMAT.replace(/^https:\/\//, "webcal://");
+
+  function gaya() {
+    if (document.getElementById("dm-gaya-kal")) return;
+    var g = document.createElement("style");
+    g.id = "dm-gaya-kal";
+    g.textContent = [
+      ".dm-kal-tirai{position:fixed;inset:0;z-index:9999;background:rgba(10,18,38,.55);",
+      "  display:flex;align-items:center;justify-content:center;padding:20px;}",
+      ".dm-kal-kotak{background:#fff;border-radius:16px;max-width:470px;width:100%;",
+      "  padding:26px 24px;box-shadow:0 24px 60px rgba(10,18,38,.3);",
+      "  font:14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',Inter,Roboto,sans-serif;color:#16202e;}",
+      ".dm-kal-kotak h3{margin:0 0 6px;font-size:17px;}",
+      ".dm-kal-kotak p{margin:0 0 14px;font-size:13.5px;color:#5b6577;}",
+      ".dm-kal-kotak ol{margin:0 0 16px;padding-left:18px;font-size:13.5px;color:#5b6577;line-height:1.8;}",
+      ".dm-kal-alamat{font:12.5px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;background:#f3f6fb;",
+      "  border:1px solid #dfe5ee;border-radius:9px;padding:10px 12px;word-break:break-all;margin:0 0 16px;}",
+      ".dm-kal-aksi{display:flex;gap:9px;flex-wrap:wrap;}",
+      ".dm-kal-aksi button,.dm-kal-aksi a{flex:1;min-width:130px;padding:10px;border-radius:10px;",
+      "  font:600 14px inherit;cursor:pointer;text-align:center;text-decoration:none;}",
+      ".dm-kal-tutup{background:#fff;border:1px solid #dfe5ee;color:#16202e;}",
+      ".dm-kal-salin{background:#fff;border:1px solid #dfe5ee;color:#16202e;}",
+      ".dm-kal-buka{background:#16357e;border:1px solid #16357e;color:#fff;}"
+    ].join("\n");
+    document.head.appendChild(g);
+  }
+
+  window.dmLanggananKalender = function () {
+    gaya();
+    var tirai = document.createElement("div");
+    tirai.className = "dm-kal-tirai";
+    tirai.innerHTML =
+      '<div class="dm-kal-kotak" role="dialog" aria-modal="true">' +
+      "<h3>Subscribe Kalender Dewa Medik</h3>" +
+      "<p>Jadwal pelatihan masuk ke aplikasi kalender Anda dan ikut berubah sendiri " +
+      "setiap kali kami memperbarui atau membatalkan kelas. Tidak perlu dicek berkala.</p>" +
+      "<ol>" +
+      "<li><b>iPhone, iPad, Mac:</b> tekan Berlangganan, lalu setujui di Apple Calendar.</li>" +
+      "<li><b>Google Calendar:</b> salin alamatnya, lalu tambahkan lewat " +
+      "Setelan &rsaquo; Tambahkan kalender &rsaquo; Dari URL.</li>" +
+      "</ol>" +
+      '<p style="margin-bottom:6px">Alamat kalender:</p>' +
+      '<div class="dm-kal-alamat">' + ALAMAT + "</div>" +
+      '<div class="dm-kal-aksi">' +
+      '<button type="button" class="dm-kal-tutup">Tutup</button>' +
+      '<button type="button" class="dm-kal-salin">Salin alamat</button>' +
+      '<a class="dm-kal-buka" href="' + WEBCAL + '">Berlangganan</a>' +
+      "</div></div>";
+    document.body.appendChild(tirai);
+
+    function tutup() {
+      if (tirai.parentNode) tirai.parentNode.removeChild(tirai);
+    }
+    tirai.querySelector(".dm-kal-tutup").onclick = tutup;
+    tirai.onclick = function (e) { if (e.target === tirai) tutup(); };
+
+    var salin = tirai.querySelector(".dm-kal-salin");
+    salin.onclick = function () {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(ALAMAT).then(function () {
+          salin.textContent = "Tersalin";
+          setTimeout(function () { salin.textContent = "Salin alamat"; }, 1800);
+        });
+      } else {
+        salin.textContent = "Salin manual di atas";
+      }
+    };
+  };
+})();
+
 window.dmCatatAsal = async function (nomor, wa) {
   if (!window.DM_SLUG) return;
   try {
@@ -2257,7 +2341,20 @@ function Pendaftaran({
   }, /*#__PURE__*/React.createElement(Ikon, {
     nama: "papan",
     ukuran: 20
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", null, "Daftar Pelatihan"), /*#__PURE__*/React.createElement("p", null, "Temukan pelatihan terbaik sesuai kebutuhan Anda"))), /*#__PURE__*/React.createElement("label", {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", null, "Daftar Pelatihan"), /*#__PURE__*/React.createElement("p", null, "Temukan pelatihan terbaik sesuai kebutuhan Anda"))), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "dm-btn-line",
+    style: {
+      display: "inline-flex",
+      alignItems: "center",
+      gap: 7,
+      whiteSpace: "nowrap"
+    },
+    onClick: () => window.dmLanggananKalender && window.dmLanggananKalender()
+  }, /*#__PURE__*/React.createElement(Ikon, {
+    nama: "kalender",
+    ukuran: 16
+  }), "Subscribe Kalender Dewa Medik"), /*#__PURE__*/React.createElement("label", {
     className: "dm-urut"
   }, /*#__PURE__*/React.createElement("span", null, "Urutkan"), /*#__PURE__*/React.createElement("select", {
     className: "dm-input",
@@ -3701,7 +3798,9 @@ function TabJadwal({
     value: "buka"
   }, "Buka"), /*#__PURE__*/React.createElement("option", {
     value: "tutup"
-  }, "Tutup")))), /*#__PURE__*/React.createElement("div", {
+  }, "Tutup"), /*#__PURE__*/React.createElement("option", {
+    value: "batal"
+  }, "Dibatalkan")))), /*#__PURE__*/React.createElement("div", {
     className: "dm-row dm-row-akhir"
   }, /*#__PURE__*/React.createElement("button", {
     className: "dm-btn",

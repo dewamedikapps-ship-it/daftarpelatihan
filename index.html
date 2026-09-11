@@ -502,10 +502,27 @@ window.DM_SLUG = (function () {
       kunci = h && h.data && h.data.kunci ? String(h.data.kunci) : "";
     } catch (e) {}
     if (!kunci) {
-      alert("Kunci kalender tidak terbaca. Pastikan Anda masuk sebagai pengurus, lalu coba lagi.");
+      var gagal = document.createElement("div");
+      gagal.className = "dm-kal-tirai";
+      gagal.innerHTML =
+        '<div class="dm-kal-kotak" role="dialog" aria-modal="true">' +
+        "<h3>Kunci kalender tidak terbaca</h3>" +
+        "<p>Hanya pengurus yang sudah masuk yang bisa membuka alamat kalender. " +
+        "Coba masuk ulang ke back office, lalu tekan tombolnya lagi.</p>" +
+        '<div class="dm-kal-aksi"><button type="button" class="dm-kal-tutup">Tutup</button></div>' +
+        "</div>";
+      document.body.appendChild(gagal);
+      gagal.querySelector(".dm-kal-tutup").onclick = function () {
+        if (gagal.parentNode) gagal.parentNode.removeChild(gagal);
+      };
+      gagal.onclick = function (e) {
+        if (e.target === gagal && gagal.parentNode) gagal.parentNode.removeChild(gagal);
+      };
       return;
     }
-    ALAMAT = DASAR + "?k=" + encodeURIComponent(kunci);
+    /* Kunci ditaruh sebagai ruas alamat, bukan query string: query
+       string lebih gampang ikut tercatat di log dan riwayat peramban. */
+    ALAMAT = DASAR + "/" + encodeURIComponent(kunci);
     WEBCAL = ALAMAT.replace(/^https:\/\//, "webcal://");
     var tirai = document.createElement("div");
     tirai.className = "dm-kal-tirai";

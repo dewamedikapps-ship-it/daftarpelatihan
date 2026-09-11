@@ -2341,20 +2341,7 @@ function Pendaftaran({
   }, /*#__PURE__*/React.createElement(Ikon, {
     nama: "papan",
     ukuran: 20
-  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", null, "Daftar Pelatihan"), /*#__PURE__*/React.createElement("p", null, "Temukan pelatihan terbaik sesuai kebutuhan Anda"))), /*#__PURE__*/React.createElement("button", {
-    type: "button",
-    className: "dm-btn-line",
-    style: {
-      display: "inline-flex",
-      alignItems: "center",
-      gap: 7,
-      whiteSpace: "nowrap"
-    },
-    onClick: () => window.dmLanggananKalender && window.dmLanggananKalender()
-  }, /*#__PURE__*/React.createElement(Ikon, {
-    nama: "kalender",
-    ukuran: 16
-  }), "Subscribe Kalender Dewa Medik"), /*#__PURE__*/React.createElement("label", {
+  })), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("h2", null, "Daftar Pelatihan"), /*#__PURE__*/React.createElement("p", null, "Temukan pelatihan terbaik sesuai kebutuhan Anda"))), /*#__PURE__*/React.createElement("label", {
     className: "dm-urut"
   }, /*#__PURE__*/React.createElement("span", null, "Urutkan"), /*#__PURE__*/React.createElement("select", {
     className: "dm-input",
@@ -3658,7 +3645,11 @@ function TabJadwal({
     className: "dm-btn-ghost",
     type: "button",
     onClick: () => setTampilan(tampilan === "kalender" ? "tabel" : "kalender")
-  }, tampilan === "kalender" ? "Tampilan tabel" : "Tampilan kalender")), /*#__PURE__*/React.createElement("p", {
+  }, tampilan === "kalender" ? "Tampilan tabel" : "Tampilan kalender"), /*#__PURE__*/React.createElement("button", {
+    className: "dm-btn-ghost",
+    type: "button",
+    onClick: () => window.dmLanggananKalender && window.dmLanggananKalender()
+  }, "Subscribe kalender")), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint",
     style: {
       marginBottom: 12

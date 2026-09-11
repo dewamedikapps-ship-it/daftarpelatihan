@@ -5469,6 +5469,63 @@ function TabKeamanan({ beriTahu }) {
   const [sandiGalat, setSandiGalat] = useState("");
   const [lihatSandi, setLihatSandi] = useState(false);
 
+  /* Cadangan harian. Dibuat otomatis oleh penjadwal di database,
+     jadi kartu ini gunanya dua: memperlihatkan kalau penjadwalnya
+     diam-diam berhenti, dan memberi jalan menyimpan salinan di luar. */
+  const [cadangan, setCadangan] = useState(null);
+  const [cadSibuk, setCadSibuk] = useState(false);
+
+  async function muatCadangan() {
+    try {
+      const { data, error } = await SB.rpc("cadangan_terakhir");
+      setCadangan(error ? { ada: false } : data);
+    } catch (e) {
+      setCadangan({ ada: false });
+    }
+  }
+  useEffect(() => { muatCadangan(); }, []);
+
+  async function cadangSekarang() {
+    setCadSibuk(true);
+    try {
+      const { error } = await SB.rpc("buat_cadangan");
+      if (error) throw error;
+      beriTahu("Cadangan baru dibuat.");
+      await muatCadangan();
+    } catch (e) {
+      beriTahu("Gagal membuat cadangan: " + e.message);
+    }
+    setCadSibuk(false);
+  }
+
+  async function unduhCadangan() {
+    setCadSibuk(true);
+    try {
+      const { data, error } = await SB.from("cadangan_harian")
+        .select("dibuat, isi").order("dibuat", { ascending: false }).limit(1);
+      if (error) throw error;
+      if (!data || !data.length) throw new Error("belum ada cadangan");
+      const tgl = new Date(data[0].dibuat);
+      const p = x => String(x).padStart(2, "0");
+      const nama = "cadangan-dewamedik-" + tgl.getFullYear() + p(tgl.getMonth() + 1) + p(tgl.getDate()) + ".json";
+      const blob = new Blob([JSON.stringify(data[0].isi, null, 1)], { type: "application/json" });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = nama;
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    } catch (e) {
+      beriTahu("Gagal mengunduh: " + e.message);
+    }
+    setCadSibuk(false);
+  }
+
+  function usiaCadangan() {
+    if (!cadangan || !cadangan.ada) return null;
+    return (Date.now() - new Date(cadangan.dibuat).getTime()) / 36e5;
+  }
+
   const syarat = [
     ["Minimal 12 karakter", sandiBaru.length >= 12],
     ["Ada huruf kecil (a-z)", /[a-z]/.test(sandiBaru)],
@@ -5701,6 +5758,40 @@ function TabKeamanan({ beriTahu }) {
       disabled: !sandiSiap || sandiSibuk
     }, sandiSibuk ? "Menyimpan…" : "Simpan kata sandi baru"));
 
+  const jam = usiaCadangan();
+  const basi = jam === null || jam > 30;
+  const kartuCadangan = React.createElement("section",
+    { className: "dm-card", style: { marginTop: 18 } },
+    React.createElement("div", { className: "dm-toolbar" },
+      React.createElement("h3", null, "Cadangan data")),
+    React.createElement("p", { className: "dm-hint", style: { marginBottom: 12 } },
+      "Seluruh isi tabel disalin otomatis setiap hari pukul 01.00 WIB dan disimpan 14 hari terakhir. " +
+      "Salinan ini melindungi dari salah hapus dan salah ubah — bukan dari hilangnya seluruh project. " +
+      "Untuk itu, sesekali unduh dan simpan di tempat lain."),
+    React.createElement("p", {
+      style: {
+        margin: "0 0 14px", fontWeight: 600,
+        color: basi ? "#9d2f2f" : "#186b4a"
+      }
+    }, cadangan === null
+      ? "Memeriksa…"
+      : !cadangan.ada
+        ? "Belum ada cadangan sama sekali."
+        : (basi
+            ? "Cadangan terakhir sudah lebih dari sehari — penjadwalnya mungkin berhenti. "
+            : "Cadangan terakhir: ")
+          + new Date(cadangan.dibuat).toLocaleString("id-ID", { dateStyle: "long", timeStyle: "short" })
+          + " · " + Math.round((cadangan.ukuran || 0) / 1024) + " KB"
+          + " · " + cadangan.jumlah + " salinan tersimpan"),
+    React.createElement("div", { className: "dm-row" },
+      React.createElement("button", {
+        className: "dm-btn", onClick: unduhCadangan,
+        disabled: cadSibuk || !(cadangan && cadangan.ada)
+      }, "Unduh cadangan terakhir"),
+      React.createElement("button", {
+        className: "dm-btn-ghost", onClick: cadangSekarang, disabled: cadSibuk
+      }, cadSibuk ? "Menyiapkan…" : "Buat cadangan sekarang")));
+
   return React.createElement(React.Fragment, null,
     React.createElement("section", { className: "dm-card" },
       React.createElement("div", { className: "dm-toolbar" },
@@ -5710,7 +5801,8 @@ function TabKeamanan({ beriTahu }) {
         "Microsoft Authenticator, atau sejenisnya. Setelah aktif, orang yang tahu kata sandi tetap " +
         "tidak bisa membuka back office tanpa ponsel Anda."),
       isi),
-    kartuSandi);
+    kartuSandi,
+    kartuCadangan);
 }
 
 function TabProspek({ beriTahu }) {

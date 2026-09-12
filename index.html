@@ -4082,6 +4082,28 @@ function TabVoucher({
       jenis_berlaku: ada ? edit.jenis_berlaku.filter(x => x !== j) : [...edit.jenis_berlaku, j]
     });
   }
+  async function hapus(v) {
+    let terpakai = 0;
+    try {
+      const {
+        count
+      } = await SB.from("pendaftaran").select("id", {
+        count: "exact",
+        head: true
+      }).eq("voucher_kode", v.kode);
+      terpakai = Number(count) || 0;
+    } catch (e) {}
+    const peringatan = terpakai > 0 ? `Kode ${v.kode} sudah dipakai ${terpakai} pendaftar. Data pendaftar tidak ikut terhapus, tapi kodenya tidak bisa dipakai lagi.\n\nTetap hapus?` : `Hapus voucher ${v.kode}?`;
+    if (!window.confirm(peringatan)) return;
+    const {
+      data: sisa,
+      error
+    } = await SB.from("voucher").delete().eq("id", v.id).select("id");
+    if (error) return beriTahu("Gagal menghapus: " + error.message + " — nonaktifkan voucher ini saja lewat Ubah.");
+    if (!sisa || !sisa.length) return beriTahu("Voucher tidak terhapus — izin pengurus belum mencakup hapus voucher. Nonaktifkan saja lewat Ubah.");
+    beriTahu("Voucher terhapus.");
+    muat();
+  }
   if (!baris) return /*#__PURE__*/React.createElement("p", {
     className: "dm-load"
   }, "Memuat voucher…");
@@ -4123,7 +4145,10 @@ function TabVoucher({
       ...v,
       berlaku_sampai: v.berlaku_sampai || ""
     })
-  }, "Ubah"))))))), edit ? /*#__PURE__*/React.createElement(Modal, {
+  }, "Ubah"), /*#__PURE__*/React.createElement("button", {
+    className: "dm-btn-ghost",
+    onClick: () => hapus(v)
+  }, "Hapus"))))))), edit ? /*#__PURE__*/React.createElement(Modal, {
     judul: edit.id ? "Ubah voucher" : "Buat voucher",
     onTutup: () => setEdit(null)
   }, /*#__PURE__*/React.createElement("div", {

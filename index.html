@@ -2974,6 +2974,210 @@ function Pendaftaran({
 }
 
 /* ================= BACK OFFICE ================= */
+function TabAkun({ beriTahu }) {
+  const [baris, setBaris] = useState(null);
+  const [buka, setBuka] = useState(null);
+  const [sibuk, setSibuk] = useState(false);
+  const [sandiTampil, setSandiTampil] = useState({});
+  const kosong = { nama: "", email: "", peran: "diklat", sandi: "" };
+
+  async function muat() {
+    const { data, error } = await SB.rpc("daftar_pengurus");
+    if (error) return beriTahu("Gagal memuat: " + error.message);
+    setBaris(Array.isArray(data) ? data : []);
+  }
+  useEffect(() => { muat(); }, []);
+
+  /* Semua perubahan akun lewat Edge Function. Kunci service role
+     tidak pernah ada di halaman ini. */
+  async function panggil(muatan) {
+    const { data: sesi } = await SB.auth.getSession();
+    const token = sesi && sesi.session ? sesi.session.access_token : "";
+    const dasar = String(window.DMN_CONFIG.url).replace(/\/+$/, "") + "/functions/v1";
+    const r = await fetch(dasar + "/kelola-pengurus", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: "Bearer " + token,
+        apikey: String(window.DMN_CONFIG.anonKey || "").trim()
+      },
+      body: JSON.stringify(muatan)
+    });
+    let hasil = {};
+    try { hasil = await r.json(); } catch (e) {}
+    if (!r.ok || hasil.galat) throw new Error(hasil.galat || "Permintaan ditolak.");
+    return hasil;
+  }
+
+  async function simpan() {
+    setSibuk(true);
+    try {
+      if (buka.user_id) {
+        await panggil({ tindakan: "sandi", user_id: buka.user_id, sandi: buka.sandi });
+        beriTahu("Kata sandi diperbarui.");
+      } else {
+        await panggil({
+          tindakan: "buat",
+          nama: buka.nama,
+          email: buka.email,
+          peran: buka.peran,
+          sandi: buka.sandi
+        });
+        beriTahu("Akun dibuat.");
+      }
+      setBuka(null);
+      muat();
+    } catch (e) {
+      beriTahu(e.message);
+    }
+    setSibuk(false);
+  }
+
+  async function bekukan(a, nyala) {
+    try {
+      await panggil({ tindakan: "aktif", user_id: a.user_id, nyala: nyala });
+      beriTahu(nyala ? "Akses dihidupkan." : "Akses dibekukan.");
+      muat();
+    } catch (e) { beriTahu(e.message); }
+  }
+
+  async function hapus(a) {
+    if (!window.confirm("Hapus akun " + (a.email || a.nama) + "? Aksesnya mati saat itu juga dan tidak bisa dibatalkan.")) return;
+    try {
+      await panggil({ tindakan: "hapus", user_id: a.user_id });
+      beriTahu("Akun dihapus.");
+      muat();
+    } catch (e) { beriTahu(e.message); }
+  }
+
+  /* Sandi tidak ikut terkirim bersama daftar akun. Ia baru diambil
+     satu per satu saat ditekan, lewat fungsi yang memeriksa ulang
+     bahwa pemanggilnya pemilik. */
+  async function lihatSandi(a) {
+    if (sandiTampil[a.user_id]) {
+      const t = Object.assign({}, sandiTampil);
+      delete t[a.user_id];
+      return setSandiTampil(t);
+    }
+    const { data, error } = await SB.rpc("lihat_sandi_pengurus", { p_user: a.user_id });
+    if (error) return beriTahu("Gagal membuka: " + error.message);
+    if (!data) return beriTahu("Sandi akun ini belum pernah disimpan. Pakai Ganti sandi untuk menyetel yang baru.");
+    setSandiTampil(Object.assign({}, sandiTampil, { [a.user_id]: data }));
+  }
+
+  const waktu = v => {
+    if (!v) return "belum pernah";
+    try {
+      return new Date(v).toLocaleString("id-ID", {
+        day: "2-digit", month: "short", year: "numeric",
+        hour: "2-digit", minute: "2-digit", timeZone: "Asia/Jakarta"
+      });
+    } catch (e) { return "—"; }
+  };
+
+  const namaPeran = { pemilik: "Pemilik", diklat: "Manajer Diklat" };
+
+  if (!baris) return React.createElement("p", { className: "dm-load" }, "Memuat akun…");
+
+  return React.createElement("section", { className: "dm-card" },
+    React.createElement("div", { className: "dm-toolbar" },
+      React.createElement("h3", null, "Akun Pengguna Back Office"),
+      React.createElement("button", { className: "dm-btn", onClick: () => setBuka(kosong) }, "Buat akun")
+    ),
+    React.createElement("p", { className: "dm-hint", style: { marginBottom: 12 } },
+      "Manajer Diklat hanya melihat tab Pendaftar dan Jadwal. Dia tidak bisa membuka voucher, invoice, pengaturan, keamanan, maupun akun pengguna, dan tidak melihat nilai terverifikasi. Batas ini dijaga di database, bukan hanya di tampilan."),
+
+    React.createElement("div", { className: "dm-tabel-bungkus" },
+      React.createElement("table", { className: "dm-tabel" },
+        React.createElement("thead", null,
+          React.createElement("tr", null,
+            React.createElement("th", null, "Nama"),
+            React.createElement("th", null, "Peran"),
+            React.createElement("th", null, "Kata sandi"),
+            React.createElement("th", null, "Terakhir masuk"),
+            React.createElement("th", null, "Status"),
+            React.createElement("th", null))),
+        React.createElement("tbody", null, baris.map(a =>
+          React.createElement("tr", { key: a.user_id },
+            React.createElement("td", null,
+              React.createElement("b", null, a.nama || "—"),
+              React.createElement("p", { className: "dm-hint" }, a.email || "—")),
+            React.createElement("td", null, namaPeran[a.peran] || a.peran),
+            React.createElement("td", { className: "dm-mono" },
+              a.peran === "pemilik"
+                ? React.createElement("span", { className: "dm-hint" }, "—")
+                : React.createElement("button", {
+                    className: "dm-btn-ghost",
+                    onClick: () => lihatSandi(a)
+                  }, sandiTampil[a.user_id] || "Lihat sandi")),
+            React.createElement("td", { className: "dm-hint" }, waktu(a.terakhir_masuk)),
+            React.createElement("td", null, React.createElement(Badge, { status: a.aktif ? "buka" : "tutup" })),
+            React.createElement("td", { className: "dm-aksi" },
+              a.peran === "pemilik"
+                ? React.createElement("span", { className: "dm-hint" }, "Akun Anda")
+                : React.createElement(React.Fragment, null,
+                    React.createElement("button", {
+                      className: "dm-btn-ghost",
+                      onClick: () => setBuka({ user_id: a.user_id, nama: a.nama, email: a.email, peran: a.peran, sandi: "" })
+                    }, "Ganti sandi"),
+                    React.createElement("button", {
+                      className: "dm-btn-ghost",
+                      onClick: () => bekukan(a, !a.aktif)
+                    }, a.aktif ? "Bekukan" : "Aktifkan"),
+                    React.createElement("button", {
+                      className: "dm-btn-ghost",
+                      onClick: () => hapus(a)
+                    }, "Hapus"))))))
+      )),
+
+    buka ? React.createElement(Modal, {
+      judul: buka.user_id ? "Ganti kata sandi" : "Buat akun pengurus",
+      onTutup: () => setBuka(null)
+    },
+      buka.user_id
+        ? React.createElement("p", { className: "dm-hint", style: { marginBottom: 12 } },
+            "Sandi baru untuk " + (buka.email || buka.nama) + ". Sandi lama langsung tidak berlaku.")
+        : React.createElement("div", { className: "dm-grid2" },
+            React.createElement(Field, { label: "Nama lengkap" },
+              React.createElement("input", {
+                className: "dm-input",
+                value: buka.nama,
+                onChange: e => setBuka(Object.assign({}, buka, { nama: e.target.value }))
+              })),
+            React.createElement(Field, { label: "Email untuk masuk" },
+              React.createElement("input", {
+                className: "dm-input",
+                type: "email",
+                value: buka.email,
+                onChange: e => setBuka(Object.assign({}, buka, { email: e.target.value }))
+              }))),
+
+      React.createElement(Field, {
+        label: "Kata sandi",
+        hint: "Minimal 10 karakter, harus memuat huruf dan angka. Bapak yang menentukan — sandi ini tersimpan terenkripsi dan bisa dilihat lagi di daftar akun."
+      }, React.createElement("input", {
+        className: "dm-input dm-mono",
+        type: "text",
+        autoComplete: "new-password",
+        value: buka.sandi,
+        placeholder: "ketik sandi di sini",
+        onChange: e => setBuka(Object.assign({}, buka, { sandi: e.target.value }))
+      })),
+
+      React.createElement("div", { className: "dm-row dm-row-akhir" },
+        React.createElement("button", {
+          className: "dm-btn",
+          onClick: simpan,
+          disabled: sibuk
+        }, sibuk ? "Menyimpan…" : (buka.user_id ? "Simpan sandi baru" : "Buat akun")),
+        React.createElement("button", {
+          className: "dm-btn-line",
+          onClick: () => setBuka(null)
+        }, "Batal"))
+    ) : null
+  );
+}
+
 function BackOffice({
   beriTahu
 }) {
@@ -2984,6 +3188,10 @@ function BackOffice({
   const [err, setErr] = useState("");
   const [masuk, setMasuk] = useState(false);
   const [tab, setTab] = useState("pendaftar");
+  /* Peran menentukan tab apa yang tampil. Penjaga sebenarnya ada
+     di RLS: akun diklat memang tidak bisa membaca tabel lain
+     walau URL-nya dipaksa. */
+  const [peran, setPeran] = useState(null);
 
   /* Lapis kedua. Selama akun ini belum mendaftarkan aplikasi
      Authenticator, tidak ada yang berubah: masuk cukup dengan kata
@@ -3083,6 +3291,22 @@ function BackOffice({
     });
     return () => sub.subscription.unsubscribe();
   }, []);
+  useEffect(() => {
+    if (!sesi || perluKode) {
+      setPeran(null);
+      return;
+    }
+    let batal = false;
+    SB.rpc("peran_saya").then(({ data }) => {
+      if (!batal) setPeran(data || "tanpa-akses");
+    }).catch(() => {
+      if (!batal) setPeran("tanpa-akses");
+    });
+    return () => { batal = true; };
+  }, [sesi, perluKode]);
+  useEffect(() => {
+    if (peran === "diklat" && tab !== "pendaftar" && tab !== "jadwal") setTab("pendaftar");
+  }, [peran, tab]);
   async function login() {
     setErr("");
     setMasuk(true);
@@ -3256,14 +3480,20 @@ function BackOffice({
     onClick: keluar
   }, "Keluar")), /*#__PURE__*/React.createElement("div", {
     className: "dm-subtab"
-  }, [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Voucher"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["linkkelas", "Link Kelas"], ["setelan", "Pengaturan"], ["keamanan", "Keamanan"]].map(([k, l]) => /*#__PURE__*/React.createElement("button", {
+  }, (peran === "diklat"
+      ? [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"]]
+      : [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Voucher"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["linkkelas", "Link Kelas"], ["akun", "Akun Pengguna"], ["setelan", "Pengaturan"], ["keamanan", "Keamanan"]]).map(([k, l]) => /*#__PURE__*/React.createElement("button", {
     key: k,
     className: tab === k ? "dm-tab dm-tab-on" : "dm-tab",
     onClick: () => setTab(k)
-  }, l))), tab === "pendaftar" && /*#__PURE__*/React.createElement(TabPendaftar, {
+  }, l))), tab === "akun" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabAkun, {
     beriTahu: beriTahu
+  }), tab === "pendaftar" && /*#__PURE__*/React.createElement(TabPendaftar, {
+    beriTahu: beriTahu,
+    peran: peran
   }), tab === "jadwal" && /*#__PURE__*/React.createElement(TabJadwal, {
-    beriTahu: beriTahu
+    beriTahu: beriTahu,
+    peran: peran
   }), tab === "voucher" && /*#__PURE__*/React.createElement(TabVoucher, {
     beriTahu: beriTahu
   }), tab === "testimoni" && /*#__PURE__*/React.createElement(TabTestimoni, {
@@ -3287,7 +3517,8 @@ function BackOffice({
   }));
 }
 function TabPendaftar({
-  beriTahu
+  beriTahu,
+  peran
 }) {
   const [setelan, setSetelan] = useState(null);
   useEffect(() => {
@@ -3416,7 +3647,7 @@ function TabPendaftar({
     className: "dm-mono"
   }, baris.filter(r => r.status === "menunggu").length)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Terverifikasi"), /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
-  }, baris.filter(r => r.status === "terverifikasi").length)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Nilai terverifikasi"), /*#__PURE__*/React.createElement("b", {
+  }, baris.filter(r => r.status === "terverifikasi").length)), peran === "diklat" ? null : /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Nilai terverifikasi"), /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
   }, rp(nilai)))), /*#__PURE__*/React.createElement("section", {
     className: "dm-card"
@@ -3439,7 +3670,7 @@ function TabPendaftar({
     value: "terverifikasi"
   }, "Terverifikasi"), /*#__PURE__*/React.createElement("option", {
     value: "ditolak"
-  }, "Perlu diperbaiki")), /*#__PURE__*/React.createElement("button", {
+  }, "Perlu diperbaiki")), peran === "diklat" ? null : /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-line",
     onClick: unduhCsv
   }, /*#__PURE__*/React.createElement(Ikon, {
@@ -3779,7 +4010,8 @@ function KalenderJadwal({
 }
 
 function TabJadwal({
-  beriTahu
+  beriTahu,
+  peran
 }) {
   const [baris, setBaris] = useState(null);
   const [edit, setEdit] = useState(null);
@@ -3854,7 +4086,7 @@ function TabJadwal({
     className: "dm-btn-ghost",
     type: "button",
     onClick: () => setTampilan(tampilan === "kalender" ? "tabel" : "kalender")
-  }, tampilan === "kalender" ? "Tampilan tabel" : "Tampilan kalender"), /*#__PURE__*/React.createElement("button", {
+  }, tampilan === "kalender" ? "Tampilan tabel" : "Tampilan kalender"), peran === "diklat" ? null : /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-ghost",
     type: "button",
     onClick: () => window.dmLanggananKalender && window.dmLanggananKalender()
@@ -3898,7 +4130,7 @@ function TabJadwal({
       wa_grup: "",
       status: "buka"
     })
-  }, "Duplikat"), /*#__PURE__*/React.createElement("button", {
+  }, "Duplikat"), peran === "diklat" ? null : /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-ghost",
     onClick: () => hapus(t)
   }, "Hapus"))))))), edit ? /*#__PURE__*/React.createElement(Modal, {

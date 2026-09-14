@@ -420,6 +420,15 @@ const tgl = s => {
   });
 };
 const rentang = (a, b) => !b || a === b ? tgl(a) : `${tgl(a)} – ${tgl(b)}`;
+/* Rentang tanggal versi panjang untuk kalimat resmi, mis. "13 s.d. 18 Oktober 2026". */
+const rentangPanjang = (a, b) => {
+  if (!a) return "";
+  if (!b || a === b) return tglPanjang(a);
+  const x = new Date(a + "T00:00:00"), y = new Date(b + "T00:00:00");
+  if (x.getMonth() === y.getMonth() && x.getFullYear() === y.getFullYear())
+    return x.getDate() + " s.d. " + tglPanjang(b);
+  return tglPanjang(a) + " s.d. " + tglPanjang(b);
+};
 const emailValid = e => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e || "").trim());
 const hariIni = () => new Date().toISOString().slice(0, 10);
 const acakId = () => window.crypto && window.crypto.randomUUID ? window.crypto.randomUUID() : "x" + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
@@ -3298,7 +3307,9 @@ function TabPendaftar({
     className: "dm-tanda-invoice"
   }, "Invoice") : null, /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
-  }, r.email)), /*#__PURE__*/React.createElement("td", null, r.pelatihan ? r.pelatihan.judul : "—"), /*#__PURE__*/React.createElement("td", {
+  }, r.email)), /*#__PURE__*/React.createElement("td", null, r.pelatihan ? r.pelatihan.judul : "—", r.pelatihan && r.pelatihan.tanggal_mulai ? /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint"
+  }, rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai)) : null), /*#__PURE__*/React.createElement("td", {
     className: "dm-mono"
   }, r.voucher_kode ? `${r.voucher_kode} (${r.persen}%)` : "—"), /*#__PURE__*/React.createElement("td", {
     className: "dm-mono"
@@ -5236,6 +5247,8 @@ function TabKuitansi({ beriTahu }) {
 
   async function pakaiPendaftar(r) {
     const judul = r.pelatihan ? r.pelatihan.judul : "pelatihan DEWAMEDIK";
+    const jadwal = r.pelatihan && r.pelatihan.tanggal_mulai
+      ? rentangPanjang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "";
     const dibayar = r.jumlah_bayar != null ? Number(r.jumlah_bayar) : Number(r.total) || 0;
     const muka = r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0;
     let nomor = edit && edit.nomor;
@@ -5248,7 +5261,8 @@ function TabKuitansi({ beriTahu }) {
       ...(edit || {}),
       nomor: nomor,
       diterima_dari: r.nama + (r.instansi ? " — " + r.instansi : ""),
-      untuk_pembayaran: (muka ? "Uang muka biaya pelatihan " : "Biaya pelatihan ") + judul,
+      untuk_pembayaran: (muka ? "Uang muka biaya pelatihan " : "Biaya pelatihan ") + judul +
+        (jadwal ? " yang dilaksanakan pada " + jadwal : ""),
       jumlah: dibayar,
       kegiatan: judul,
       pendaftaran_nomor: r.nomor,
@@ -5476,7 +5490,11 @@ function TabKuitansi({ beriTahu }) {
                     React.createElement("b", null, r.nama),
                     React.createElement("p", { className: "dm-hint" },
                       (r.pelatihan ? r.pelatihan.judul : "—"),
-                      r.instansi ? " · " + r.instansi : "")),
+                      r.instansi ? " · " + r.instansi : ""),
+                    r.pelatihan && r.pelatihan.tanggal_mulai
+                      ? React.createElement("p", { className: "dm-hint" },
+                          "Pelaksanaan: " + rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai))
+                      : null),
                   React.createElement("td", { className: "dm-mono" },
                     rp(r.jumlah_bayar != null ? r.jumlah_bayar : r.total),
                     r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0

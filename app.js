@@ -354,7 +354,7 @@ const HERO_FOTO = "hero-pelatihan.jpg";
 
 /* Cap, tanda tangan, dan nama finance diambil dari invoice resmi DMN.
    Disimpan sebagai gambar agar tidak pernah berubah. */
-const TTD_INVOICE = "ttd-73d4d1489e.png";
+const TTD_INVOICE = "ttd-dmn.jpg";
 const JENIS = ["BTCLS", "ACLS", "KKMN", "EKG", "PKID", "PPIK", "BONELS"];
 const PROFESI = ["Perawat", "Bidan", "Dokter", "Mahasiswa Keperawatan", "Lainnya"];
 const PLATARAN = ["Sudah punya", "Belum punya", "Belum tahu"];
@@ -4676,6 +4676,247 @@ function TabInvoice({
     inv: pratinjau
   }))) : null);
 }
+/* ---------- penghasil PDF ---------- */
+
+const PT = 2.834645669;              /* 1 mm dalam satuan PDF */
+const LEBAR_MM = 210, TINGGI_MM = 297;
+
+/* PDF memakai WinAnsi. Huruf Latin biasa aman; beberapa tanda baca
+   cerdas perlu dipetakan supaya tidak jadi tanda tanya. */
+const PETA_ANSI = { "—": "\x97", "–": "\x96", "‘": "\x91",
+  "’": "\x92", "“": "\x93", "”": "\x94", "…": "\x85",
+  "·": "\xB7", " ": " " };
+
+function ansi(t) {
+  return String(t == null ? "" : t).replace(/[—–‘’“”…· ]/g,
+    c => PETA_ANSI[c] || "?");
+}
+function kutip(t) {
+  return ansi(t).replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
+}
+
+/* Lebar teks diukur pakai kanvas dengan font yang setara, supaya
+   rata tengah dan rata kanan benar-benar pas. */
+let _kanvas = null;
+function lebarTeks(teks, ukuran, tebal, miring, mono) {
+  if (!_kanvas) _kanvas = document.createElement("canvas").getContext("2d");
+  _kanvas.font = (miring ? "italic " : "") + (tebal ? "bold " : "") + ukuran +
+    "px " + (mono ? "'Courier New',monospace" : "'Times New Roman',Times,serif");
+  return _kanvas.measureText(String(teks == null ? "" : teks)).width;
+}
+
+function Kertas() {
+  const isi = [];
+  const gambar = [];        /* {nama, data(Uint8Array), w, h} */
+  const api = {
+    /* y dihitung dari atas, dalam milimeter — lebih mudah dibaca
+       daripada sistem koordinat PDF yang terbalik. */
+    teks(x, y, t, o) {
+      o = o || {};
+      const uk = o.ukuran || 10;
+      const font = o.mono ? "/F4" : o.tebal ? "/F2" : o.miring ? "/F3" : "/F1";
+      let px = x;
+      const lb = lebarTeks(t, uk, o.tebal, o.miring, o.mono) / PT;
+      if (o.rata === "tengah") px = x - lb / 2;
+      if (o.rata === "kanan") px = x - lb;
+      const w = o.warna || [0, 0, 0];
+      isi.push("BT " + w.join(" ") + " rg " + font + " " + uk + " Tf " +
+        (o.renggang ? o.renggang + " Tc " : "0 Tc ") +
+        (px * PT).toFixed(2) + " " + ((TINGGI_MM - y) * PT).toFixed(2) + " Td (" +
+        kutip(t) + ") Tj ET");
+      return lb;
+    },
+    garis(x1, y1, x2, y2, tebal, warna) {
+      const w = warna || [0, 0, 0];
+      isi.push(w.join(" ") + " RG " + ((tebal || 0.3) * PT).toFixed(2) + " w " +
+        (x1 * PT).toFixed(2) + " " + ((TINGGI_MM - y1) * PT).toFixed(2) + " m " +
+        (x2 * PT).toFixed(2) + " " + ((TINGGI_MM - y2) * PT).toFixed(2) + " l S");
+    },
+    kotak(x, y, w, h, garisW, warnaGaris, warnaIsi) {
+      const g = warnaGaris || [0, 0, 0];
+      let ops = "";
+      if (warnaIsi) ops += warnaIsi.join(" ") + " rg ";
+      ops += g.join(" ") + " RG " + ((garisW || 0.4) * PT).toFixed(2) + " w " +
+        (x * PT).toFixed(2) + " " + ((TINGGI_MM - y - h) * PT).toFixed(2) + " " +
+        (w * PT).toFixed(2) + " " + (h * PT).toFixed(2) + " re " +
+        (warnaIsi ? "B" : "S");
+      isi.push(ops);
+    },
+    gambar(nama, data, lebarAsli, tinggiAsli, x, y, w) {
+      const h = w * tinggiAsli / lebarAsli;
+      gambar.push({ nama: nama, data: data, w: lebarAsli, h: tinggiAsli });
+      isi.push("q " + (w * PT).toFixed(2) + " 0 0 " + (h * PT).toFixed(2) + " " +
+        (x * PT).toFixed(2) + " " + ((TINGGI_MM - y - h) * PT).toFixed(2) +
+        " cm /" + nama + " Do Q");
+      return h;
+    },
+    /* Memecah kalimat panjang jadi beberapa baris selebar w mm. */
+    paragraf(x, y, w, t, o) {
+      o = o || {};
+      const uk = o.ukuran || 10, jarak = o.jarak || uk * 0.42;
+      const kata = String(t || "").split(/\s+/);
+      let baris = "", ny = y;
+      for (let i = 0; i < kata.length; i++) {
+        const coba = baris ? baris + " " + kata[i] : kata[i];
+        if (lebarTeks(coba, uk, o.tebal, o.miring, o.mono) / PT > w && baris) {
+          api.teks(x, ny, baris, o); ny += jarak; baris = kata[i];
+        } else baris = coba;
+      }
+      if (baris) { api.teks(x, ny, baris, o); ny += jarak; }
+      return ny;
+    },
+    async bangun() {
+      /* Isi PDF ditulis byte demi byte (latin-1), bukan UTF-8.
+         Kalau dipaksa UTF-8, tanda seperti em dash berubah jadi dua
+         byte dan terbaca "Ã¢â‚¬â€" di pembaca PDF. */
+      const enc = { encode: t => {
+        const n = t.length, b = new Uint8Array(n);
+        for (let i = 0; i < n; i++) b[i] = t.charCodeAt(i) & 0xFF;
+        return b;
+      } };
+      const bagian = [];
+      const objek = [];
+      let panjang = 0;
+      function tulis(t) {
+        const b = typeof t === "string" ? enc.encode(t) : t;
+        bagian.push(b); panjang += b.length; return b.length;
+      }
+      function objekBaru(teks, aliran) {
+        objek.push(panjang);
+        tulis((objek.length) + " 0 obj\n" + teks);
+        if (aliran) { tulis("\nstream\n"); tulis(aliran); tulis("\nendstream"); }
+        tulis("\nendobj\n");
+      }
+      tulis("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+
+      const aliran = enc.encode(isi.join("\n"));
+      const nomorGambar = {};
+      /* 1 katalog, 2 halaman-induk, 3 halaman, 4 isi, 5-8 font, lalu gambar */
+      objekBaru("<< /Type /Catalog /Pages 2 0 R >>");
+      objekBaru("<< /Type /Pages /Kids [3 0 R] /Count 1 >>");
+      let sumber = "";
+      gambar.forEach((g, i) => {
+        nomorGambar[g.nama] = 9 + i;
+        sumber += "/" + g.nama + " " + (9 + i) + " 0 R ";
+      });
+      objekBaru("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " +
+        (LEBAR_MM * PT).toFixed(2) + " " + (TINGGI_MM * PT).toFixed(2) +
+        "] /Resources << /Font << /F1 5 0 R /F2 6 0 R /F3 7 0 R /F4 8 0 R >>" +
+        (sumber ? " /XObject << " + sumber + ">>" : "") +
+        " >> /Contents 4 0 R >>");
+      objekBaru("<< /Length " + aliran.length + " >>", aliran);
+      objekBaru("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Roman /Encoding /WinAnsiEncoding >>");
+      objekBaru("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Bold /Encoding /WinAnsiEncoding >>");
+      objekBaru("<< /Type /Font /Subtype /Type1 /BaseFont /Times-Italic /Encoding /WinAnsiEncoding >>");
+      objekBaru("<< /Type /Font /Subtype /Type1 /BaseFont /Courier /Encoding /WinAnsiEncoding >>");
+      gambar.forEach(g => {
+        objekBaru("<< /Type /XObject /Subtype /Image /Width " + g.w + " /Height " + g.h +
+          " /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length " +
+          g.data.length + " >>", g.data);
+      });
+
+      const awalXref = panjang;
+      let xref = "xref\n0 " + (objek.length + 1) + "\n0000000000 65535 f \n";
+      objek.forEach(p => { xref += String(p).padStart(10, "0") + " 00000 n \n"; });
+      tulis(xref);
+      tulis("trailer\n<< /Size " + (objek.length + 1) + " /Root 1 0 R >>\nstartxref\n" +
+        awalXref + "\n%%EOF\n");
+
+      const total = new Uint8Array(panjang);
+      let ofs = 0;
+      bagian.forEach(b => { total.set(b, ofs); ofs += b.length; });
+      return new Blob([total], { type: "application/pdf" });
+    }
+  };
+  return api;
+}
+
+async function ambilJpeg(alamat) {
+  const r = await fetch(alamat, { cache: "force-cache" });
+  if (!r.ok) throw new Error("Gambar " + alamat + " tidak terbaca.");
+  return new Uint8Array(await r.arrayBuffer());
+}
+
+/* Menyusun lembar kuitansi sebagai PDF A4 dan langsung mengunduhnya. */
+async function unduhPdfKuitansi(kw) {
+  const k = Kertas();
+  const jumlah = Number(kw.jumlah) || 0;
+  const NAVY = [0.086, 0.208, 0.494];
+  const ABU = [0.35, 0.35, 0.35];
+
+  let logo = null, ttd = null;
+  try { logo = await ambilJpeg(LOGO_DMN); } catch (e) {}
+  try { ttd = await ambilJpeg(TTD_INVOICE); } catch (e) {}
+
+  /* --- kop --- */
+  if (logo) k.gambar("Im1", logo, 268, 300, 18, 14, 19);
+  k.teks(107, 21, KOP.nama, { ukuran: 15, tebal: true, rata: "tengah" });
+  k.teks(107, 26, KOP.alamat1, { ukuran: 8, rata: "tengah" });
+  k.teks(107, 30, KOP.alamat2, { ukuran: 8, rata: "tengah" });
+  k.teks(107, 34, "website: " + KOP.situs + "   Email: " + KOP.email, { ukuran: 8, rata: "tengah" });
+  k.teks(192, 19, KOP.akreditasi1, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
+  k.teks(192, 22.5, KOP.akreditasi2, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
+  k.teks(192, 26, KOP.akreditasi3, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
+  k.garis(18, 39, 192, 39, 1.1);
+
+  /* --- judul --- */
+  k.teks(107, 50, "KUITANSI", { ukuran: 17, tebal: true, rata: "tengah", renggang: 3.2, warna: NAVY });
+  k.teks(107, 56, "No. " + kw.nomor, { ukuran: 10.5, tebal: true, rata: "tengah" });
+
+  /* --- isi --- */
+  const baris = [
+    ["Sudah terima dari", kw.diterima_dari, { tebal: true }],
+    ["Uang sejumlah", terbilang(jumlah), { miring: true, garisBawah: true }],
+    ["Untuk pembayaran", kw.untuk_pembayaran, {}],
+  ];
+  if (kw.cara_bayar) baris.push(["Cara pembayaran", kw.cara_bayar, {}]);
+  if (kw.pendaftaran_nomor) baris.push(["No. registrasi", kw.pendaftaran_nomor, { mono: true, ukuran: 9.5 }]);
+
+  let y = 70;
+  baris.forEach(b => {
+    k.teks(20, y, b[0], { ukuran: 10.5, warna: ABU });
+    k.teks(63, y, ":", { ukuran: 10.5 });
+    const o = Object.assign({ ukuran: 10.5 }, b[2]);
+    const akhir = k.paragraf(67, y, 125, b[1], o);
+    if (b[2].garisBawah) k.garis(67, y + 1.6, 192, y + 1.6, 0.2, [0.6, 0.6, 0.6]);
+    y = Math.max(y + 9, akhir + 4.5);
+  });
+
+  /* --- nominal + tanda tangan --- */
+  const yKotak = Math.max(y + 8, 118);
+  k.kotak(20, yKotak, 62, 15, 0.8, NAVY, [0.968, 0.976, 1]);
+  k.teks(26, yKotak + 9.8, "Rp", { ukuran: 11.5, tebal: true, warna: NAVY });
+  k.teks(78, yKotak + 10.2, new Intl.NumberFormat("id-ID").format(jumlah) + ",-",
+    { ukuran: 16, tebal: true, rata: "kanan", warna: NAVY });
+
+  k.teks(192, yKotak - 8, "Tangerang, " + tglPanjang(kw.tanggal), { ukuran: 10.5, rata: "kanan" });
+  if (ttd) k.gambar("Im2", ttd, 336, 192, 138, yKotak - 5, 54);
+
+  let yBawah = yKotak + 22;
+  if (kw.catatan) {
+    yBawah = k.paragraf(20, yBawah, 172, kw.catatan, { ukuran: 9, miring: true, warna: ABU }) + 4;
+  }
+
+  /* --- kaki --- */
+  const yKaki = Math.max(yBawah + 6, 165);
+  k.garis(18, yKaki, 192, yKaki, 0.2, [0.78, 0.78, 0.78]);
+  k.paragraf(18, yKaki + 5, 174,
+    "Kuitansi ini sah sebagai bukti penerimaan pembayaran dan diterbitkan oleh " + KOP.nama +
+    ". Biaya pelatihan yang telah dibayarkan tidak dapat dikembalikan (non-refundable), " +
+    "kecuali terjadi keadaan kahar atau perubahan jadwal pelaksanaan oleh panitia.",
+    { ukuran: 8, warna: ABU, jarak: 3.8 });
+
+  const blob = await k.bangun();
+  const nama = "Kuitansi " + String(kw.nomor || "").replace(/[\/\\:*?"<>|]/g, "-") + ".pdf";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nama;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  return nama;
+}
+
 function LembarKuitansi({ kw }) {
   const jumlah = Number(kw.jumlah) || 0;
   return React.createElement("div", { className: "dm-invoice dm-kuitansi", id: "lembar-invoice" },
@@ -4745,6 +4986,7 @@ function TabKuitansi({ beriTahu }) {
   const [edit, setEdit] = useState(null);
   const [pratinjau, setPratinjau] = useState(null);
   const [ambil, setAmbil] = useState(null);   /* daftar pendaftar untuk diambil */
+  const [sibukPdf, setSibukPdf] = useState(false);
   const [cari, setCari] = useState("");
 
   const kosong = {
@@ -5048,11 +5290,22 @@ function TabKuitansi({ beriTahu }) {
         React.createElement("div", null,
           React.createElement("b", null, pratinjau.nomor),
           React.createElement("p", { className: "dm-hint" },
-            "Klik Simpan PDF, lalu pada jendela cetak pilih Tujuan: ",
-            React.createElement("b", null, "Save as PDF"),
-            ", ukuran kertas A4, dan margin Default.")),
+            "Tekan Unduh PDF — berkasnya langsung tersimpan dalam ukuran A4, siap dikirim ke peserta.")),
         React.createElement("div", { className: "dm-row" },
-          React.createElement("button", { className: "dm-btn", onClick: () => window.print() }, "Simpan PDF"),
+          React.createElement("button", {
+            className: "dm-btn",
+            disabled: sibukPdf,
+            onClick: async () => {
+              setSibukPdf(true);
+              try {
+                const n = await unduhPdfKuitansi(pratinjau);
+                beriTahu("PDF tersimpan: " + n);
+              } catch (e) {
+                beriTahu("Gagal membuat PDF: " + e.message);
+              }
+              setSibukPdf(false);
+            }
+          }, sibukPdf ? "Menyiapkan…" : "Unduh PDF"),
           React.createElement("button", { className: "dm-btn-line", onClick: () => setPratinjau(null) }, "Tutup"))),
       React.createElement("div", { className: "dm-inv-kertas" },
         React.createElement(LembarKuitansi, { kw: pratinjau }))) : null

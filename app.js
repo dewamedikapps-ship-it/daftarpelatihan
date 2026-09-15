@@ -1183,10 +1183,24 @@ function FormKerjasama() {
     );
   }
 
-  /* Halaman depan sengaja dibiarkan kosong di sini. Pintu masuk satu-satunya
-     adalah tombol "Pengajuan Institusi" pada menu atas, supaya calon peserta
-     perorangan tidak terganggu formulir yang bukan untuk mereka. */
-  if (!terbuka) return null;
+  /* Di beranda cukup satu baris kalimat di paling bawah. Formulir panjangnya
+     baru terbuka bila kalimat ini diklik, supaya calon peserta perorangan
+     tidak terganggu isian yang bukan untuk mereka. */
+  if (!terbuka) {
+    return React.createElement("p", { className: "dm-ks-ajakan", id: "kerjasama" },
+      "Mau mengajukan kerja sama institusi atau angkatan khusus? ",
+      React.createElement("button", {
+        className: "dm-ks-tautan",
+        onClick: () => {
+          setTerbuka(true);
+          setTimeout(() => {
+            const s = document.getElementById("kerjasama");
+            if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 60);
+        }
+      }, "Klik di sini")
+    );
+  }
 
   return React.createElement("section", { className: "dm-card dm-ks", id: "kerjasama" },
     React.createElement("div", { className: "dm-ks-kepala" },
@@ -2504,7 +2518,7 @@ function Pendaftaran({
     onClick: pakaiKode
   }, "Pakai")) : null, pesanKode ? /*#__PURE__*/React.createElement("p", {
     className: kodeManual ? "dm-ok" : "dm-err"
-  }, pesanKode) : null), /*#__PURE__*/React.createElement(FormKerjasama, null), /*#__PURE__*/React.createElement("section", {
+  }, pesanKode) : null), /*#__PURE__*//*#__PURE__*/React.createElement("section", {
     className: "dm-kenapa"
   }, /*#__PURE__*/React.createElement("h2", null, "Kenapa Memilih Akademia DEWAMEDIK?"), /*#__PURE__*/React.createElement("div", {
     className: "dm-kenapa-grid"
@@ -2550,7 +2564,7 @@ function Pendaftaran({
   }, /*#__PURE__*/React.createElement(Ikon, {
     nama: "headset",
     ukuran: 21
-  })), /*#__PURE__*/React.createElement("b", null, "Dukungan Profesional"), /*#__PURE__*/React.createElement("p", null, "Tim kami mendampingi sebelum hingga setelah pelatihan berlangsung."))))), /*#__PURE__*/React.createElement("aside", {
+  })), /*#__PURE__*/React.createElement("b", null, "Dukungan Profesional"), /*#__PURE__*/React.createElement("p", null, "Tim kami mendampingi sebelum hingga setelah pelatihan berlangsung.")))), /*#__PURE__*/React.createElement(FormKerjasama, null)), /*#__PURE__*/React.createElement("aside", {
     className: "dm-kolom-kanan"
   }, /*#__PURE__*/React.createElement("div", {
     className: "dm-sisi"

@@ -1183,25 +1183,10 @@ function FormKerjasama() {
     );
   }
 
-  if (!terbuka) {
-    return React.createElement("section", { className: "dm-ks-ajak", id: "kerjasama" },
-      React.createElement("div", null,
-        React.createElement("span", { className: "dm-ks-label" }, "Untuk Institusi"),
-        React.createElement("b", null, "Pengajuan Institusi"),
-        React.createElement("p", null, "Rumah sakit, puskesmas, kampus, atau instansi yang ingin melatih tenaganya secara rombongan.")
-      ),
-      React.createElement("button", {
-        className: "dm-btn dm-ks-ajak-btn",
-        onClick: () => {
-          setTerbuka(true);
-          setTimeout(() => {
-            const s = document.getElementById("kerjasama");
-            if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
-          }, 60);
-        }
-      }, "Klik di sini \u2192")
-    );
-  }
+  /* Halaman depan sengaja dibiarkan kosong di sini. Pintu masuk satu-satunya
+     adalah tombol "Pengajuan Institusi" pada menu atas, supaya calon peserta
+     perorangan tidak terganggu formulir yang bukan untuk mereka. */
+  if (!terbuka) return null;
 
   return React.createElement("section", { className: "dm-card dm-ks", id: "kerjasama" },
     React.createElement("div", { className: "dm-ks-kepala" },
@@ -1400,7 +1385,7 @@ function App() {
       e.preventDefault();
       window.dispatchEvent(new CustomEvent("dm-buka-kerjasama"));
     }
-  }, "Pengajuan Institusi"), /*#__PURE__*/React.createElement("a", {
+  }, "Kerja Sama Institusi"), /*#__PURE__*/React.createElement("a", {
     href: "#cek",
     onClick: e => {
       e.preventDefault();

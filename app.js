@@ -1112,6 +1112,20 @@ function FormKerjasama() {
   const [kirim, setKirim] = useState(false);
   const [selesai, setSelesai] = useState(false);
   const [pesan, setPesan] = useState("");
+  /* Formulir panjang ini menutup diri di halaman depan supaya calon peserta
+     perorangan tidak salah mengisinya. Baru terbuka bila sengaja diklik. */
+  const [terbuka, setTerbuka] = useState(false);
+  useEffect(() => {
+    const buka = () => {
+      setTerbuka(true);
+      setTimeout(() => {
+        const s = document.getElementById("kerjasama");
+        if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    };
+    window.addEventListener("dm-buka-kerjasama", buka);
+    return () => window.removeEventListener("dm-buka-kerjasama", buka);
+  }, []);
 
   const ubah = (k, v) => setD(s => ({ ...s, [k]: v }));
   const togglProgram = p => setD(s => ({
@@ -1156,11 +1170,36 @@ function FormKerjasama() {
         React.createElement("h3", null, "Pengajuan Anda sudah kami terima"),
         React.createElement("p", null, "Tim Akademia DEWAMEDIK akan menghubungi " + d.pic_nama + " melalui WhatsApp dalam 1×24 jam kerja untuk membahas kebutuhan " + d.institusi + "."),
         React.createElement("p", { className: "dm-hint" }, "Bila mendesak, Anda dapat langsung menghubungi kami di 0821-2348-6576."),
-        React.createElement("button", {
-          className: "dm-btn-line",
-          onClick: () => { setD(kosong); setSelesai(false); }
-        }, "Ajukan untuk institusi lain")
+        React.createElement("div", { className: "dm-row" },
+          React.createElement("button", {
+            className: "dm-btn-line",
+            onClick: () => { setD(kosong); setSelesai(false); }
+          }, "Ajukan untuk institusi lain"),
+          React.createElement("button", {
+            className: "dm-btn-ghost",
+            onClick: () => { setD(kosong); setSelesai(false); setTerbuka(false); }
+          }, "Selesai"))
       )
+    );
+  }
+
+  if (!terbuka) {
+    return React.createElement("section", { className: "dm-ks-ajak", id: "kerjasama" },
+      React.createElement("div", null,
+        React.createElement("span", { className: "dm-ks-label" }, "Untuk Institusi"),
+        React.createElement("b", null, "Pengajuan Institusi"),
+        React.createElement("p", null, "Rumah sakit, puskesmas, kampus, atau instansi yang ingin melatih tenaganya secara rombongan.")
+      ),
+      React.createElement("button", {
+        className: "dm-btn dm-ks-ajak-btn",
+        onClick: () => {
+          setTerbuka(true);
+          setTimeout(() => {
+            const s = document.getElementById("kerjasama");
+            if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
+          }, 60);
+        }
+      }, "Klik di sini \u2192")
     );
   }
 
@@ -1168,7 +1207,11 @@ function FormKerjasama() {
     React.createElement("div", { className: "dm-ks-kepala" },
       React.createElement("span", { className: "dm-ks-label" }, "Untuk Institusi"),
       React.createElement("h3", null, "Pengajuan Kerja Sama Pelatihan"),
-      React.createElement("p", null, "Rumah sakit, puskesmas, kampus, dan instansi yang ingin melatih tenaga kesehatannya dapat mengajukan kerja sama di sini. Kami menyusun jadwal, kurikulum, dan rincian biaya sesuai kebutuhan institusi Anda.")
+      React.createElement("p", null, "Rumah sakit, puskesmas, kampus, dan instansi yang ingin melatih tenaga kesehatannya dapat mengajukan kerja sama di sini. Kami menyusun jadwal, kurikulum, dan rincian biaya sesuai kebutuhan institusi Anda."),
+      React.createElement("button", {
+        className: "dm-btn-ghost dm-ks-tutup",
+        onClick: () => setTerbuka(false)
+      }, "Tutup formulir")
     ),
 
     React.createElement("form", { onSubmit: ajukan },
@@ -1355,10 +1398,9 @@ function App() {
     href: "#kerjasama",
     onClick: e => {
       e.preventDefault();
-      const s = document.getElementById("kerjasama");
-      if (s) s.scrollIntoView({ behavior: "smooth", block: "start" });
+      window.dispatchEvent(new CustomEvent("dm-buka-kerjasama"));
     }
-  }, "Kerja Sama"), /*#__PURE__*/React.createElement("a", {
+  }, "Pengajuan Institusi"), /*#__PURE__*/React.createElement("a", {
     href: "#cek",
     onClick: e => {
       e.preventDefault();

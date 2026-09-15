@@ -1893,9 +1893,9 @@ function Pendaftaran({
     className: "dm-cek-voucher"
   }, /*#__PURE__*/React.createElement("span", {
     className: "dm-putar-kecil"
-  }), "Memeriksa voucher…") : /*#__PURE__*/React.createElement("div", {
+  }), "Memeriksa kode member…") : /*#__PURE__*/React.createElement("div", {
     className: "dm-baris dm-baris-diskon"
-  }, /*#__PURE__*/React.createElement("span", null, "Diskon / Voucher", dipakai ? ` · ${dipakai.persen}%` : ""), /*#__PURE__*/React.createElement("b", null, potongan > 0 ? "− " + rp(potongan) : rp(0))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Diskon / Member", dipakai ? ` · ${dipakai.persen}%` : ""), /*#__PURE__*/React.createElement("b", null, potongan > 0 ? "− " + rp(potongan) : rp(0))), /*#__PURE__*/React.createElement("div", {
     className: "dm-baris"
   }, /*#__PURE__*/React.createElement("span", null, "Jenis pendaftaran"), /*#__PURE__*/React.createElement("b", null, tipeBayar === "booking" ? "Booking seat" : "Bayar penuh")), /*#__PURE__*/React.createElement("div", {
     className: "dm-baris dm-baris-total"
@@ -2203,7 +2203,7 @@ function Pendaftaran({
     className: "dm-detail-harga"
   }, rp(detailKelas.harga))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Uang muka booking seat"), /*#__PURE__*/React.createElement("b", null, rp(Math.min(Number(setelan.dp_nominal || 500000), Number(detailKelas.harga)))))), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
-  }, "Biaya di atas belum memperhitungkan voucher. Potongan akan terpasang otomatis pada langkah pembayaran bila Anda memenuhi syaratnya."), /*#__PURE__*/React.createElement("div", {
+  }, "Biaya di atas belum memperhitungkan potongan member. Potongan akan terpasang otomatis pada langkah pembayaran bila Anda memenuhi syaratnya."), /*#__PURE__*/React.createElement("div", {
     className: "dm-row dm-row-akhir"
   }, /*#__PURE__*/React.createElement("button", {
     className: "dm-btn",
@@ -2506,7 +2506,7 @@ function Pendaftaran({
   }, "Tim kami akan menghubungi Anda lewat WhatsApp untuk mengurus invoice resmi berkop DEWAMEDIK setelah pendaftaran diverifikasi.")) : null, /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-ghost dm-buka-kode",
     onClick: () => setBukaKode(!bukaKode)
-  }, bukaKode ? "Tutup" : "Punya kode voucher dari DEWAMEDIK?"), bukaKode ? /*#__PURE__*/React.createElement("div", {
+  }, bukaKode ? "Tutup" : "Punya kode member dari DEWAMEDIK?"), bukaKode ? /*#__PURE__*/React.createElement("div", {
     className: "dm-voucher"
   }, /*#__PURE__*/React.createElement("input", {
     className: "dm-input dm-mono",
@@ -2743,7 +2743,7 @@ function TabAkun({ beriTahu }) {
       React.createElement("button", { className: "dm-btn", onClick: () => setBuka(kosong) }, "Buat akun")
     ),
     React.createElement("p", { className: "dm-hint", style: { marginBottom: 12 } },
-      "Manajer Diklat hanya melihat tab Pendaftar dan Jadwal. Dia tidak bisa membuka voucher, invoice, pengaturan, keamanan, maupun akun pengguna, dan tidak melihat nilai terverifikasi. Batas ini dijaga di database, bukan hanya di tampilan."),
+      "Manajer Diklat hanya melihat tab Pendaftar dan Jadwal. Dia tidak bisa membuka kode member, invoice, pengaturan, keamanan, maupun akun pengguna, dan tidak melihat nilai terverifikasi. Batas ini dijaga di database, bukan hanya di tampilan."),
 
     React.createElement("div", { className: "dm-tabel-bungkus" },
       React.createElement("table", { className: "dm-tabel" },
@@ -3140,7 +3140,7 @@ function BackOffice({
     className: "dm-subtab"
   }, (peran === "diklat"
       ? [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"]]
-      : [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Voucher"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["kuitansi", "Kuitansi"], ["linkkelas", "Link Kelas"], ["akun", "Akun Pengguna"], ["setelan", "Pengaturan"], ["keamanan", "Keamanan"]]).map(([k, l]) => /*#__PURE__*/React.createElement("button", {
+      : [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Member"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["kuitansi", "Kuitansi"], ["linkkelas", "Link Kelas"], ["akun", "Akun Pengguna"], ["setelan", "Pengaturan"], ["keamanan", "Keamanan"]]).map(([k, l]) => /*#__PURE__*/React.createElement("button", {
     key: k,
     className: tab === k ? "dm-tab dm-tab-on" : "dm-tab",
     onClick: () => setTab(k)
@@ -3312,7 +3312,7 @@ function TabPendaftar({
   function unduhCsv() {
     const data = tampil.length ? tampil : baris || [];
     if (!data.length) return beriTahu("Tidak ada data untuk diekspor.");
-    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Profesi", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Jadwal", "Harga awal", "Voucher", "Persen diskon", "Diskon", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
+    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Profesi", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Jadwal", "Harga awal", "Kode member", "Persen diskon", "Diskon", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
     const tglRingkas = v => {
       if (!v) return "";
       const d = new Date(v);
@@ -3417,7 +3417,7 @@ function TabPendaftar({
     className: "dm-tabel-bungkus"
   }, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No. registrasi"), /*#__PURE__*/React.createElement("th", null, "Peserta"), /*#__PURE__*/React.createElement("th", null, "Pelatihan"), /*#__PURE__*/React.createElement("th", null, "Voucher"), /*#__PURE__*/React.createElement("th", null, "Total"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, tampil.map(r => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No. registrasi"), /*#__PURE__*/React.createElement("th", null, "Peserta"), /*#__PURE__*/React.createElement("th", null, "Pelatihan"), /*#__PURE__*/React.createElement("th", null, "Kode member"), /*#__PURE__*/React.createElement("th", null, "Total"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, tampil.map(r => /*#__PURE__*/React.createElement("tr", {
     key: r.id,
     className: mati(r) ? "dm-baris-mati" : null
   }, /*#__PURE__*/React.createElement("td", {
@@ -4111,7 +4111,7 @@ function TabVoucher({
     muat();
   }, []);
   async function simpan() {
-    if (!edit.kode.trim()) return beriTahu("Kode voucher wajib diisi.");
+    if (!edit.kode.trim()) return beriTahu("Kode member wajib diisi.");
     const isi = {
       kode: edit.kode.trim().toUpperCase(),
       label: edit.label,
@@ -4150,33 +4150,33 @@ function TabVoucher({
       }).eq("voucher_kode", v.kode);
       terpakai = Number(count) || 0;
     } catch (e) {}
-    const peringatan = terpakai > 0 ? `Kode ${v.kode} sudah dipakai ${terpakai} pendaftar. Data pendaftar tidak ikut terhapus, tapi kodenya tidak bisa dipakai lagi.\n\nTetap hapus?` : `Hapus voucher ${v.kode}?`;
+    const peringatan = terpakai > 0 ? `Kode ${v.kode} sudah dipakai ${terpakai} pendaftar. Data pendaftar tidak ikut terhapus, tapi kodenya tidak bisa dipakai lagi.\n\nTetap hapus?` : `Hapus kode member ${v.kode}?`;
     if (!window.confirm(peringatan)) return;
     const {
       data: sisa,
       error
     } = await SB.from("voucher").delete().eq("id", v.id).select("id");
-    if (error) return beriTahu("Gagal menghapus: " + error.message + " — nonaktifkan voucher ini saja lewat Ubah.");
-    if (!sisa || !sisa.length) return beriTahu("Voucher tidak terhapus — izin pengurus belum mencakup hapus voucher. Nonaktifkan saja lewat Ubah.");
-    beriTahu("Voucher terhapus.");
+    if (error) return beriTahu("Gagal menghapus: " + error.message + " — nonaktifkan kode member ini saja lewat Ubah.");
+    if (!sisa || !sisa.length) return beriTahu("Kode member tidak terhapus — izin pengurus belum mencakup hapus kode member. Nonaktifkan saja lewat Ubah.");
+    beriTahu("Kode member terhapus.");
     muat();
   }
   if (!baris) return /*#__PURE__*/React.createElement("p", {
     className: "dm-load"
-  }, "Memuat voucher…");
+  }, "Memuat kode member…");
   return /*#__PURE__*/React.createElement("section", {
     className: "dm-card"
   }, /*#__PURE__*/React.createElement("div", {
     className: "dm-toolbar"
-  }, /*#__PURE__*/React.createElement("h3", null, "Voucher diskon"), /*#__PURE__*/React.createElement("button", {
+  }, /*#__PURE__*/React.createElement("h3", null, "Kode Member"), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn",
     onClick: () => setEdit(kosong)
-  }, "Buat voucher")), /*#__PURE__*/React.createElement("p", {
+  }, "Buat kode member")), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint",
     style: {
       marginBottom: 12
     }
-  }, "Voucher bersyarat berkas terpasang otomatis begitu peserta mengunggah berkasnya. Bila ada dua voucher yang cocok, peserta mendapat yang potongannya paling besar."), /*#__PURE__*/React.createElement("div", {
+  }, "Kode member bersyarat berkas terpasang otomatis begitu peserta mengunggah berkasnya. Bila ada dua kode yang cocok, peserta mendapat yang potongannya paling besar."), /*#__PURE__*/React.createElement("div", {
     className: "dm-tabel-bungkus"
   }, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
@@ -4206,12 +4206,12 @@ function TabVoucher({
     className: "dm-btn-ghost",
     onClick: () => hapus(v)
   }, "Hapus"))))))), edit ? /*#__PURE__*/React.createElement(Modal, {
-    judul: edit.id ? "Ubah voucher" : "Buat voucher",
+    judul: edit.id ? "Ubah kode member" : "Buat kode member",
     onTutup: () => setEdit(null)
   }, /*#__PURE__*/React.createElement("div", {
     className: "dm-grid2"
   }, /*#__PURE__*/React.createElement(Field, {
-    label: "Kode voucher",
+    label: "Kode member",
     hint: "Tetap dibuat walau peserta tidak perlu mengetiknya."
   }, /*#__PURE__*/React.createElement("input", {
     className: "dm-input dm-mono",
@@ -4305,12 +4305,12 @@ function TabVoucher({
       ...edit,
       aktif: e.target.checked
     })
-  }), "Voucher aktif")), /*#__PURE__*/React.createElement("div", {
+  }), "Kode member aktif")), /*#__PURE__*/React.createElement("div", {
     className: "dm-row dm-row-akhir"
   }, /*#__PURE__*/React.createElement("button", {
     className: "dm-btn",
     onClick: simpan
-  }, "Simpan voucher"), /*#__PURE__*/React.createElement("button", {
+  }, "Simpan kode member"), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-line",
     onClick: () => setEdit(null)
   }, "Batal"))) : null);

@@ -227,7 +227,8 @@ window.dmCatatAsal = async function (nomor, wa) {
       ".dm-gb-aksi button{flex:1;padding:10px;border-radius:10px;font:600 14px inherit;cursor:pointer;}",
       ".dm-gb-batal{background:#fff;border:1px solid #dfe5ee;color:#16202e;}",
       ".dm-gb-kirim{background:#16357e;border:1px solid #16357e;color:#fff;}",
-      ".dm-gb-kirim:disabled{opacity:.6;cursor:default;}"
+      ".dm-gb-kirim:disabled{opacity:.6;cursor:default;}",
+      ".dm-gb-kotak label .ops{font-weight:400;font-size:11.5px;color:#7A8C95;border:1px solid #D9E2E5;border-radius:999px;padding:1px 7px;margin-left:6px;}"
     ].join("\n");
     document.head.appendChild(g);
   }
@@ -250,6 +251,8 @@ window.dmCatatAsal = async function (nomor, wa) {
       '<input id="dm-gb-wa" type="tel" inputmode="numeric" autocomplete="tel" placeholder="08xxxxxxxxxx">' +
       '<label for="dm-gb-surel">Email</label>' +
       '<input id="dm-gb-surel" type="email" autocomplete="email" placeholder="nama@contoh.com">' +
+      '<label for="dm-gb-kota">Kota atau instansi <span class="ops">opsional</span></label>' +
+      '<input id="dm-gb-kota" type="text" autocomplete="address-level2" placeholder="Tangerang / RSUD Kota Tangerang">' +
       '<p class="dm-gb-galat" hidden></p>' +
       '<div class="dm-gb-aksi">' +
       '<button type="button" class="dm-gb-batal">Batal</button>' +
@@ -260,6 +263,7 @@ window.dmCatatAsal = async function (nomor, wa) {
     var nama = tirai.querySelector("#dm-gb-nama");
     var wa = tirai.querySelector("#dm-gb-wa");
     var surel = tirai.querySelector("#dm-gb-surel");
+    var kota = tirai.querySelector("#dm-gb-kota");
     var galat = tirai.querySelector(".dm-gb-galat");
     var kirim = tirai.querySelector(".dm-gb-kirim");
     setTimeout(function () { nama.focus(); }, 50);
@@ -326,6 +330,12 @@ window.dmCatatAsal = async function (nomor, wa) {
         window.DM_BIAYA = peta;
         try { sessionStorage.setItem(KUNCI, JSON.stringify({ peta: peta, waktu: Date.now() })); } catch (e) {}
         if (window.dmCatatAsal) { try { await window.dmCatatAsal(null, wn); } catch (e) {} }
+        /* Kota yang ditulis sendiri jauh lebih dipercaya daripada tebakan IP.
+           Kalau pengirimannya gagal, jangan menghambat tampilnya biaya. */
+        var kt = (kota.value || "").trim();
+        if (kt) {
+          try { await SB.rpc("catat_kota_prospek", { p_wa: wn, p_kota: kt }); } catch (e) {}
+        }
         location.reload();
       } catch (e) {
         galat.textContent = /tidak ditemukan|tidak wajar|belum benar|belum diisi|benar-benar Anda pakai/.test(e.message)
@@ -6829,6 +6839,49 @@ function TabKeamanan({ beriTahu }) {
 function TabProspek({ beriTahu }) {
   const [baris, setBaris] = useState(null);
   const [cari, setCari] = useState("");
+  const [sibuk, setSibuk] = useState(false);
+
+  /* Kota yang ditulis sendiri selalu dipakai lebih dulu. Tebakan dari
+     alamat IP hanya cadangan, dan ditandai supaya tidak dikira pasti. */
+  function lokasiBaris(r) {
+    if (r.kota) return { teks: r.kota, pasti: true };
+    if (r.lokasi) return { teks: r.lokasi, pasti: false };
+    return null;
+  }
+
+  /* Alamat IP diterjemahkan jadi nama kota lewat layanan gratis ipapi.co,
+     dipanggil dari peramban ini, bukan dari server. Hasilnya disimpan
+     supaya satu alamat cukup dicari sekali saja. */
+  async function cekLokasi() {
+    const perlu = (baris || []).filter(r => r.ip && !r.lokasi && !r.kota);
+    if (!perlu.length) return beriTahu("Semua baris sudah punya keterangan lokasi.");
+    setSibuk(true);
+    const sudah = {};
+    let berhasil = 0, gagal = 0;
+    for (const r of perlu.slice(0, 40)) {
+      try {
+        let tempat = sudah[r.ip];
+        if (tempat === undefined) {
+          const jw = await fetch("https://ipapi.co/" + encodeURIComponent(r.ip) + "/json/");
+          const j = await jw.json();
+          tempat = j && j.city
+            ? [j.city, j.region].filter(Boolean).join(", ") +
+              (j.org ? " \u00b7 " + j.org : "")
+            : null;
+          sudah[r.ip] = tempat;
+          await new Promise(t => setTimeout(t, 1100));   /* jangan menggedor layanannya */
+        }
+        if (!tempat) { gagal++; continue; }
+        const { error } = await SB.from("prospek")
+          .update({ lokasi: tempat, lokasi_dicek: new Date().toISOString() })
+          .eq("id", r.id);
+        if (error) { gagal++; } else { berhasil++; }
+      } catch (e) { gagal++; }
+    }
+    setSibuk(false);
+    beriTahu(berhasil + " lokasi ditemukan" + (gagal ? ", " + gagal + " gagal" : "") + ".");
+    muat();
+  }
 
   async function muat() {
     const { data, error } = await SB.from("prospek")
@@ -6855,7 +6908,8 @@ function TabProspek({ beriTahu }) {
   const semua = baris || [];
   const kata = cari.trim().toLowerCase();
   const pakai = kata
-    ? semua.filter(r => (r.nama + " " + r.whatsapp + " " + (r.email || "") + " " + (r.kampanye || "")).toLowerCase().indexOf(kata) > -1)
+    ? semua.filter(r => (r.nama + " " + r.whatsapp + " " + (r.email || "") + " " +
+        (r.kampanye || "") + " " + (r.kota || "") + " " + (r.lokasi || "")).toLowerCase().indexOf(kata) > -1)
     : semua;
 
   const kini = Date.now();
@@ -6875,8 +6929,9 @@ function TabProspek({ beriTahu }) {
       const t = String(v == null ? "" : v);
       return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
     };
-    const isi = ["Nama;WhatsApp;Email;Asal;Waktu"].concat(
-      semua.map(r => [r.nama, tampilWa(r.whatsapp), r.email || "", r.kampanye || "", jam(r.dibuat_pada)].map(sel).join(";"))
+    const isi = ["Nama;WhatsApp;Email;Kota ditulis sendiri;Perkiraan dari IP;Asal;Waktu"].concat(
+      semua.map(r => [r.nama, tampilWa(r.whatsapp), r.email || "", r.kota || "",
+        r.lokasi || "", r.kampanye || "", jam(r.dibuat_pada)].map(sel).join(";"))
     ).join("\r\n");
     simpanBerkas(new Blob(["﻿" + isi], { type: "text/csv;charset=utf-8" }),
                  "pelihat-harga-" + tgl + ".csv");
@@ -6904,11 +6959,14 @@ function TabProspek({ beriTahu }) {
         Nama: r.nama,
         WhatsApp: tampilWa(r.whatsapp),
         Email: r.email || "",
+        "Kota ditulis sendiri": r.kota || "",
+        "Perkiraan dari IP": r.lokasi || "",
         Asal: r.kampanye || "",
         Waktu: jam(r.dibuat_pada)
       }));
       const lembar = XLSX.utils.json_to_sheet(baris);
-      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 20 }, { wch: 22 }];
+      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 24 },
+                         { wch: 34 }, { wch: 20 }, { wch: 22 }];
       const buku = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(buku, lembar, "Pelihat Harga");
       const isi = XLSX.write(buku, { bookType: "xlsx", type: "array" });
@@ -6931,12 +6989,22 @@ function TabProspek({ beriTahu }) {
       React.createElement("h3", null, "Pelihat Harga — orang yang membuka biaya pelatihan"),
       React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap" } },
         React.createElement("button", { className: "dm-btn-line", onClick: muat }, "Muat ulang"),
+        React.createElement("button", {
+          className: "dm-btn-line",
+          disabled: sibuk,
+          onClick: cekLokasi
+        }, sibuk ? "Mencari lokasi\u2026" : "Cek lokasi dari IP"),
         React.createElement("button", { className: "dm-btn-line", onClick: unduh }, "Unduh Excel")
       )
     ),
     React.createElement("p", { className: "dm-hint" },
       semua.length + " orang tercatat · " + hariIni + " dalam 24 jam terakhir · " +
       pekanIni + " dalam 7 hari terakhir. Nomor sudah dipastikan nomor seluler Indonesia."
+    ),
+    React.createElement("p", { className: "dm-hint", style: { marginTop: -6 } },
+      "Lokasi bertanda hitam ditulis sendiri oleh pengunjung dan bisa dipercaya. " +
+      "Yang bertanda \u201cperkiraan\u201d berasal dari alamat IP \u2014 pengguna data seluler " +
+      "sering terbaca sebagai kota gerbang operatornya, bukan kota tempat ia berada."
     ),
     React.createElement("input", {
       className: "dm-input",
@@ -6957,6 +7025,7 @@ function TabProspek({ beriTahu }) {
                 React.createElement("th", null, "Nama"),
                 React.createElement("th", null, "WhatsApp"),
                 React.createElement("th", null, "Email"),
+                React.createElement("th", null, "Lokasi"),
                 React.createElement("th", null, "Asal"),
                 React.createElement("th", null, "Waktu"),
                 React.createElement("th", null, "")
@@ -6969,6 +7038,16 @@ function TabProspek({ beriTahu }) {
                 React.createElement("td", null, r.email
                   ? React.createElement("a", { href: "mailto:" + r.email }, r.email)
                   : "—"),
+                React.createElement("td", null, (() => {
+                  const l = lokasiBaris(r);
+                  if (!l) return React.createElement("span", { className: "dm-hint" },
+                    r.ip ? "belum dicek" : "\u2014");
+                  return React.createElement("span", {
+                    className: l.pasti ? "dm-lok-pasti" : "dm-lok-kira",
+                    title: l.pasti ? "Ditulis sendiri oleh pengunjung"
+                                   : "Perkiraan dari alamat IP \u2014 bisa meleset"
+                  }, l.teks, l.pasti ? null : React.createElement("i", null, "perkiraan"));
+                })()),
                 React.createElement("td", { className: "dm-mono" }, r.kampanye || "—"),
                 React.createElement("td", null, jam(r.dibuat_pada)),
                 React.createElement("td", null,

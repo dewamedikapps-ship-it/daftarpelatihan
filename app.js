@@ -1595,6 +1595,21 @@ function Pendaftaran({
   /* Hanya untuk menentukan label tombol. Pemeriksaan sebenarnya tetap dilakukan
      di dalam kirim() dan di server — tidak ada logika yang berubah. */
   const formLengkap = !!training && emailValid(data.email) && /^[0-9]{16}$/.test(data.nik) && !!data.nama.trim() && /^[0-9+\-\s]{8,}$/.test(data.hp) && !!data.instansi.trim() && !!data.plataran && !!berkas.foto && !!berkas.transfer;
+
+  /* Daftar apa saja yang masih kurang. Ditampilkan tepat di atas tombol
+     supaya peserta tidak menatap tombol mati tanpa tahu sebabnya. */
+  const kurang = [];
+  if (!training) kurang.push("Pilih kelas pelatihan");
+  if (!data.nama.trim()) kurang.push("Nama lengkap");
+  if (!/^[0-9]{16}$/.test(data.nik)) kurang.push("NIK 16 angka");
+  if (!emailValid(data.email)) kurang.push("Email aktif");
+  if (!/^[0-9+\-\s]{8,}$/.test(data.hp)) kurang.push("Nomor WhatsApp");
+  if (!data.instansi.trim()) kurang.push("Asal instansi");
+  if (!data.plataran) kurang.push("Jawaban akun Plataran Sehat");
+  if (!berkas.foto) kurang.push("Pas foto");
+  if (!berkas.transfer) kurang.push("Foto bukti transfer");
+  if (mintaInvoice && !invInstansi.trim()) kurang.push("Instansi penagihan invoice");
+  if (!setuju) kurang.push("Centang pernyataan di bawah");
   function bersihkanSaringan() {
     setCari("");
     setFJenis("");
@@ -1742,18 +1757,15 @@ function Pendaftaran({
     if (!setuju) s.setuju = "Centang dulu pernyataan bahwa biaya tidak dapat dikembalikan.";
     setSalah(s);
     if (Object.keys(s).length) {
+      /* Setiap acuan diperiksa dulu. Kalau tidak ada, jangan sampai
+         menimbulkan galat yang membuat tombol seolah mati. */
+      const keTempat = el => {
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      };
       if (Object.keys(s).length === 1 && s.setuju) {
-        const kotak = document.getElementById("dm-setuju-kotak");
-        if (kotak) kotak.scrollIntoView({
-          behavior: "smooth",
-          block: "center"
-        });else refData.current.scrollIntoView({
-          behavior: "smooth"
-        });
+        keTempat(document.getElementById("dm-setuju-kotak") || refData.current);
       } else {
-        (s.kelas ? refKelas : refData).current.scrollIntoView({
-          behavior: "smooth"
-        });
+        keTempat(s.kelas ? refKelas.current : refData.current);
       }
       return;
     }
@@ -1911,7 +1923,12 @@ function Pendaftaran({
     className: "dm-baris dm-baris-total"
   }, /*#__PURE__*/React.createElement("span", null, tipeBayar === "booking" ? "Dibayar sekarang" : "Total dibayar"), /*#__PURE__*/React.createElement("b", null, rp(bayarSekarang))), sisaBayar > 0 ? /*#__PURE__*/React.createElement("p", {
     className: "dm-ringkas-sisa"
-  }, "Sisa pelunasan ", rp(sisaBayar), " dibayarkan sebelum pelatihan dimulai. Uang muka tidak dapat dikembalikan apabila peserta mengundurkan diri.") : null, /*#__PURE__*/React.createElement("div", {
+  }, "Sisa pelunasan ", rp(sisaBayar), " dibayarkan sebelum pelatihan dimulai. Uang muka tidak dapat dikembalikan apabila peserta mengundurkan diri.") : null, kurang.length ? /*#__PURE__*/React.createElement("div", {
+    className: "dm-kurang"
+  }, /*#__PURE__*/React.createElement("b", null, "Masih perlu dilengkapi:"), /*#__PURE__*/React.createElement("ul", null,
+    kurang.slice(0, 4).map((k, i) => /*#__PURE__*/React.createElement("li", { key: i }, k)),
+    kurang.length > 4 ? /*#__PURE__*/React.createElement("li", null, "dan ", kurang.length - 4, " lagi") : null)) : null,
+    /*#__PURE__*/React.createElement("div", {
     className: "dm-ringkas-cta"
   }, /*#__PURE__*/React.createElement("button", {
     className: "dm-btn dm-btn-blok" + (mengirim ? " dm-memuat" : ""),
@@ -2637,7 +2654,7 @@ function Pendaftaran({
   }, "Sisa ", rp(sisaBayar), " dilunasi sebelum pelatihan dimulai") : null), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn" + (mengirim ? " dm-memuat" : ""),
     onClick: kirim,
-    disabled: mengirim || !training
+    disabled: mengirim
   }, mengirim ? "Mengirim" : formLengkap ? "Kirim pendaftaran" : "Lanjutkan Pendaftaran")))));
 }
 

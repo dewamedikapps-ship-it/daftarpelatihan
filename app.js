@@ -431,6 +431,21 @@ const tgl = s => {
 };
 const rentang = (a, b) => !b || a === b ? tgl(a) : `${tgl(a)} – ${tgl(b)}`;
 /* Rentang tanggal versi panjang untuk kalimat resmi, mis. "13 s.d. 18 Oktober 2026". */
+/* Tulisan mentah dari basis data tidak pernah ditunjukkan ke peserta.
+   Yang muncul harus kalimat yang bisa mereka tindak lanjuti. */
+const pesanRamah = pesan => {
+  const p = String(pesan || "");
+  if (/duplicate key|unique constraint|nomor_key/i.test(p))
+    return "Nomor pendaftaran bentrok di server. Tekan Kirim pendaftaran sekali lagi. Bila masih gagal, hubungi admin DEWAMEDIK di 0813-6666-4911.";
+  if (/row-level security|permission denied|not authorized/i.test(p))
+    return "Server menolak pendaftaran karena izin. Hubungi admin DEWAMEDIK di 0813-6666-4911.";
+  if (/failed to fetch|networkerror|network request failed|timeout/i.test(p))
+    return "Sambungan internet terputus saat mengirim. Periksa jaringan lalu tekan Kirim pendaftaran lagi.";
+  if (/violates|constraint|syntax|null value/i.test(p))
+    return "Data pendaftaran ditolak server. Hubungi admin DEWAMEDIK di 0813-6666-4911 dengan menyebut nama dan kelas yang dipilih.";
+  return p;
+};
+
 const rentangPanjang = (a, b) => {
   if (!a) return "";
   if (!b || a === b) return tglPanjang(a);
@@ -1797,6 +1812,7 @@ function Pendaftaran({
       });
       if (error) throw new Error(error.message);
       if (!h || !h.ok) throw new Error(h && h.pesan || "Pendaftaran gagal dikirim.");
+
       if (window.dmCatatAsal) window.dmCatatAsal(h.nomor, null);
       setHasil({
         ...h,
@@ -1818,7 +1834,7 @@ function Pendaftaran({
       muatUlang().catch(() => {});
     } catch (e) {
       setSalah({
-        transfer: e.message
+        transfer: pesanRamah(e.message)
       });
     }
     setMengirim(false);
@@ -2367,9 +2383,7 @@ function Pendaftaran({
     onClick: () => setTipeBayar("booking")
   }, /*#__PURE__*/React.createElement("b", null, "Booking seat"), /*#__PURE__*/React.createElement("i", null, "Uang muka minimal ", rp(setelan.dp_nominal || 500000), " untuk mengunci kursi. Sisanya dilunasi sebelum pelatihan dimulai."), /*#__PURE__*/React.createElement("u", {
     className: "dm-mono"
-  }, training ? rp(dp) : rp(setelan.dp_nominal || 500000)))), tipeBayar === "booking" ? /*#__PURE__*/React.createElement("p", {
-    className: "dm-catatan"
-  }, "Uang muka tidak dapat dikembalikan apabila peserta mengundurkan diri.") : null, /*#__PURE__*/React.createElement("div", {
+  }, training ? rp(dp) : rp(setelan.dp_nominal || 500000)))), /*#__PURE__*/React.createElement("div", {
     className: "dm-awas"
   }, /*#__PURE__*/React.createElement("b", null, "Hati-hati penipuan mengatasnamakan Dewa Medik Nusantara."), /*#__PURE__*/React.createElement("p", null, "Pembayaran hanya melalui rekening resmi di bawah ini atas nama ", setelan.rek_atas_nama, ". Kami tidak pernah meminta transfer ke rekening pribadi atau nama lain. Bila ragu, laporkan ke layanan pengaduan", " ", /*#__PURE__*/React.createElement("a", {
     href: "https://wa.me/6281366664911",

@@ -1020,7 +1020,7 @@ function CekPendaftaran({
     className: "dm-detail-list"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Nomor registrasi"), /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
-  }, hasil.nomor)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Nama peserta"), /*#__PURE__*/React.createElement("b", null, hasil.nama)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Pelatihan"), /*#__PURE__*/React.createElement("b", null, hasil.judul)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Jadwal"), /*#__PURE__*/React.createElement("b", null, rentang(hasil.tanggal_mulai, hasil.tanggal_selesai))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Lokasi"), /*#__PURE__*/React.createElement("b", null, hasil.lokasi)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Metode"), /*#__PURE__*/React.createElement("b", null, hasil.format)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Biaya pelatihan"), /*#__PURE__*/React.createElement("b", null, rp(hasil.harga_awal))), Number(hasil.diskon) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Diskon ", hasil.persen, "%", hasil.voucher_kode ? ` · ${hasil.voucher_kode}` : ""), /*#__PURE__*/React.createElement("b", null, "− ", rp(hasil.diskon))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, hasil.tipe_bayar === "booking" ? "Uang muka dibayar" : "Total dibayar"), /*#__PURE__*/React.createElement("b", {
+  }, hasil.nomor)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Nama peserta"), /*#__PURE__*/React.createElement("b", null, hasil.nama)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Pelatihan"), /*#__PURE__*/React.createElement("b", null, hasil.judul)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Jadwal"), /*#__PURE__*/React.createElement("b", null, rentang(hasil.tanggal_mulai, hasil.tanggal_selesai))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Lokasi"), /*#__PURE__*/React.createElement("b", null, hasil.lokasi)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Metode"), /*#__PURE__*/React.createElement("b", null, hasil.format)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Biaya pelatihan"), /*#__PURE__*/React.createElement("b", null, rp(hasil.harga_awal))), Number(hasil.diskon) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Potongan ", hasil.persen, "%", hasil.voucher_kode ? ` · ${hasil.voucher_kode}` : ""), /*#__PURE__*/React.createElement("b", null, "− ", rp(hasil.diskon))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, hasil.tipe_bayar === "booking" ? "Uang muka dibayar" : "Total dibayar"), /*#__PURE__*/React.createElement("b", {
     className: "dm-detail-harga"
   }, rp(hasil.jumlah_bayar != null ? hasil.jumlah_bayar : hasil.total))), Number(hasil.sisa_bayar) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Sisa pelunasan"), /*#__PURE__*/React.createElement("b", null, rp(hasil.sisa_bayar))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Tanggal mendaftar"), /*#__PURE__*/React.createElement("b", null, new Date(hasil.dibuat).toLocaleDateString("id-ID", {
     day: "numeric",
@@ -1747,7 +1747,7 @@ function Pendaftaran({
     if (error) return setPesanKode("Gagal memeriksa kode. Coba lagi.");
     if (h && h.ok) {
       setKodeManual(h);
-      setPesanKode(`Diskon ${h.persen}% terpasang.`);
+      setPesanKode(`Potongan ${h.persen}% terpasang.`);
     } else {
       setKodeManual(null);
       setPesanKode(h && h.pesan || "Kode tidak berlaku.");
@@ -1872,7 +1872,7 @@ function Pendaftaran({
       className: "dm-kwitansi"
     }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Pelatihan"), /*#__PURE__*/React.createElement("b", null, hasil.judul)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Jadwal"), /*#__PURE__*/React.createElement("b", null, rentang(hasil.tanggal_mulai, hasil.tanggal_selesai))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Biaya"), /*#__PURE__*/React.createElement("b", {
       className: "dm-mono"
-    }, rp(hasil.harga_awal))), Number(hasil.diskon) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Diskon ", hasil.persen, "%"), /*#__PURE__*/React.createElement("b", {
+    }, rp(hasil.harga_awal))), Number(hasil.diskon) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Potongan ", hasil.persen, "%"), /*#__PURE__*/React.createElement("b", {
       className: "dm-mono dm-vital"
     }, "− ", rp(hasil.diskon))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Jenis pendaftaran"), /*#__PURE__*/React.createElement("b", null, hasil.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh")), /*#__PURE__*/React.createElement("div", {
       className: "dm-kwitansi-total"
@@ -1933,7 +1933,7 @@ function Pendaftaran({
     className: "dm-putar-kecil"
   }), "Memeriksa kode member…") : /*#__PURE__*/React.createElement("div", {
     className: "dm-baris dm-baris-diskon"
-  }, /*#__PURE__*/React.createElement("span", null, "Diskon / Member", dipakai ? ` · ${dipakai.persen}%` : ""), /*#__PURE__*/React.createElement("b", null, potongan > 0 ? "− " + rp(potongan) : rp(0))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Potongan Member", dipakai ? ` · ${dipakai.persen}%` : ""), /*#__PURE__*/React.createElement("b", null, potongan > 0 ? "− " + rp(potongan) : rp(0))), /*#__PURE__*/React.createElement("div", {
     className: "dm-baris"
   }, /*#__PURE__*/React.createElement("span", null, "Jenis pendaftaran"), /*#__PURE__*/React.createElement("b", null, tipeBayar === "booking" ? "Booking seat" : "Bayar penuh")), /*#__PURE__*/React.createElement("div", {
     className: "dm-baris dm-baris-total"
@@ -2641,7 +2641,7 @@ function Pendaftaran({
     className: "dm-baris"
   }, /*#__PURE__*/React.createElement("span", null, "Subtotal"), /*#__PURE__*/React.createElement("b", null, rp(training.harga))), potongan > 0 ? /*#__PURE__*/React.createElement("div", {
     className: "dm-baris"
-  }, /*#__PURE__*/React.createElement("span", null, "Diskon ", dipakai ? dipakai.persen + "%" : ""), /*#__PURE__*/React.createElement("b", {
+  }, /*#__PURE__*/React.createElement("span", null, "Potongan ", dipakai ? dipakai.persen + "%" : ""), /*#__PURE__*/React.createElement("b", {
     className: "dm-bar-hemat"
   }, "− ", rp(potongan))) : null, /*#__PURE__*/React.createElement("div", {
     className: "dm-baris"
@@ -2653,7 +2653,7 @@ function Pendaftaran({
     className: "dm-bar-in"
   }, /*#__PURE__*/React.createElement("div", null, dipakai ? /*#__PURE__*/React.createElement("p", {
     className: "dm-bar-diskon"
-  }, "Diskon ", dipakai.persen, "% terpasang · hemat ", rp(potongan)) : /*#__PURE__*/React.createElement("p", {
+  }, "Potongan ", dipakai.persen, "% terpasang · hemat ", rp(potongan)) : /*#__PURE__*/React.createElement("p", {
     className: "dm-bar-diskon dm-bar-sepi"
   }, !training ? "Pilih kelas untuk melihat total" : tipeBayar === "booking" ? "Uang muka yang perlu ditransfer sekarang" : "Total yang perlu ditransfer"), /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
@@ -3353,7 +3353,7 @@ function TabPendaftar({
   function unduhCsv() {
     const data = tampil.length ? tampil : baris || [];
     if (!data.length) return beriTahu("Tidak ada data untuk diekspor.");
-    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Profesi", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Jadwal", "Harga awal", "Kode member", "Persen diskon", "Diskon", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
+    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Profesi", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Jadwal", "Harga awal", "Kode member", "Persen potongan", "Potongan", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
     const tglRingkas = v => {
       if (!v) return "";
       const d = new Date(v);
@@ -4221,7 +4221,7 @@ function TabVoucher({
     className: "dm-tabel-bungkus"
   }, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Kode"), /*#__PURE__*/React.createElement("th", null, "Diskon"), /*#__PURE__*/React.createElement("th", null, "Untuk"), /*#__PURE__*/React.createElement("th", null, "Syarat"), /*#__PURE__*/React.createElement("th", null, "Kuota"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, baris.map(v => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Kode"), /*#__PURE__*/React.createElement("th", null, "Potongan"), /*#__PURE__*/React.createElement("th", null, "Untuk"), /*#__PURE__*/React.createElement("th", null, "Syarat"), /*#__PURE__*/React.createElement("th", null, "Kuota"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, baris.map(v => /*#__PURE__*/React.createElement("tr", {
     key: v.id
   }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
@@ -4271,7 +4271,7 @@ function TabVoucher({
       label: e.target.value
     })
   })), /*#__PURE__*/React.createElement(Field, {
-    label: "Besar diskon (%)"
+    label: "Besar potongan (%)"
   }, /*#__PURE__*/React.createElement("input", {
     className: "dm-input dm-mono",
     type: "number",

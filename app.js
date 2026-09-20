@@ -4467,25 +4467,29 @@ function LembarInvoice({
     colSpan: 2
   }, /*#__PURE__*/React.createElement("b", null, inv.perihal))))), /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-kepada"
-  }, "Kepada Yth,", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", null, inv.kepada_jabatan), /*#__PURE__*/React.createElement("br", null), inv.kepada_alamat), /*#__PURE__*/React.createElement("p", null, "Dengan hormat,"), /*#__PURE__*/React.createElement("p", {
+  }, "Kepada Yth.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("b", null, inv.kepada_jabatan), /*#__PURE__*/React.createElement("br", null), inv.kepada_alamat), /*#__PURE__*/React.createElement("p", null, "Dengan hormat,"), /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-paragraf"
-  }, "Sehubungan dengan telah terselenggaranya kegiatan ", inv.kegiatan, " yang diselenggarakan oleh Dewamedik Nusantara", inv.mitra ? ` bekerja sama dengan ${inv.mitra}` : "", rentangKegiatan ? ` pada tanggal ${rentangKegiatan}` : "", ", dengan ini kami mengajukan penagihan pembayaran atas biaya penyelenggaraan kegiatan dimaksud dengan rincian sebagai berikut:"), /*#__PURE__*/React.createElement("p", {
+  }, "Sehubungan dengan telah selesainya pelaksanaan ", /*#__PURE__*/React.createElement("b", null, inv.kegiatan), " yang diselenggarakan oleh ", /*#__PURE__*/React.createElement("b", null, "Dewa Medik Nusantara", inv.mitra ? ` bekerja sama dengan ${inv.mitra}` : ""), rentangKegiatan ? " pada tanggal " : "", rentangKegiatan ? /*#__PURE__*/React.createElement("b", null, rentangKegiatan) : null, ", dengan ini kami menyampaikan permohonan pembayaran atas biaya penyelenggaraan kegiatan tersebut."), /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-paragraf"
-  }, "Rincian biaya penagihan adalah sebagai berikut:"), /*#__PURE__*/React.createElement("table", {
+  }, "Adapun rincian biaya penyelenggaraan kegiatan adalah sebagai berikut:"), /*#__PURE__*/React.createElement("table", {
     className: "dm-inv-tabel"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", {
     style: {
       width: "8%"
     }
-  }, "No"), /*#__PURE__*/React.createElement("th", null, "Uraian"), /*#__PURE__*/React.createElement("th", {
+  }, "No."), /*#__PURE__*/React.createElement("th", null, "Uraian"), /*#__PURE__*/React.createElement("th", {
     style: {
-      width: "20%"
+      width: "16%"
     }
   }, "Jumlah Peserta"), /*#__PURE__*/React.createElement("th", {
     style: {
-      width: "24%"
+      width: "20%"
     }
-  }, "Biaya"))), /*#__PURE__*/React.createElement("tbody", null, (inv.rincian || []).map((r, i) => /*#__PURE__*/React.createElement("tr", {
+  }, "Biaya per Peserta"), /*#__PURE__*/React.createElement("th", {
+    style: {
+      width: "20%"
+    }
+  }, "Jumlah"))), /*#__PURE__*/React.createElement("tbody", null, (inv.rincian || []).map((r, i) => /*#__PURE__*/React.createElement("tr", {
     key: i
   }, /*#__PURE__*/React.createElement("td", {
     className: "dm-inv-tengah"
@@ -4493,23 +4497,25 @@ function LembarInvoice({
     className: "dm-inv-tengah"
   }, r.peserta ? `${r.peserta} orang` : "—"), /*#__PURE__*/React.createElement("td", {
     className: "dm-inv-tengah"
+  }, Number(r.peserta) > 0 ? rp(Math.round(Number(r.biaya) / Number(r.peserta))) : "—"), /*#__PURE__*/React.createElement("td", {
+    className: "dm-inv-tengah"
   }, rp(r.biaya)))), /*#__PURE__*/React.createElement("tr", {
     className: "dm-inv-total"
   }, /*#__PURE__*/React.createElement("td", {
     colSpan: 2
-  }, /*#__PURE__*/React.createElement("b", null, "Total Peserta / Total Tagihan")), /*#__PURE__*/React.createElement("td", {
+  }, /*#__PURE__*/React.createElement("b", null, "TOTAL TAGIHAN")), /*#__PURE__*/React.createElement("td", {
     className: "dm-inv-tengah"
-  }, /*#__PURE__*/React.createElement("b", null, totalPeserta, " orang")), /*#__PURE__*/React.createElement("td", {
+  }, /*#__PURE__*/React.createElement("b", null, totalPeserta, " orang")), /*#__PURE__*/React.createElement("td", null), /*#__PURE__*/React.createElement("td", {
     className: "dm-inv-tengah"
   }, /*#__PURE__*/React.createElement("b", null, rp(total)))))), /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-terbilang"
-  }, /*#__PURE__*/React.createElement("b", null, "Terbilang:"), " ", /*#__PURE__*/React.createElement("i", null, terbilang(total))), dibatalkan ? /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("b", null, "Terbilang:"), " ", /*#__PURE__*/React.createElement("i", null, terbilang(total), ".")), dibatalkan ? /*#__PURE__*/React.createElement("div", {
     className: "dm-inv-alasan"
   }, /*#__PURE__*/React.createElement("b", null, inv.status === "refund"
     ? "INVOICE INI DIREFUND \u2014 dana telah dikembalikan"
     : "INVOICE INI DIBATALKAN \u2014 tidak berlaku sebagai tagihan"), /*#__PURE__*/React.createElement("span", null, inv.keterangan || "\u2014")) : null, /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-paragraf"
-  }, "Sehubungan dengan hal tersebut, kami mohon kesediaan Bapak/Ibu untuk dapat melakukan pembayaran selambat-lambatnya ", inv.hari_tempo || 7, " (", terbilang(inv.hari_tempo || 7).replace(" rupiah", "").toLowerCase(), ") hari kerja terhitung sejak kegiatan pelatihan selesai dilaksanakan", inv.jatuh_tempo ? `, yaitu paling lambat tanggal ` : "", inv.jatuh_tempo ? /*#__PURE__*/React.createElement("b", null, tglPanjang(inv.jatuh_tempo)) : null, ", melalui transfer ke rekening berikut:"), /*#__PURE__*/React.createElement("table", {
+  }, "Sehubungan dengan hal tersebut, kami mohon kesediaan Bapak/Ibu untuk melakukan pembayaran atas biaya penyelenggaraan kegiatan tersebut ", inv.jatuh_tempo ? /*#__PURE__*/React.createElement("b", null, "paling lambat tanggal " + tglPanjang(inv.jatuh_tempo)) : /*#__PURE__*/React.createElement("b", null, "paling lambat " + (inv.hari_tempo || 7) + " (" + terbilang(inv.hari_tempo || 7).replace(" rupiah", "").toLowerCase() + ") hari kerja sejak surat ini diterima"), ", melalui transfer ke rekening berikut:"), /*#__PURE__*/React.createElement("table", {
     className: "dm-inv-bank"
   }, /*#__PURE__*/React.createElement("tbody", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("td", {
     className: "dm-inv-label"
@@ -4529,9 +4535,11 @@ function LembarInvoice({
     className: "dm-inv-titik"
   }, ":"), /*#__PURE__*/React.createElement("td", null, KOP.npwp)))), /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-paragraf"
-  }, /*#__PURE__*/React.createElement("b", null, "Ketentuan: "), "Biaya pelatihan yang telah dibayarkan tidak dapat dikembalikan (non-refundable), kecuali terjadi keadaan kahar (force majeure) yang menyebabkan pelatihan tidak dapat diselenggarakan, atau panitia melakukan perubahan tanggal pelaksanaan."), /*#__PURE__*/React.createElement("p", {
+  }, "Pembayaran yang telah dilakukan dapat dikonfirmasikan kepada pihak ", /*#__PURE__*/React.createElement("b", null, "Dewa Medik Nusantara"), " untuk keperluan verifikasi dan pencatatan administrasi."), /*#__PURE__*/React.createElement("p", {
     className: "dm-inv-paragraf"
-  }, inv.catatan_akhir || "Sebagai bahan kelengkapan administrasi, bersama surat ini kami lampirkan invoice, daftar hadir peserta, dan dokumentasi kegiatan.", " ", "Demikian surat penagihan ini kami sampaikan. Atas perhatian dan kerja sama Bapak/Ibu, kami ucapkan terima kasih."), /*#__PURE__*/React.createElement("div", {
+  }, inv.catatan_akhir || "Sebagai kelengkapan administrasi kegiatan, bersama dokumen ini kami lampirkan dokumen pendukung berupa daftar hadir peserta dan dokumentasi pelaksanaan kegiatan."), /*#__PURE__*/React.createElement("p", {
+    className: "dm-inv-paragraf"
+  }, "Demikian permohonan pembayaran ini kami sampaikan. Atas perhatian, kepercayaan, serta kerja sama yang telah terjalin dengan baik antara ", /*#__PURE__*/React.createElement("b", null, inv.mitra || inv.kepada_jabatan || "institusi Bapak/Ibu"), " dan ", /*#__PURE__*/React.createElement("b", null, "Dewa Medik Nusantara"), ", kami mengucapkan terima kasih."), /*#__PURE__*/React.createElement("div", {
     className: "dm-inv-ttd"
   }, /*#__PURE__*/React.createElement("img", {
     src: TTD_INVOICE,
@@ -5303,7 +5311,7 @@ async function unduhPdfInvoice(inv) {
     k.teks(KANAN, 22.5, KOP.akreditasi2, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
     k.teks(KANAN, 26, KOP.akreditasi3, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
     k.garis(KIRI, 39, KANAN, 39, 1.1);
-    y = 46.5;
+    y = 44.5;
   }
   /* Pindah halaman bila ruang tersisa kurang dari yang dibutuhkan. */
   function ruang(perlu) {
@@ -5318,7 +5326,7 @@ async function unduhPdfInvoice(inv) {
     const baris = pecahBaris(t, LEBAR, o);
     ruang(baris.length * o.jarak + 2);
     baris.forEach(b => { k.teks(KIRI, y, b, o); y += o.jarak; });
-    y += 1.3;
+    y += 0.9;
   }
 
   kop();
@@ -5327,7 +5335,7 @@ async function unduhPdfInvoice(inv) {
   k.teks(107, y, "INVOICE / FAKTUR TAGIHAN", { ukuran: 14, tebal: true, rata: "tengah", renggang: 1.6, warna: NAVY });
   y += 5.4;
   k.teks(107, y, inv.perihal || "", { ukuran: 9.5, miring: true, rata: "tengah", warna: ABU });
-  y += 9;
+  y += 7.5;
 
   /* --- keterangan surat --- */
   k.teks(KANAN, y, "Tangerang, " + tglPanjang(inv.tanggal), { ukuran: 10, rata: "kanan" });
@@ -5340,7 +5348,7 @@ async function unduhPdfInvoice(inv) {
   y += 3;
 
   /* --- tujuan --- */
-  k.teks(KIRI, y, "Kepada Yth,", { ukuran: 10 }); y += 4.8;
+  k.teks(KIRI, y, "Kepada Yth.", { ukuran: 10 }); y += 4.8;
   y = k.paragraf(KIRI, y, 110, inv.kepada_jabatan || "-", { ukuran: 10, tebal: true, jarak: 4.6 });
   y = k.paragraf(KIRI, y, 110, inv.kepada_alamat || "di Tempat", { ukuran: 10, jarak: 4.6 }) + 3;
 
@@ -5349,15 +5357,16 @@ async function unduhPdfInvoice(inv) {
   const rentang = inv.tanggal_mulai && inv.tanggal_selesai
     ? new Date(inv.tanggal_mulai + "T00:00:00").getDate() + " s.d. " + tglPanjang(inv.tanggal_selesai)
     : (inv.tanggal_mulai ? tglPanjang(inv.tanggal_mulai) : "");
-  alinea("Sehubungan dengan telah terselenggaranya kegiatan " + (inv.kegiatan || "-") +
-    " yang diselenggarakan oleh Dewamedik Nusantara" +
+  alinea("Sehubungan dengan telah selesainya pelaksanaan " + (inv.kegiatan || "-") +
+    " yang diselenggarakan oleh Dewa Medik Nusantara" +
     (inv.mitra ? " bekerja sama dengan " + inv.mitra : "") +
     (rentang ? " pada tanggal " + rentang : "") +
-    ", dengan ini kami mengajukan penagihan pembayaran atas biaya penyelenggaraan kegiatan dimaksud dengan rincian sebagai berikut:");
-  alinea("Rincian biaya penagihan adalah sebagai berikut:");
+    ", dengan ini kami menyampaikan permohonan pembayaran atas biaya penyelenggaraan kegiatan tersebut.");
+  alinea("Adapun rincian biaya penyelenggaraan kegiatan adalah sebagai berikut:");
 
   /* --- tabel rincian --- */
-  const KOL = [KIRI, KIRI + 12, KIRI + 96, KIRI + 128, KANAN];   /* No | Uraian | Peserta | Biaya */
+  /* No | Uraian | Jumlah Peserta | Biaya per Peserta | Jumlah */
+  const KOL = [KIRI, KIRI + 12, KIRI + 74, KIRI + 100, KIRI + 136, KANAN];
   function barisTabel(sel, o) {
     o = o || {};
     const uk = o.ukuran || 9.5;
@@ -5370,26 +5379,34 @@ async function unduhPdfInvoice(inv) {
     k.teks((KOL[0] + KOL[1]) / 2, y, sel[0], { ukuran: uk, rata: "tengah", tebal: o.tebal });
     pecahan.forEach((b, i) => k.teks(KOL[1] + 3, y + i * 4.4, b, { ukuran: uk, tebal: o.tebal }));
     k.teks((KOL[2] + KOL[3]) / 2, y, sel[2], { ukuran: uk, rata: "tengah", tebal: o.tebal });
-    k.teks(KOL[4] - 3, y, sel[3], { ukuran: uk, rata: "kanan", tebal: o.tebal });
+    if (o.kepala) {
+      k.teks((KOL[3] + KOL[4]) / 2, y, sel[3], { ukuran: uk, rata: "tengah", tebal: true });
+      k.teks((KOL[4] + KOL[5]) / 2, y, sel[4], { ukuran: uk, rata: "tengah", tebal: true });
+    } else {
+      k.teks(KOL[4] - 3, y, sel[3], { ukuran: uk, rata: "kanan", tebal: o.tebal });
+      k.teks(KOL[5] - 3, y, sel[4], { ukuran: uk, rata: "kanan", tebal: o.tebal });
+    }
     y += tinggi;
   }
   y += 4.6;
-  barisTabel(["No", "Uraian", "Jumlah Peserta", "Biaya"], { tebal: true, arsir: [0.93, 0.95, 0.97] });
+  barisTabel(["No.", "Uraian", "Jumlah Peserta", "Biaya per Peserta", "Jumlah"],
+    { tebal: true, kepala: true, ukuran: 8, arsir: [0.93, 0.95, 0.97] });
   const rincian = inv.rincian || [];
   let total = 0, totalPeserta = 0;
   rincian.forEach((r, i) => {
     total += Number(r.biaya) || 0;
     totalPeserta += Number(r.peserta) || 0;
-    barisTabel([String(i + 1), r.uraian || "-", r.peserta ? r.peserta + " orang" : "\u2014", rp(r.biaya)]);
+    const per = Number(r.peserta) > 0 ? rp(Math.round(Number(r.biaya) / Number(r.peserta))) : "\u2014";
+    barisTabel([String(i + 1), r.uraian || "-", r.peserta ? r.peserta + " orang" : "\u2014", per, rp(r.biaya)]);
   });
-  barisTabel(["", "Total Peserta / Total Tagihan", totalPeserta + " orang", rp(total)],
+  barisTabel(["", "TOTAL TAGIHAN", totalPeserta + " orang", "", rp(total)],
     { tebal: true, arsir: [0.93, 0.95, 0.97] });
   y += 2;
 
   ruang(9);
   const lb = k.teks(KIRI, y, "Terbilang: ", { ukuran: 10, tebal: true });
-  k.paragraf(KIRI + lb, y, LEBAR - lb, terbilang(total), { ukuran: 10, miring: true, jarak: 4.4 });
-  y += 8;
+  k.paragraf(KIRI + lb, y, LEBAR - lb, terbilang(total) + ".", { ukuran: 10, miring: true, jarak: 4.4 });
+  y += 6.5;
 
   if (dibatalkan) {
     const judulKotak = inv.status === "refund"
@@ -5407,11 +5424,12 @@ async function unduhPdfInvoice(inv) {
   }
 
   const hari = inv.hari_tempo || 7;
-  alinea("Sehubungan dengan hal tersebut, kami mohon kesediaan Bapak/Ibu untuk dapat melakukan pembayaran " +
-    "selambat-lambatnya " + hari + " (" + terbilang(hari).replace(" rupiah", "").toLowerCase() + ") hari kerja " +
-    "terhitung sejak kegiatan pelatihan selesai dilaksanakan" +
-    (inv.jatuh_tempo ? ", yaitu paling lambat tanggal " + tglPanjang(inv.jatuh_tempo) : "") +
-    ", melalui transfer ke rekening berikut:");
+  const tempo = inv.jatuh_tempo
+    ? "paling lambat tanggal " + tglPanjang(inv.jatuh_tempo)
+    : "paling lambat " + hari + " (" + terbilang(hari).replace(" rupiah", "").toLowerCase() +
+      ") hari kerja sejak surat ini diterima";
+  alinea("Sehubungan dengan hal tersebut, kami mohon kesediaan Bapak/Ibu untuk melakukan pembayaran " +
+    "atas biaya penyelenggaraan kegiatan tersebut " + tempo + ", melalui transfer ke rekening berikut:");
 
   /* --- rekening --- */
   const bank = [["Bank", KOP.bank], ["No. Rekening", KOP.rekening], ["Atas Nama", KOP.atasNama], ["NPWP", KOP.npwp]];
@@ -5423,25 +5441,40 @@ async function unduhPdfInvoice(inv) {
     k.teks(KIRI + 38, y, b[1] || "-", { ukuran: 9.5, tebal: true });
     y += 4.8;
   });
-  y += 4;
+  y += 3;
 
-  alinea("Ketentuan: Biaya pelatihan yang telah dibayarkan tidak dapat dikembalikan (non-refundable), " +
-    "kecuali terjadi keadaan kahar (force majeure) yang menyebabkan pelatihan tidak dapat diselenggarakan, " +
-    "atau panitia melakukan perubahan tanggal pelaksanaan.", { ukuran: 9.5, jarak: 4.4 });
+  alinea("Pembayaran yang telah dilakukan dapat dikonfirmasikan kepada pihak Dewa Medik Nusantara " +
+    "untuk keperluan verifikasi dan pencatatan administrasi.", { ukuran: 9.5, jarak: 4.4 });
 
-  alinea((inv.catatan_akhir ||
-    "Sebagai bahan kelengkapan administrasi, bersama surat ini kami lampirkan invoice, daftar hadir peserta, dan dokumentasi kegiatan.") +
-    " Demikian surat penagihan ini kami sampaikan. Atas perhatian dan kerja sama Bapak/Ibu, kami ucapkan terima kasih.",
-    { ukuran: 9.5, jarak: 4.4 });
+  alinea(inv.catatan_akhir ||
+    "Sebagai kelengkapan administrasi kegiatan, bersama dokumen ini kami lampirkan dokumen pendukung " +
+    "berupa daftar hadir peserta dan dokumentasi pelaksanaan kegiatan.", { ukuran: 9.5, jarak: 4.4 });
 
-  /* --- tanda tangan --- */
-  if (y + 33 > 287) { k.halamanBaru(); y = 26; }
+  alinea("Demikian permohonan pembayaran ini kami sampaikan. Atas perhatian, kepercayaan, serta kerja sama " +
+    "yang telah terjalin dengan baik antara " +
+    (inv.mitra || inv.kepada_jabatan || "institusi Bapak/Ibu") +
+    " dan Dewa Medik Nusantara, kami mengucapkan terima kasih.", { ukuran: 9.5, jarak: 4.4 });
+
+  /* --- tanda tangan ---
+     Harus selesai di atas kaki surat, jangan sampai bertumpuk. */
+  const ATAS_KAKI = 275;
+  if (y + 31 > ATAS_KAKI) { k.halamanBaru(); y = 26; }
   y += 2;
-  if (ttd) k.gambar("Im2", ttd, 336, 192, KANAN - 52, y, 52);
+  if (ttd) k.gambar("Im2", ttd, 336, 192, KANAN - 50, y, 50);
   else {
-    k.teks(KANAN - 52, y + 4, "Hormat kami,", { ukuran: 10 });
-    k.teks(KANAN - 52, y + 24, "Dewamedik Nusantara", { ukuran: 10, tebal: true });
+    k.teks(KANAN - 50, y + 4, "Hormat kami,", { ukuran: 10 });
+    k.teks(KANAN - 50, y + 22, "DEWA MEDIK NUSANTARA", { ukuran: 10, tebal: true });
   }
+
+  /* Kaki surat. Diletakkan rapat di dasar halaman terakhir. */
+  const KAKI = 286.5;
+  k.garis(KIRI, KAKI - 12.5, KANAN, KAKI - 12.5, 0.3, [0.78, 0.78, 0.78]);
+  k.teks(107, KAKI - 8.5, KOP.nama + "  \u00b7  Excellence Is The Way",
+    { ukuran: 7.5, tebal: true, rata: "tengah", warna: NAVY });
+  k.teks(107, KAKI - 4.8, "Instagram / TikTok / YouTube: @dewamedik_hc  \u00b7  " + KOP.situs,
+    { ukuran: 7, rata: "tengah", warna: ABU });
+  k.teks(107, KAKI - 1.1, "Agenda pelatihan: daftarpelatihan.dewamedik911.com  \u00b7  Hubungi kami: 0813-6666-4911",
+    { ukuran: 7, rata: "tengah", warna: ABU });
 
   /* Stempel miring digambar paling akhir agar berada di atas teks. */
   if (dibatalkan) k.cap(capKata);

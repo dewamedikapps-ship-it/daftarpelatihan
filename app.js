@@ -4556,7 +4556,7 @@ function TabInvoice({
   const kosong = {
     nomor: "",
     tanggal: hariIni(),
-    perihal: "Penagihan Pembayaran Kegiatan Pelatihan",
+    perihal: "Permohonan Pembayaran Biaya Kegiatan Pelatihan",
     kegiatan: "",
     mitra: "",
     kepada_jabatan: "",
@@ -4765,7 +4765,7 @@ function TabInvoice({
       ...edit,
       perihal: e.target.value
     }),
-    placeholder: "Penagihan Pembayaran Kegiatan Pelatihan EKG"
+    placeholder: "Permohonan Pembayaran Biaya Kegiatan Pelatihan EKG"
   })), /*#__PURE__*/React.createElement("div", {
     className: "dm-grid2"
   }, /*#__PURE__*/React.createElement(Field, {

@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="id"><head><meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Frontdesk — Akademia DEWAMEDIK</title>
+<style>
+:root{--bg:#0d1117;--pn:#161b22;--ln:#232b36;--tx:#e6edf3;--rd:#8b949e;--ac:#2f81f7;--ok:#3fb950;--wr:#d29922;--er:#f85149}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif}
+a{color:var(--ac)}
+.wrap{max-width:1120px;margin:0 auto;padding:18px 16px 60px}
+h1{font-size:19px;margin:0 0 2px}
+.sub{color:var(--rd);font-size:12.5px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 14px}
+.chip{background:var(--pn);border:1px solid var(--ln);border-radius:20px;padding:3px 11px;font-size:12px;color:var(--rd)}
+.chip b{color:var(--tx);font-weight:600}
+.chip.ok{border-color:#1f6f36}.chip.wr{border-color:#7a5c10}.chip.er{border-color:#7d2b26}
+nav{display:flex;gap:4px;border-bottom:1px solid var(--ln);margin-bottom:16px;overflow-x:auto}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--rd);padding:9px 13px;font-size:13.5px;cursor:pointer;white-space:nowrap}
+nav button.on{color:var(--tx);border-bottom-color:var(--ac)}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:12px;color:var(--rd);margin:0 0 4px}
+input,select,textarea{width:100%;background:#0b0f14;border:1px solid var(--ln);color:var(--tx);border-radius:7px;padding:8px 10px;font:inherit}
+textarea{min-height:74px;resize:vertical}
+button.b{background:var(--ac);border:0;color:#fff;border-radius:7px;padding:8px 14px;font:inherit;cursor:pointer}
+button.g{background:#21262d;border:1px solid var(--ln);color:var(--tx);border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+button.d{background:#2d1a1a;border:1px solid #5c2b2b;color:#ff9a94;border-radius:7px;padding:7px 12px;font:inherit;cursor:pointer}
+button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end}
+.row>div{flex:1;min-width:150px}
+.grid{display:grid;grid-template-columns:1fr 1.35fr;gap:12px}
+@media(max-width:820px){.grid{grid-template-columns:1fr}}
+.chat{background:#0b0f14;border:1px solid var(--ln);border-radius:10px;padding:12px;height:400px;overflow-y:auto}
+.bub{max-width:82%;padding:8px 11px;border-radius:12px;margin-bottom:9px;white-space:pre-wrap;word-break:break-word}
+.bub.in{background:#1d242e;border-top-left-radius:3px}
+.bub.out{background:#14361f;margin-left:auto;border-top-right-radius:3px}
+.bub.dr{background:#2a2413;border:1px dashed #6b5514;margin-left:auto}
+.meta{font-size:11px;color:var(--rd);margin-top:5px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 8px;border-bottom:1px solid var(--ln);vertical-align:top}
+th{color:var(--rd);font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.4px}
+tr.k:hover{background:#1a2027;cursor:pointer}
+.tag{font-size:11px;padding:2px 8px;border-radius:12px;background:#21262d;color:var(--rd);white-space:nowrap}
+.tag.esk{background:#3a1d1b;color:#ff9a94}.tag.tunggu{background:#33280f;color:#e3b341}
+.tag.bot{background:#132b1a;color:#56d364}.tag.tangan{background:#12283a;color:#79c0ff}
+.pesan{padding:10px 12px;border-radius:8px;margin-bottom:10px;font-size:13px}
+.pesan.e{background:#2d1a1a;border:1px solid #5c2b2b;color:#ff9a94}
+.pesan.s{background:#14251a;border:1px solid #1f6f36;color:#7ee787}
+.pesan.i{background:#12212e;border:1px solid #1f4f7a;color:#a5d6ff}
+.gate{max-width:380px;margin:14vh auto;text-align:center}
+.mut{color:var(--rd);font-size:12px}
+code{background:#0b0f14;border:1px solid var(--ln);padding:1px 5px;border-radius:4px;font-size:12px}
+</style></head><body>
+
+<div id="gate" class="gate">
+  <h1>Frontdesk DMN</h1>
+  <p class="sub">Konsol petugas frontdesk Akademia DEWAMEDIK</p>
+  <div class="card" style="margin-top:18px;text-align:left">
+    <label>Kode konsol</label>
+    <input id="kode" type="password" autocomplete="off" placeholder="kode akses frontdesk">
+    <div style="margin-top:10px"><button class="b" onclick="masuk()" style="width:100%">Masuk</button></div>
+    <div id="gerr" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="app" class="wrap" hidden>
+  <h1>Frontdesk <span class="mut" style="font-weight:400">— Akademia DEWAMEDIK</span></h1>
+  <div class="sub">Otak balasan pesan. Kanal uji aktif; WhatsApp menyusul setelah izin Meta beres.</div>
+  <div class="chips" id="chips"></div>
+  <nav>
+    <button data-t="uji" class="on" onclick="tab('uji')">Uji coba</button>
+    <button data-t="inbox" onclick="tab('inbox')">Inbox</button>
+    <button data-t="tahu" onclick="tab('tahu')">Pengetahuan</button>
+    <button data-t="atur" onclick="tab('atur')">Pengaturan</button>
+  </nav>
+  <div id="isi"></div>
+</div>
+
+<script>
+const API = "https://pczylrzlymkipgpismua.supabase.co/functions/v1/frontdesk";
+let KODE = "", DIAG = {}, TAB = "uji", PC = null, NOMOR = "6281200000001";
+
+async function fd(aksi, data){
+  const r = await fetch(API, {method:"POST", headers:{"content-type":"application/json","x-fd-kode":KODE},
+    body: JSON.stringify({aksi, ...(data||{})})});
+  const j = await r.json().catch(()=>({galat:"jawaban tidak terbaca"}));
+  if(!r.ok) throw new Error(j.galat || ("galat "+r.status));
+  return j;
+}
+const esc = s => String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const jam = s => s ? new Date(s).toLocaleString("id-ID",{day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"}) : "-";
+
+async function masuk(){
+  KODE = document.getElementById("kode").value.trim();
+  try{
+    DIAG = await fd("diagnosa");
+    try{ localStorage.setItem("fd_kode", KODE); }catch(e){}
+    document.getElementById("gate").hidden = true;
+    document.getElementById("app").hidden = false;
+    chips(); tab("uji");
+  }catch(e){
+    document.getElementById("gerr").innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>';
+  }
+}
+
+function chips(){
+  const d = DIAG, c = [];
+  const kelas = d.mode==="auto" ? "ok" : d.mode==="mati" ? "er" : "wr";
+  c.push('<span class="chip '+kelas+'">mode <b>'+esc(d.mode)+'</b></span>');
+  c.push('<span class="chip '+(d.kunci_ai==="belum ada"?"er":"ok")+'">kunci AI <b>'+esc(d.kunci_ai)+'</b></span>');
+  c.push('<span class="chip '+(d.whatsapp&&d.whatsapp.aktif?"ok":"wr")+'">WhatsApp <b>'+(d.whatsapp&&d.whatsapp.aktif?"aktif":"belum")+'</b></span>');
+  c.push('<span class="chip">sebut harga <b>'+(d.sebut_harga?"boleh":"dilarang")+'</b></span>');
+  c.push('<span class="chip">eskalasi ke <b>'+esc(d.eskalasi_ke)+'</b></span>');
+  c.push('<span class="chip '+(d.draft_menunggu?"wr":"")+'">draft menunggu <b>'+d.draft_menunggu+'</b></span>');
+  c.push('<span class="chip">percakapan <b>'+d.jumlah_percakapan+'</b></span>');
+  document.getElementById("chips").innerHTML = c.join("");
+}
+async function segarkan(){ try{ DIAG = await fd("diagnosa"); chips(); }catch(e){} }
+
+function tab(t){
+  TAB = t;
+  document.querySelectorAll("nav button").forEach(b=>b.classList.toggle("on", b.dataset.t===t));
+  ({uji:vUji, inbox:vInbox, tahu:vTahu, atur:vAtur})[t]();
+}
+
+/* ---------------------------------------------------------- UJI COBA */
+function vUji(){
+  document.getElementById("isi").innerHTML = `
+  <div class="card">
+    <div class="row">
+      <div><label>Nomor penanya (simulasi)</label><input id="unom" value="${NOMOR}"></div>
+      <div><label>Nama (opsional, biarkan kosong untuk menguji bot menanyakan nama)</label><input id="unam" placeholder="kosong"></div>
+      <div style="flex:0 0 auto"><button class="g" onclick="resetUji()">Hapus semua uji</button></div>
+    </div>
+    <div class="mut" style="margin-top:8px">Kanal <code>uji</code>: tidak ada pesan yang benar-benar keluar. Yang diuji adalah isi jawaban, kategori, dan keputusan eskalasi.</div>
+  </div>
+  <div class="card">
+    <div id="uchat" class="chat"></div>
+    <div class="row" style="margin-top:10px">
+      <div><input id="utek" placeholder="tulis seperti calon peserta… (mis. berapa biaya BTCLS?)" onkeydown="if(event.key==='Enter')ujiKirim()"></div>
+      <div style="flex:0 0 auto"><button class="b" id="ubtn" onclick="ujiKirim()">Kirim</button></div>
+    </div>
+    <div id="uout"></div>
+  </div>
+  <div class="card">
+    <div class="mut">Contoh cepat:</div>
+    <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap">
+      ${["Berapa biaya BTCLS?","Kapan jadwal BTCLS berikutnya?","Minta diskon dong buat 10 orang","Kami dari RSUD ingin in-house ACLS","Sertifikat saya belum keluar","Minta link grup kelasnya","Pelatihan apa saja yang ada?"]
+        .map(s=>`<button class="g" onclick="document.getElementById('utek').value=${JSON.stringify(s)};ujiKirim()">${esc(s)}</button>`).join("")}
+    </div>
+  </div>`;
+  ujiMuat();
+}
+async function ujiMuat(){
+  const box = document.getElementById("uchat"); if(!box) return;
+  try{
+    const d = await fd("percakapan", {limit:100});
+    const nom = document.getElementById("unom").value.replace(/[^0-9]/g,"").replace(/^0/,"62");
+    const pc = (d.percakapan||[]).find(p => p.kanal==="uji" && p.fd_kontak && p.fd_kontak.nomor===nom && p.status!=="selesai");
+    if(!pc){ box.innerHTML = '<div class="mut">Belum ada percakapan untuk nomor ini. Kirim pesan pertama.</div>'; PC=null; return; }
+    PC = pc.id;
+    const h = await fd("riwayat", {percakapan_id: pc.id});
+    box.innerHTML = (h.pesan||[]).map(m=>{
+      if(m.arah==="masuk") return '<div class="bub in">'+esc(m.isi)+'<div class="meta">penanya · '+jam(m.created_at)+'</div></div>';
+      const dr = m.status==="draft";
+      return '<div class="bub '+(dr?"dr":"out")+'">'+esc(m.isi)+
+        '<div class="meta">'+esc(m.sumber)+(m.kategori?" · "+esc(m.kategori):"")+
+        (m.keyakinan!=null?" · yakin "+Math.round(m.keyakinan*100)+"%":"")+" · "+esc(m.status||"-")+
+        (dr?' · <a href="#" onclick="setuju('+m.id+');return false;">setujui</a> · <a href="#" onclick="tolak('+m.id+');return false;">tolak</a>':"")+
+        '</div></div>';
+    }).join("") || '<div class="mut">Belum ada pesan.</div>';
+    box.scrollTop = box.scrollHeight;
+  }catch(e){ box.innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+async function ujiKirim(){
+  const t = document.getElementById("utek"), b = document.getElementById("ubtn"), o = document.getElementById("uout");
+  if(!t.value.trim()) return;
+  b.disabled = true; o.innerHTML = '<div class="mut" style="margin-top:8px">bot menyusun jawaban…</div>';
+  try{
+    NOMOR = document.getElementById("unom").value;
+    const j = await fd("masuk", {kanal:"uji", nomor:NOMOR, nama:document.getElementById("unam").value||null, isi:t.value});
+    t.value = "";
+    const k = [];
+    k.push("kategori <b>"+esc(j.kategori)+"</b>");
+    k.push("keyakinan <b>"+Math.round((j.keyakinan||0)*100)+"%</b>");
+    k.push("status <b>"+esc(j.status_percakapan)+"</b>");
+    k.push("model <b>"+esc(j.model)+"</b> ("+j.latensi_ms+" ms)");
+    let kls = j.eskalasi ? "i" : "s";
+    let txt = '<div class="pesan '+kls+'" style="margin-top:10px">'+k.join(" · ")+
+      (j.eskalasi?'<br>Dieskalasi: '+esc(j.alasan||"-"):"")+
+      (j.disaring_nominal?'<br><b>Penyaring nominal bekerja</b> — draft bot memuat angka biaya, otomatis diganti jawaban portal.':"")+
+      (j.galat_ai?'<br>Catatan model: '+esc(j.galat_ai):"")+'</div>';
+    o.innerHTML = txt;
+    await ujiMuat(); segarkan();
+  }catch(e){ o.innerHTML = '<div class="pesan e" style="margin-top:8px">'+esc(e.message)+'</div>'; }
+  b.disabled = false;
+}
+async function setuju(id){
+  const koreksi = prompt("Setujui balasan ini. Kosongkan untuk kirim apa adanya, atau tulis versi yang benar:", "");
+  if(koreksi===null) return;
+  try{ const j = await fd("setujui", {pesan_id:id, isi:koreksi||undefined, oleh:"Ryan"});
+    alert(j.terkirim ? ("Terkirim. "+(j.catatan||"")) : ("Tidak terkirim: "+(j.catatan||"")));
+  }catch(e){ alert(e.message); }
+  TAB==="uji" ? ujiMuat() : bukaPc(PC); segarkan();
+}
+async function tolak(id){
+  const a = prompt("Alasan ditolak:",""); if(a===null) return;
+  try{ await fd("tolak",{pesan_id:id, alasan:a}); }catch(e){ alert(e.message); }
+  TAB==="uji" ? ujiMuat() : bukaPc(PC); segarkan();
+}
+async function resetUji(){
+  if(!confirm("Hapus semua kontak dan percakapan kanal uji?")) return;
+  try{ const j = await fd("reset_uji"); alert("Dihapus: "+j.dihapus+" kontak uji"); ujiMuat(); segarkan(); }catch(e){ alert(e.message); }
+}
+
+/* ------------------------------------------------------------- INBOX */
+async function vInbox(){
+  const el = document.getElementById("isi");
+  el.innerHTML = '<div class="card mut">memuat…</div>';
+  try{
+    const d = await fd("percakapan", {limit:80});
+    const baris = (d.percakapan||[]).map(p=>{
+      const k = p.fd_kontak||{};
+      const tg = {eskalasi:"esk", menunggu_persetujuan:"tunggu", bot:"bot", ditangani:"tangan", selesai:""}[p.status]||"";
+      return '<tr class="k" onclick="bukaPc('+JSON.stringify(p.id)+')">'+
+        '<td><span class="tag '+tg+'">'+esc(p.status)+'</span></td>'+
+        '<td>'+esc(k.nama||"(tanpa nama)")+'<div class="mut">'+esc(k.nomor||"-")+' · '+esc(p.kanal)+'</div></td>'+
+        '<td>'+esc(k.instansi||"-")+'</td><td>'+esc(p.kategori||"-")+'</td>'+
+        '<td>'+esc(p.alasan_eskalasi||"")+'</td><td class="mut">'+jam(p.updated_at)+'</td></tr>';
+    }).join("");
+    const tl = (d.percakapan||[]).filter(p=>p.perlu_perhatian && p.masuk_terakhir && (Date.now()-new Date(p.masuk_terakhir))>2*3600e3);
+    el.innerHTML = (tl.length?'<div class="pesan e"><b>'+tl.length+' percakapan terlantar</b> lebih dari 2 jam dan belum ditangani siapa pun.</div>':'')+'<div class="card"><table><thead><tr><th>Status</th><th>Penanya</th><th>Instansi</th><th>Kategori</th><th>Alasan eskalasi</th><th>Terakhir</th></tr></thead><tbody>'+
+      (baris || '<tr><td colspan="6" class="mut">Belum ada percakapan.</td></tr>')+'</tbody></table></div><div id="det"></div>';
+  }catch(e){ el.innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+async function bukaPc(id){
+  PC = id; const det = document.getElementById("det"); if(!det) return;
+  det.innerHTML = '<div class="card mut">memuat…</div>';
+  try{
+    const h = await fd("riwayat", {percakapan_id:id});
+    const p = h.percakapan||{}, k = p.fd_kontak||{};
+    det.innerHTML = '<div class="card"><div class="row"><div><b>'+esc(k.nama||"(tanpa nama)")+'</b> <span class="mut">'+esc(k.nomor||"")+
+      '</span><div class="mut">'+esc(k.instansi||"instansi belum diketahui")+' · status '+esc(p.status)+
+      (p.jendela_24j_sampai?' · jendela 24 jam s.d. '+jam(p.jendela_24j_sampai):"")+'</div></div>'+
+      '<div style="flex:0 0 auto"><button class="g" onclick="ubahStatus(\''+id+'\',\'ditangani\')">Saya pegang</button> '+
+      '<button class="g" onclick="ubahStatus(\''+id+'\',\'selesai\')">Selesai</button></div></div>'+
+      '<div class="chat" style="margin-top:12px;height:330px">'+
+      (h.pesan||[]).map(m=> m.arah==="masuk"
+        ? '<div class="bub in">'+esc(m.isi)+'<div class="meta">penanya · '+jam(m.created_at)+'</div></div>'
+        : '<div class="bub '+(m.status==="draft"?"dr":"out")+'">'+esc(m.isi)+'<div class="meta">'+esc(m.sumber)+' · '+esc(m.status||"-")+
+          (m.status==="draft"?' · <a href="#" onclick="setuju('+m.id+');return false;">setujui</a> · <a href="#" onclick="tolak('+m.id+');return false;">tolak</a>':"")+
+          '</div></div>').join("")+'</div>'+
+      '<div class="row" style="margin-top:10px"><div><input id="mtek" placeholder="balas sendiri sebagai manusia…"></div>'+
+      '<div style="flex:0 0 auto"><button class="b" onclick="kirimManusia(\''+id+'\')">Kirim</button></div></div><div id="mout"></div></div>';
+  }catch(e){ det.innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+async function kirimManusia(id){
+  const t = document.getElementById("mtek"); if(!t.value.trim()) return;
+  try{ const j = await fd("kirim_manusia",{percakapan_id:id, isi:t.value, oleh:"Ryan"});
+    document.getElementById("mout").innerHTML = '<div class="pesan '+(j.terkirim?"s":"i")+'">'+esc(j.catatan||"")+'</div>';
+    t.value=""; bukaPc(id); segarkan();
+  }catch(e){ document.getElementById("mout").innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+async function ubahStatus(id, s){ try{ await fd("ubah_status",{percakapan_id:id, status:s}); vInbox(); segarkan(); }catch(e){ alert(e.message); } }
+
+/* ------------------------------------------------------ PENGETAHUAN */
+async function vTahu(){
+  const el = document.getElementById("isi");
+  el.innerHTML = '<div class="card mut">memuat…</div>';
+  try{
+    const d = await fd("pengetahuan");
+    el.innerHTML = '<div class="card"><div class="row"><div><b>Basis pengetahuan</b><div class="mut">Satu-satunya sumber fakta bot. Nominal biaya ditolak sistem.</div></div>'+
+      '<div style="flex:0 0 auto"><button class="b" onclick="editTahu()">Tambah</button></div></div></div><div id="tform"></div>'+
+      '<div class="card"><table><thead><tr><th>Kategori</th><th>Pertanyaan</th><th>Kata kunci</th><th>Aktif</th><th></th></tr></thead><tbody>'+
+      (d.pengetahuan||[]).map(p=>'<tr><td>'+esc(p.kategori)+'</td><td>'+esc(p.pertanyaan)+
+        '<div class="mut">'+esc((p.jawaban||"").slice(0,120))+'…</div></td><td class="mut">'+esc((p.kata_kunci||[]).join(", "))+
+        '</td><td>'+(p.aktif?"ya":"tidak")+'</td><td><button class="g" onclick="editTahu('+JSON.stringify(p).replace(/"/g,"&quot;")+')">Ubah</button></td></tr>').join("")+
+      '</tbody></table></div>';
+  }catch(e){ el.innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+function editTahu(p){
+  p = p || {};
+  document.getElementById("tform").innerHTML = '<div class="card">'+
+    '<div class="row"><div><label>Kategori</label><input id="tk" value="'+esc(p.kategori||"lain")+'"></div>'+
+    '<div><label>Prioritas (kecil = didahulukan)</label><input id="tp" value="'+(p.prioritas??100)+'"></div>'+
+    '<div><label>Aktif</label><select id="ta"><option value="1"'+(p.aktif!==false?" selected":"")+'>ya</option><option value="0"'+(p.aktif===false?" selected":"")+'>tidak</option></select></div></div>'+
+    '<div style="margin-top:10px"><label>Pertanyaan / topik</label><input id="tq" value="'+esc(p.pertanyaan||"")+'"></div>'+
+    '<div style="margin-top:10px"><label>Kata kunci (pisahkan dengan koma)</label><input id="tkk" value="'+esc((p.kata_kunci||[]).join(", "))+'"></div>'+
+    '<div style="margin-top:10px"><label>Jawaban</label><textarea id="tj">'+esc(p.jawaban||"")+'</textarea></div>'+
+    '<div style="margin-top:10px"><button class="b" onclick="simpanTahu('+(p.id?JSON.stringify(p.id):"null")+')">Simpan</button> '+
+    (p.id?'<button class="d" onclick="hapusTahu('+JSON.stringify(p.id)+')">Hapus</button> ':"")+
+    '<button class="g" onclick="document.getElementById(\'tform\').innerHTML=\'\'">Tutup</button></div><div id="tout"></div></div>';
+}
+async function simpanTahu(id){
+  try{
+    await fd("pengetahuan_simpan", {id: id||undefined, kategori:document.getElementById("tk").value,
+      prioritas:Number(document.getElementById("tp").value)||100, aktif:document.getElementById("ta").value==="1",
+      pertanyaan:document.getElementById("tq").value, jawaban:document.getElementById("tj").value,
+      kata_kunci:document.getElementById("tkk").value.split(",").map(s=>s.trim().toLowerCase()).filter(Boolean), oleh:"Ryan"});
+    vTahu();
+  }catch(e){ document.getElementById("tout").innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+async function hapusTahu(id){ if(!confirm("Hapus butir ini?")) return; try{ await fd("pengetahuan_hapus",{id}); vTahu(); }catch(e){ alert(e.message); } }
+
+/* ------------------------------------------------------- PENGATURAN */
+async function vAtur(){
+  const el = document.getElementById("isi");
+  el.innerHTML = '<div class="card mut">memuat…</div>';
+  try{
+    const a = (await fd("pengaturan")).pengaturan;
+    el.innerHTML = '<div class="card"><div class="row">'+
+      '<div><label>Mode</label><select id="amode">'+["propose_only","auto","mati"].map(m=>'<option'+(a.mode===m?" selected":"")+'>'+m+'</option>').join("")+'</select></div>'+
+      '<div><label>Frontdesk hidup</label><select id="amas"><option value="1"'+(a.master_enabled?" selected":"")+'>ya</option><option value="0"'+(!a.master_enabled?" selected":"")+'>tidak</option></select></div>'+
+      '<div><label>Eskalasi ke</label><input id="aesk" value="'+esc(a.eskalasi_ke||"")+'"></div>'+'<div><label>Nomor WhatsApp untuk pengingat</label><input id="aeskwa" placeholder="6281..." value="'+esc(a.eskalasi_wa||"")+'"></div></div>'+
+      '<div class="row" style="margin-top:10px">'+
+      '<div><label>Model (kosong = bawaan)</label><input id="amod" value="'+esc(a.model||"")+'"></div>'+
+      '<div><label>WhatsApp phone_number_id</label><input id="awa" value="'+esc(a.wa_phone_number_id||"")+'"></div>'+
+      '<div><label>Kanal WhatsApp aktif</label><select id="awaa"><option value="0"'+(!a.wa_aktif?" selected":"")+'>belum</option><option value="1"'+(a.wa_aktif?" selected":"")+'>aktif</option></select></div></div>'+
+      '<div style="margin-top:10px"><label>Kategori yang boleh kirim sendiri saat mode auto (pisahkan koma; kosong = tidak ada)</label>'+
+      '<input id="akat" value="'+esc((a.kategori_auto||[]).join(", "))+'"></div>'+
+      '<div style="margin-top:10px"><label>Persona / peran bot</label><textarea id="apers">'+esc(a.persona||"")+'</textarea></div>'+
+      '<div style="margin-top:12px"><button class="b" onclick="simpanAtur()">Simpan</button></div><div id="aout"></div></div>'+
+      '<div class="card"><b>Kebijakan harga</b><div class="mut" style="margin-top:6px">Bot dilarang menyebut nominal biaya. Penyaring bekerja di dua tempat: saat bot menyusun draft, dan saat balasan disetujui. Basis pengetahuan pun menolak jawaban yang memuat angka rupiah. Kalau kebijakan ini mau diubah, katakan langsung — sengaja tidak ditaruh sebagai tombol di sini.</div></div>'+
+      '<div class="card"><b>Penjaga waktu</b><div class="mut" style="margin-top:6px">Tiap 30 menit pada jam kerja (08.00–18.00 WIB), database memeriksa percakapan yang dieskalasi tapi belum tertangani lebih dari 2 jam, lalu menaruh pengingat di antrean <code>fd_pengingat</code>. Isi nomor WhatsApp di atas supaya pengingat punya tujuan begitu kanal keluar hidup.</div></div><div class="card"><b>Kunci AI</b><div class="mut" style="margin-top:6px">Fungsi ini menerima tiga penyedia, dipakai menurut kunci yang terpasang sebagai secret proyek Supabase: <code>GEMINI_API_KEY</code> (Google, ada paket gratis tanpa kartu), <code>ANTHROPIC_API_KEY</code>, atau <code>OPENAI_API_KEY</code>. Tanpa kunci, bot masih jalan tapi hanya mencocokkan kata kunci dan selalu mengeskalasi. Catatan: pada paket gratis Google, isi percakapan boleh dipakai Google untuk melatih modelnya — pakai untuk kanal uji, jangan untuk chat peserta sungguhan.</div></div><div class="card"><b>Menyambung WhatsApp nanti</b><div class="mut" style="margin-top:6px">Tiga langkah: (1) isi <code>WHATSAPP_TOKEN</code> dan <code>META_APP_SECRET</code> sebagai secret Supabase, (2) isi phone_number_id di atas, (3) ubah kanal WhatsApp jadi aktif. Webhook <code>whatsapp-webhook</code> sudah terpasang dan perlu disambungkan ke fungsi ini.</div></div>';
+  }catch(e){ el.innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+async function simpanAtur(){
+  try{
+    await fd("pengaturan_simpan", {mode:document.getElementById("amode").value,
+      master_enabled:document.getElementById("amas").value==="1",
+      eskalasi_ke:document.getElementById("aesk").value, eskalasi_wa:document.getElementById("aeskwa").value||null, model:document.getElementById("amod").value||null,
+      wa_phone_number_id:document.getElementById("awa").value||null, wa_aktif:document.getElementById("awaa").value==="1",
+      kategori_auto:document.getElementById("akat").value.split(",").map(s=>s.trim()).filter(Boolean),
+      persona:document.getElementById("apers").value});
+    document.getElementById("aout").innerHTML = '<div class="pesan s">Tersimpan.</div>'; segarkan();
+  }catch(e){ document.getElementById("aout").innerHTML = '<div class="pesan e">'+esc(e.message)+'</div>'; }
+}
+
+try{ const k = localStorage.getItem("fd_kode"); if(k){ document.getElementById("kode").value = k; masuk(); } }catch(e){}
+</script></body></html>

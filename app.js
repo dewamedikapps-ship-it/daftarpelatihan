@@ -4421,7 +4421,7 @@ function LembarInvoice({
 }) {
   const total = (inv.rincian || []).reduce((a, b) => a + (Number(b.biaya) || 0), 0);
   const totalPeserta = (inv.rincian || []).reduce((a, b) => a + (Number(b.peserta) || 0), 0);
-  const rentangKegiatan = inv.tanggal_mulai && inv.tanggal_selesai ? `${new Date(inv.tanggal_mulai + "T00:00:00").getDate()} s.d. ${tglPanjang(inv.tanggal_selesai)}` : tglPanjang(inv.tanggal_mulai);
+  const rentangKegiatan = rentangPanjang(inv.tanggal_mulai, inv.tanggal_selesai);
   const dibatalkan = inv.status === "batal" || inv.status === "refund";
   const capKata = inv.status === "refund" ? "REFUND" : "DIBATALKAN";
   return /*#__PURE__*/React.createElement("div", {
@@ -5354,9 +5354,7 @@ async function unduhPdfInvoice(inv) {
 
   alinea("Dengan hormat,");
 
-  const rentang = inv.tanggal_mulai && inv.tanggal_selesai
-    ? new Date(inv.tanggal_mulai + "T00:00:00").getDate() + " s.d. " + tglPanjang(inv.tanggal_selesai)
-    : (inv.tanggal_mulai ? tglPanjang(inv.tanggal_mulai) : "");
+  const rentang = rentangPanjang(inv.tanggal_mulai, inv.tanggal_selesai);
   alinea("Sehubungan dengan telah selesainya pelaksanaan " + (inv.kegiatan || "-") +
     " yang diselenggarakan oleh Dewa Medik Nusantara" +
     (inv.mitra ? " bekerja sama dengan " + inv.mitra : "") +

@@ -561,7 +561,11 @@ function sapaan() {
 function pesanTerverifikasi(r, setelan) {
   const kelas = r.pelatihan ? r.pelatihan.judul : "pelatihan DEWAMEDIK";
   const jadwal = r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "-";
-  const tempat = setelan && setelan.alamat ? setelan.alamat : "Kantor DEWAMEDIK, Tangerang";
+  /* Tempat diambil dari lokasi kelas yang diisi saat kelas dibuka.
+     Alamat kantor hanya dipakai bila kelas itu belum punya lokasi. */
+  const tempat = (r.pelatihan && String(r.pelatihan.lokasi || "").trim())
+    || (setelan && setelan.alamat)
+    || "Kantor DEWAMEDIK, Tangerang";
   const b = [];
   b.push(`${sapaan()} Kak ${r.nama},`);
   b.push("");
@@ -3242,7 +3246,7 @@ function TabPendaftar({
     const {
       data,
       error
-    } = await SB.from("pendaftaran").select("*, pelatihan(id, judul, jenis, tanggal_mulai, tanggal_selesai, wa_grup)").order("dibuat", {
+    } = await SB.from("pendaftaran").select("*, pelatihan(id, judul, jenis, tanggal_mulai, tanggal_selesai, lokasi, wa_grup)").order("dibuat", {
       ascending: false
     });
     if (error) return beriTahu("Data gagal dimuat: " + error.message);

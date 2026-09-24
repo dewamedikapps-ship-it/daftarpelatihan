@@ -221,7 +221,7 @@
   <div class="w" id="w">
     <button class="pemicu" id="pemicu" type="button" aria-haspopup="dialog" aria-controls="panel">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 13h5l2-4 3 9 3-13 2 8h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>
-      <span id="label">Tanya Admin DMN</span>
+      <span id="label">Butuh Bantuan?</span>
     </button>
     <section class="panel" id="panel" role="dialog" aria-labelledby="judul" hidden>
       <div class="kepala">
@@ -375,7 +375,7 @@
 
     function buka(){
       dibuka = true; panel.hidden = false; pemicu.hidden = true;
-      label.textContent = "Tanya Admin DMN";
+      label.textContent = "Butuh Bantuan?";
       if (!sudahMuat) tarik(true).then(function(j){
         if (j && (j.pesan||[]).length && j.pesan[j.pesan.length-1].dari === "anda") mulaiMenunggu();
         gulir();

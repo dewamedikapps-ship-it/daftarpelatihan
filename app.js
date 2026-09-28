@@ -538,7 +538,12 @@ async function siapkanBerkas(file, mode) {
   // Pas foto cukup kecil: hemat penyimpanan, tetap tajam untuk sertifikat.
   const sisiMaks = mode === "pasfoto" ? 600 : 1400;
   const mutu = mode === "pasfoto" ? 0.72 : 0.7;
-  if (file.type.startsWith("image/")) {
+  /* Sebagian HP (terutama Android) mengirim tipe berkas kosong, jadi
+     jenisnya juga dikenali dari akhiran nama berkas. */
+  const akhiran = String(file.name || "").toLowerCase().split(".").pop();
+  const pdf = file.type === "application/pdf" || akhiran === "pdf";
+  const gambar = !pdf && (String(file.type || "").startsWith("image/") || ["jpg", "jpeg", "png", "heic", "heif", "webp"].includes(akhiran));
+  if (gambar) {
     const url = await readAsDataURL(file);
     const img = await loadImage(url);
     const skala = Math.min(1, sisiMaks / Math.max(img.width, img.height));
@@ -554,8 +559,7 @@ async function siapkanBerkas(file, mode) {
       pratinjau: URL.createObjectURL(blob)
     };
   }
-  if (file.type === "application/pdf") {
-    if (mode === "pasfoto") throw new Error("Pas foto harus berupa gambar JPG atau PNG, bukan PDF.");
+  if (pdf) {
     if (file.size > 5 * 1024 * 1024) throw new Error("PDF maksimal 5 MB. Foto berkasnya saja juga boleh.");
     return {
       nama: file.name,
@@ -856,15 +860,16 @@ function Unggah({
     disabled: sibuk
   }, /*#__PURE__*/React.createElement("span", {
     className: "dm-kamera"
-  }, "＋"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, sibuk ? "Memproses foto…" : judul, wajib ? /*#__PURE__*/React.createElement("em", {
+  }, "＋"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, sibuk ? "Memproses berkas…" : judul, wajib ? /*#__PURE__*/React.createElement("em", {
     className: "dm-req"
   }, "wajib") : null), /*#__PURE__*/React.createElement("p", null, keterangan))), err ? /*#__PURE__*/React.createElement("p", {
     className: "dm-err"
   }, err) : null, /*#__PURE__*/React.createElement("input", {
     ref: ref,
     type: "file",
-    accept: mode === "pasfoto" ? "image/*" : "image/*,application/pdf",
-    capture: "environment",
+    /* Tanpa atribut capture: di HP, capture memaksa kamera terbuka dan
+       peserta tidak bisa memilih foto galeri, tangkapan layar, atau PDF. */
+    accept: "image/jpeg,image/png,image/*,application/pdf,.jpg,.jpeg,.png,.pdf",
     onChange: pilih,
     style: {
       display: "none"
@@ -2571,7 +2576,7 @@ function Pendaftaran({
     })
   }) : null, /*#__PURE__*/React.createElement(Unggah, {
     judul: "Pas foto",
-    keterangan: "Wajah tampak jelas, latar polos, untuk dicetak di sertifikat. Format JPG atau PNG.",
+    keterangan: "Wajah tampak jelas, latar polos, untuk dicetak di sertifikat. Format JPG, PNG, atau PDF.",
     wajib: true,
     mode: "pasfoto",
     nilai: berkas.foto,
@@ -3470,7 +3475,10 @@ function TabPendaftar({
       const t = String(v ?? "");
       return '"' + t.replace(/"/g, '""') + '"';
     };
-    const teks = [head.map(sel).join(";"), ...isi.map(b => b.map(sel).join(";"))].join("\r\n");
+    /* Akun Manajer Diklat mengunduh data peserta tanpa kolom keuangan. */
+    const KOLOM_UANG = ["Harga awal", "Kode member", "Persen Member Benefit", "Member Benefit", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan"];
+    const pakai = head.map((h, i) => peran === "diklat" && KOLOM_UANG.includes(h) ? -1 : i).filter(i => i >= 0);
+    const teks = [pakai.map(i => sel(head[i])).join(";"), ...isi.map(b => pakai.map(i => sel(b[i])).join(";"))].join("\r\n");
     const hariIni = new Date();
     const p = x => String(x).padStart(2, "0");
     const labelBerkas = String(labelPilihan || "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -3581,7 +3589,7 @@ function TabPendaftar({
     value: "batal"
   }, "Dibatalkan"), peran === "diklat" ? null : /*#__PURE__*/React.createElement("option", {
     value: "refund"
-  }, "Refund")), peran === "diklat" ? null : /*#__PURE__*/React.createElement("button", {
+  }, "Refund")), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-line",
     onClick: unduhCsv
   }, /*#__PURE__*/React.createElement(Ikon, {

@@ -393,6 +393,9 @@ const FOTO_KELAS = {
   KKMN: ["foto-kelas/darurat-2.jpg", "foto-kelas/darurat-1.jpg", "foto-kelas/btcls-trauma.jpg"],
   BONELS: ["foto-kelas/darurat-2.jpg", "foto-kelas/btcls-cedera.jpg", "foto-kelas/darurat-1.jpg"],
   PPIK: ["foto-kelas/darurat-2.jpg", "foto-kelas/umum-ujian.jpg"],
+  /* TOT memakai foto kelas induknya. */
+  "TOT BTCLS": ["foto-kelas/btcls-1.jpg", "foto-kelas/rjp-1.jpg", "foto-kelas/btcls-trauma.jpg", "foto-kelas/btcls-cedera.jpg"],
+  "TOT ACLS": ["foto-kelas/acls-1.jpg", "foto-kelas/acls-aed.jpg", "foto-kelas/rjp-1.jpg"],
   UMUM: ["foto-kelas/umum-ujian.jpg", "foto-kelas/rjp-1.jpg", "foto-kelas/darurat-2.jpg"]
 };
 function kelompokFoto(t) {
@@ -428,7 +431,7 @@ function fotoUntukDaftar(daftar) {
 /* Cap, tanda tangan, dan nama finance diambil dari invoice resmi DMN.
    Disimpan sebagai gambar agar tidak pernah berubah. */
 const TTD_INVOICE = "ttd-dmn.jpg";
-const JENIS = ["BTCLS", "ACLS", "KKMN", "EKG", "PKID", "PPIK", "BONELS"];
+const JENIS = ["BTCLS", "ACLS", "KKMN", "EKG", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS"];
 const PROFESI = ["Perawat", "Bidan", "Dokter", "Mahasiswa Keperawatan", "Lainnya"];
 const PLATARAN = ["Sudah punya", "Belum punya", "Belum tahu"];
 
@@ -1190,7 +1193,7 @@ function Footer({
    Data dikirim ke Edge Function Dewa Medik, bukan ke database portal,
    sehingga tidak menyentuh alur pendaftaran peserta sama sekali.
    ============================================================ */
-var KERJASAMA_PROGRAM = ["BTCLS", "ACLS for Nurse", "ACLS for Doctor", "EKG", "KKMN", "PKID", "PPIK", "BONELS", "Code Blue", "PPGD", "UKOM Academy", "Lainnya"];
+var KERJASAMA_PROGRAM = ["BTCLS", "ACLS for Nurse", "ACLS for Doctor", "EKG", "KKMN", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS", "Code Blue", "PPGD", "UKOM Academy", "Lainnya"];
 var KERJASAMA_BENTUK = [
   ["in-house", "In-house di tempat kami", "Tim DEWAMEDIK datang ke institusi Anda"],
   ["kirim-peserta", "Mengirim peserta ke kelas reguler", "Peserta bergabung di jadwal yang sudah berjalan"],

@@ -6464,15 +6464,18 @@ function TabLinkKelas({ beriTahu }) {
   const [edit, setEdit] = useState(null);
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState("");
+  const [setelan, setSetelan] = useState({});
 
-  const kosong = { slug: "", judul: "", subjudul: "", kelas_id: [], aktif: true, wa_grup: "" };
+  const kosong = { slug: "", judul: "", subjudul: "", kelas_id: [], aktif: true, wa_grup: "", teks_promosi: "", _manual: false };
 
   async function muat() {
-    const [a, b] = await Promise.all([
+    const [a, b, c] = await Promise.all([
       SB.from("kampanye").select("*").order("dibuat", { ascending: false }),
-      SB.from("pelatihan").select("id,judul,jenis,lokasi,tanggal_mulai,tanggal_selesai,status")
-        .order("tanggal_mulai", { ascending: false }).limit(200)
+      SB.from("pelatihan").select("id,judul,jenis,lokasi,kota,format,harga,tanggal_mulai,tanggal_selesai,status")
+        .order("tanggal_mulai", { ascending: false }).limit(200),
+      SB.from("pengaturan").select("rek_bank,rek_nomor,rek_atas_nama,dp_nominal").eq("id", 1).single()
     ]);
+    if (c && !c.error && c.data) setSetelan(c.data);
     if (a.error) return beriTahu("Gagal memuat: " + a.error.message);
     setBaris(a.data || []);
     setKelas(b.error ? [] : b.data || []);
@@ -6504,6 +6507,67 @@ function TabLinkKelas({ beriTahu }) {
     });
   }
 
+  /* Teks promosi otomatis dari isi link kelas: jadwal, metode, biaya,
+     booking seat, dan rekening resmi. Sesuai SE Kemenkes 2692/2026:
+     tanpa kata promo/diskon/voucher dan tanpa nomor SKP. Pengurus tetap
+     bisa menyuntingnya sebelum disalin. */
+  function buatPromosi(e) {
+    const slug = rapikanSlug(e.slug) || "nama-alamat";
+    const dipilih = kelas.filter(k => (e.kelas_id || []).indexOf(k.id) > -1)
+      .sort((a, b) => String(a.tanggal_mulai || "").localeCompare(String(b.tanggal_mulai || "")));
+    const b = [];
+    b.push("*" + (String(e.judul || "").trim() || "Pelatihan Akademia DEWAMEDIK") + "*");
+    if (String(e.subjudul || "").trim()) b.push(String(e.subjudul).trim());
+    b.push("");
+    if (dipilih.length) {
+      b.push(dipilih.length > 1 ? "Pilihan jadwal:" : "Jadwal:");
+      dipilih.forEach(k => {
+        b.push("\u{1F4CC} *" + k.judul + "*");
+        const waktu = tgl(k.tanggal_mulai, k.tanggal_selesai);
+        if (waktu) b.push("    \u{1F4C5} " + waktu);
+        const tempat = [k.lokasi, kotaKelas(k) && String(k.lokasi || "").toLowerCase().indexOf(kotaKelas(k).toLowerCase()) < 0 ? kotaKelas(k) : ""].filter(Boolean).join(", ");
+        if (tempat) b.push("    \u{1F4CD} " + tempat);
+        if (k.format && String(k.format).trim()) b.push("    \u{1F4BB} Metode: " + String(k.format).trim());
+        if (Number(k.harga) > 0) b.push("    \u{1F4B0} Biaya: " + rp(Number(k.harga)));
+      });
+      b.push("");
+    }
+    b.push("Yang Anda dapatkan:");
+    b.push("\u2705 Praktik langsung bersama instruktur berpengalaman");
+    b.push("\u2705 Sertifikat terintegrasi SATUSEHAT SDMK");
+    b.push("\u2705 Diselenggarakan lembaga pelatihan terakreditasi Kemenkes RI");
+    b.push("");
+    const dp = Number(setelan.dp_nominal || 500000);
+    b.push("Pilihan pembayaran:");
+    b.push("\u2022 Bayar penuh sesuai biaya kelas, atau");
+    b.push("\u2022 *Booking seat " + rp(dp) + "* dulu, sisanya dilunasi sebelum kelas dimulai");
+    if (setelan.rek_nomor) {
+      b.push("");
+      b.push("Transfer ke rekening resmi:");
+      b.push("\u{1F3E6} " + [setelan.rek_bank, setelan.rek_nomor].filter(Boolean).join(" "));
+      if (setelan.rek_atas_nama) b.push("a.n. " + setelan.rek_atas_nama);
+      b.push("_Pembayaran hanya ke rekening resmi di atas._");
+    }
+    b.push("");
+    b.push("Daftar dan unggah bukti transfer di:");
+    b.push("\u{1F449} " + alamat(slug));
+    b.push("");
+    b.push("Tempat terbatas, amankan kursi Anda sekarang.");
+    b.push("");
+    b.push("_Akademia DEWAMEDIK_");
+    b.push("_Every Second Counts. Be Ready to Save Lives._");
+    return b.join("\n");
+  }
+
+  function teksPromosiDari(r) {
+    return r.teks_promosi && String(r.teks_promosi).trim() ? r.teks_promosi : buatPromosi(r);
+  }
+
+  function salinTeks(t) {
+    if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => beriTahu("Teks promosi disalin."), () => beriTahu("Gagal menyalin. Blok teksnya lalu salin manual."));
+    else beriTahu("Blok teksnya lalu salin manual.");
+  }
+
   async function simpan() {
     setGalat("");
     const slug = rapikanSlug(edit.slug);
@@ -6517,11 +6581,19 @@ function TabLinkKelas({ beriTahu }) {
       subjudul: edit.subjudul.trim() || null,
       kelas_id: edit.kelas_id,
       aktif: !!edit.aktif,
-      wa_grup: (edit.wa_grup || "").trim() || null
+      wa_grup: (edit.wa_grup || "").trim() || null,
+      /* Kosong = teks dibuat ulang otomatis mengikuti isi link. */
+      teks_promosi: edit._manual && String(edit.teks_promosi || "").trim() ? edit.teks_promosi : null
     };
-    const { error } = edit.id
-      ? await SB.from("kampanye").update(isi).eq("id", edit.id)
-      : await SB.from("kampanye").insert(isi);
+    const kirim = data => edit.id
+      ? SB.from("kampanye").update(data).eq("id", edit.id)
+      : SB.from("kampanye").insert(data);
+    let { error } = await kirim(isi);
+    if (error && /teks_promosi/i.test(error.message || "")) {
+      /* Kolom teks_promosi belum ada di database: simpan tanpa teks. */
+      const { teks_promosi, ...tanpaTeks } = isi;
+      ({ error } = await kirim(tanpaTeks));
+    }
     setSibuk(false);
     if (error) {
       return setGalat(/duplicate|unique/i.test(error.message)
@@ -6628,6 +6700,34 @@ function TabLinkKelas({ beriTahu }) {
                 ))
               ))),
 
+      React.createElement("div", { className: "dm-promosi", style: { marginTop: 18 } },
+        React.createElement(Field, {
+          label: "Teks promosi",
+          hint: edit._manual
+            ? "Sudah Anda sunting. Tekan \u201cIsi ulang otomatis\u201d untuk kembali ke teks bawaan."
+            : "Terisi otomatis dari judul, kelas yang dicentang (jadwal, lokasi, metode, biaya), booking seat, rekening, dan tautan. Boleh disunting langsung di sini."
+        }, React.createElement("textarea", {
+          className: "dm-textarea dm-input",
+          rows: 14,
+          style: { width: "100%", fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" },
+          value: edit._manual ? edit.teks_promosi : buatPromosi(edit),
+          onChange: e => setEdit({ ...edit, teks_promosi: e.target.value, _manual: true })
+        })),
+        React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: -4 } },
+          React.createElement("button", {
+            type: "button", className: "dm-btn-line",
+            onClick: () => salinTeks(edit._manual ? edit.teks_promosi : buatPromosi(edit))
+          }, "Salin teks"),
+          React.createElement("a", {
+            className: "dm-btn-line", style: { textDecoration: "none" },
+            href: "https://wa.me/?text=" + encodeURIComponent(edit._manual ? edit.teks_promosi : buatPromosi(edit)),
+            target: "_blank", rel: "noreferrer"
+          }, "Kirim lewat WhatsApp"),
+          edit._manual ? React.createElement("button", {
+            type: "button", className: "dm-btn-line",
+            onClick: () => setEdit({ ...edit, teks_promosi: "", _manual: false })
+          }, "Isi ulang otomatis") : null)),
+
       React.createElement("label",
         { className: "dm-hint", style: { display: "block", margin: "16px 0 4px", cursor: "pointer" } },
         React.createElement("input", {
@@ -6707,10 +6807,15 @@ function TabLinkKelas({ beriTahu }) {
                           subjudul: r.subjudul || "",
                           kelas_id: (r.kelas_id || []).slice(),
                           aktif: r.aktif,
-                          wa_grup: r.wa_grup || ""
+                          wa_grup: r.wa_grup || "",
+                          teks_promosi: r.teks_promosi || "",
+                          _manual: !!(r.teks_promosi && String(r.teks_promosi).trim())
                         });
                       }
                     }, "Ubah"),
+                    React.createElement("button", {
+                      className: "dm-btn-line", onClick: () => salinTeks(teksPromosiDari(r))
+                    }, "Salin promosi"),
                     React.createElement("button", {
                       className: "dm-btn-line", onClick: () => ubahAktif(r)
                     }, r.aktif ? "Matikan" : "Aktifkan")))

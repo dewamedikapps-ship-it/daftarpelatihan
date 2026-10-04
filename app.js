@@ -6505,6 +6505,92 @@ var KS_BENTUK_LABEL = {
    Halaman yang dibuka tetap halaman pendaftaran yang sama —
    termasuk gerbang biaya — hanya daftar kelasnya yang disaring.
    ============================================================ */
+/* QR code untuk link kelas. Dibuat otomatis di browser dari alamat
+   link; pustakanya diambil dari cdnjs hanya saat tab Link Kelas dibuka.
+   Gambar PNG memuat QR + judul kelas, siap ditempel di flyer atau WA. */
+function muatPustakaQR() {
+  if (window.qrcode) return Promise.resolve(window.qrcode);
+  if (window.__muatQR) return window.__muatQR;
+  window.__muatQR = new Promise((selesai, gagal) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
+    sc.onload = () => window.qrcode ? selesai(window.qrcode) : gagal(new Error("Pustaka QR tidak siap"));
+    sc.onerror = () => { window.__muatQR = null; gagal(new Error("Pustaka QR gagal diunduh")); };
+    document.head.appendChild(sc);
+  });
+  return window.__muatQR;
+}
+
+function QrLink({ url, judul, slug, beriTahu }) {
+  const [src, setSrc] = useState("");
+  const [galat, setGalat] = useState("");
+  useEffect(() => {
+    let batal = false;
+    setGalat("");
+    muatPustakaQR().then(qrcode => {
+      if (batal) return;
+      const qr = qrcode(0, "M");
+      qr.addData(url);
+      qr.make();
+      const n = qr.getModuleCount();
+      const sel = 10, tepi = 4 * sel, lebar = n * sel + tepi * 2, bawah = 70;
+      const c = document.createElement("canvas");
+      c.width = lebar;
+      c.height = lebar + bawah;
+      const g = c.getContext("2d");
+      g.fillStyle = "#FFFFFF";
+      g.fillRect(0, 0, c.width, c.height);
+      g.fillStyle = "#0B1F2A";
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if (qr.isDark(y, x)) g.fillRect(tepi + x * sel, tepi + y * sel, sel, sel);
+      }
+      g.textAlign = "center";
+      g.fillStyle = "#0B1F2A";
+      g.font = "bold 20px Inter, Arial, sans-serif";
+      let t = String(judul || "").trim();
+      while (t.length > 4 && g.measureText(t).width > lebar - 30) t = t.slice(0, -2);
+      if (t !== String(judul || "").trim()) t = t.replace(/\s+\S*$/, "") + "…";
+      g.fillText(t, lebar / 2, lebar + 14);
+      g.font = "15px Inter, Arial, sans-serif";
+      g.fillStyle = "#5F7580";
+      g.fillText("Scan untuk daftar · Akademia DEWAMEDIK", lebar / 2, lebar + 42);
+      setSrc(c.toDataURL("image/png"));
+    }).catch(e => { if (!batal) setGalat(e.message); });
+    return () => { batal = true; };
+  }, [url, judul]);
+
+  async function salinGambar() {
+    try {
+      if (!window.ClipboardItem || !navigator.clipboard) throw new Error("x");
+      const blob = await (await fetch(src)).blob();
+      await navigator.clipboard.write([new window.ClipboardItem({ "image/png": blob })]);
+      beriTahu("Gambar QR disalin. Tempel di WhatsApp atau desain flyer.");
+    } catch (e) {
+      beriTahu("Browser ini belum bisa menyalin gambar. Pakai tombol Unduh QR.");
+    }
+  }
+
+  return React.createElement("div", {
+    className: "dm-qr-link",
+    style: { flex: "0 0 200px", textAlign: "center" }
+  },
+    React.createElement("p", { className: "dm-hint", style: { margin: "0 0 6px", fontWeight: 600 } }, "QR code pendaftaran"),
+    src
+      ? React.createElement("img", {
+          src, alt: "QR code " + judul,
+          style: { width: 180, height: "auto", border: "1px solid var(--line, #D3DEDB)", borderRadius: 10, background: "#fff" }
+        })
+      : React.createElement("p", { className: "dm-hint" }, galat ? "QR gagal dibuat: " + galat : "Membuat QR…"),
+    src ? React.createElement("div", { style: { display: "flex", flexDirection: "column", gap: 6, marginTop: 8 } },
+      React.createElement("a", {
+        className: "dm-btn-line",
+        style: { textDecoration: "none", textAlign: "center" },
+        href: src,
+        download: "QR-" + (slug || "link-kelas") + ".png"
+      }, "Unduh QR (PNG)"),
+      React.createElement("button", { type: "button", className: "dm-btn-line", onClick: salinGambar }, "Salin gambar QR")) : null);
+}
+
 function TabLinkKelas({ beriTahu }) {
   const [baris, setBaris] = useState(null);
   const [kelas, setKelas] = useState([]);
@@ -6819,6 +6905,8 @@ function TabLinkKelas({ beriTahu }) {
     const manual = !!(r.teks_promosi && String(r.teks_promosi).trim());
     return React.createElement("tr", { key: r.id + "-promosi", className: "dm-baris-promosi" },
       React.createElement("td", { colSpan: 5, style: { paddingTop: 0, paddingBottom: 18 } },
+       React.createElement("div", { style: { display: "flex", gap: 18, flexWrap: "wrap", alignItems: "flex-start" } },
+        React.createElement("div", { style: { flex: "1 1 360px", minWidth: 0 } },
         React.createElement("p", { className: "dm-hint", style: { margin: "0 0 6px", fontWeight: 600 } },
           "Teks promosi \u2014 " + r.judul + (manual ? " (sudah disunting)" : " (otomatis)")),
         React.createElement("textarea", {
@@ -6846,7 +6934,8 @@ function TabLinkKelas({ beriTahu }) {
             type: "button", className: "dm-btn-line",
             disabled: simpanTeksId === r.id,
             onClick: () => simpanTeksPromosi(r, "")
-          }, "Isi ulang otomatis") : null)));
+          }, "Isi ulang otomatis") : null)),
+        React.createElement(QrLink, { url: alamat(r.slug), judul: r.judul, slug: r.slug, beriTahu }))));
   }
 
   /* ---------- daftar ---------- */

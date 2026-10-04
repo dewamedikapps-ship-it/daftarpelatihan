@@ -1454,7 +1454,9 @@ function App() {
          karena di situlah layar setel sandi barunya berada. */
       try {
         if (new URLSearchParams(window.location.search).get("pulih") === "1" ||
-            String(window.location.hash || "").indexOf("type=recovery") > -1) setSisi("admin");
+            new URLSearchParams(window.location.search).get("masuk") === "1" ||
+            String(window.location.hash || "").indexOf("type=recovery") > -1 ||
+            String(window.location.hash || "").indexOf("type=magiclink") > -1) setSisi("admin");
       } catch (e) {}
     };
     cek();
@@ -3034,6 +3036,32 @@ function BackOffice({
     setPesanPulih("Kalau alamat itu memang terdaftar, tautan pemulihan sudah dikirim ke sana. Periksa kotak masuk dan folder spam — tautannya berlaku satu jam.");
   }
 
+  /* Masuk lewat email: Supabase mengirim tautan sekali pakai ke
+     alamat akun pengurus. Kata sandi lama tidak berubah dan tidak
+     pernah dikirim. Hanya untuk akun yang sudah terdaftar
+     (shouldCreateUser: false), jadi tidak bisa dipakai membuat akun. */
+  async function kirimTautanMasuk() {
+    const alamat = String(email || "").trim();
+    if (!alamat) {
+      setErr("Isi dulu alamat email Anda di atas, baru tekan Masuk lewat email.");
+      return;
+    }
+    setErr("");
+    setPesanPulih("");
+    setMasuk(true);
+    try {
+      await SB.auth.signInWithOtp({
+        email: alamat,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: location.origin + location.pathname + "?masuk=1"
+        }
+      });
+    } catch (e) {}
+    setMasuk(false);
+    setPesanPulih("Kalau alamat itu terdaftar sebagai pengurus, tautan masuk sudah dikirim ke sana. Buka email itu di perangkat ini lalu klik tautannya — kata sandi Anda tidak berubah. Periksa juga folder spam; tautannya berlaku satu jam.");
+  }
+
   async function simpanSandiPulih() {
     setErr("");
     setMasuk(true);
@@ -3075,6 +3103,9 @@ function BackOffice({
       data
     }) => {
       setSesi(data.session);
+      try {
+        if (data.session && new URLSearchParams(location.search).get("masuk") === "1") history.replaceState(null, "", location.pathname + "#admin");
+      } catch (e) {}
       if (data.session) await periksaLapis();
       setCekSesi(false);
     });
@@ -3237,7 +3268,17 @@ function BackOffice({
     className: "dm-btn",
     onClick: login,
     disabled: masuk
-  }, masuk ? "Memeriksa…" : "Masuk")));
+  }, masuk ? "Memeriksa…" : "Masuk")), /*#__PURE__*/React.createElement("div", {
+    style: { borderTop: "1px solid var(--line, #D3DEDB)", marginTop: 16, paddingTop: 14, textAlign: "center" }
+  }, /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint",
+    style: { margin: "0 0 8px" }
+  }, "Lupa kata sandi tapi tidak mau menggantinya?"), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "dm-btn-line",
+    onClick: kirimTautanMasuk,
+    disabled: masuk
+  }, "Masuk lewat email (tanpa kata sandi)")));
   if (perluKode) return /*#__PURE__*/React.createElement("div", {
     className: "dm-card dm-gate"
   }, /*#__PURE__*/React.createElement("h3", null, "Verifikasi dua langkah"), /*#__PURE__*/React.createElement("p", {

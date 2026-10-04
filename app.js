@@ -3066,8 +3066,9 @@ function BackOffice({
     setErr("");
     setMasuk(true);
     try {
-      const { error } = await SB.auth.updateUser({ password: sandiBaru });
+      const { data: hasil, error } = await SB.auth.updateUser({ password: sandiBaru });
       if (error) throw error;
+      await simpanKeBrowser(hasil && hasil.user && hasil.user.email, sandiBaru);
       setSandiBaru("");
       setSandiUlang("");
       setLihatSandi(false);
@@ -3145,6 +3146,7 @@ function BackOffice({
     });
     setMasuk(false);
     if (error) setErr("Email atau kata sandi salah.");
+    else simpanKeBrowser(email.trim(), sandi);
   }
   async function kirimKode() {
     setErr("");
@@ -3240,6 +3242,8 @@ function BackOffice({
   }, /*#__PURE__*/React.createElement("input", {
     className: "dm-input",
     type: "email",
+    name: "username",
+    autoComplete: "username",
     value: email,
     onChange: e => setEmail(e.target.value),
     placeholder: "admin@dewamedik911.com"
@@ -3248,6 +3252,8 @@ function BackOffice({
   }, /*#__PURE__*/React.createElement("input", {
     className: "dm-input",
     type: "password",
+    name: "password",
+    autoComplete: "current-password",
     value: sandi,
     onChange: e => setSandi(e.target.value),
     onKeyDown: e => e.key === "Enter" && login()
@@ -6506,6 +6512,9 @@ function TabLinkKelas({ beriTahu }) {
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState("");
   const [setelan, setSetelan] = useState({});
+  /* Suntingan teks promosi langsung di daftar, per link: { id: teks }. */
+  const [draf, setDraf] = useState({});
+  const [simpanTeksId, setSimpanTeksId] = useState(null);
 
   const kosong = { slug: "", judul: "", subjudul: "", kelas_id: [], aktif: true, wa_grup: "", teks_promosi: "", _manual: false };
 
@@ -6607,6 +6616,17 @@ function TabLinkKelas({ beriTahu }) {
   function salinTeks(t) {
     if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => beriTahu("Teks promosi disalin."), () => beriTahu("Gagal menyalin. Blok teksnya lalu salin manual."));
     else beriTahu("Blok teksnya lalu salin manual.");
+  }
+
+  async function simpanTeksPromosi(r, teks) {
+    setSimpanTeksId(r.id);
+    const isi = String(teks || "").trim() ? teks : null;
+    const { error } = await SB.from("kampanye").update({ teks_promosi: isi }).eq("id", r.id);
+    setSimpanTeksId(null);
+    if (error) return beriTahu("Gagal menyimpan teks: " + error.message);
+    setDraf(d => { const n = { ...d }; delete n[r.id]; return n; });
+    beriTahu(isi ? "Teks promosi tersimpan." : "Teks promosi kembali otomatis.");
+    muat();
   }
 
   async function simpan() {
@@ -6790,6 +6810,45 @@ function TabLinkKelas({ beriTahu }) {
         }, sibuk ? "Menyimpan…" : "Simpan")));
   }
 
+  /* Kolom teks promosi di bawah tiap link: langsung terlihat, bisa
+     disunting, disalin, atau dikirim ke WhatsApp tanpa membuka formulir. */
+  function barisPromosi(r) {
+    const tersimpan = teksPromosiDari(r);
+    const diubah = Object.prototype.hasOwnProperty.call(draf, r.id);
+    const teks = diubah ? draf[r.id] : tersimpan;
+    const manual = !!(r.teks_promosi && String(r.teks_promosi).trim());
+    return React.createElement("tr", { key: r.id + "-promosi", className: "dm-baris-promosi" },
+      React.createElement("td", { colSpan: 5, style: { paddingTop: 0, paddingBottom: 18 } },
+        React.createElement("p", { className: "dm-hint", style: { margin: "0 0 6px", fontWeight: 600 } },
+          "Teks promosi \u2014 " + r.judul + (manual ? " (sudah disunting)" : " (otomatis)")),
+        React.createElement("textarea", {
+          className: "dm-textarea dm-input",
+          rows: 10,
+          style: { width: "100%", fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" },
+          value: teks,
+          onChange: e => { const v = e.target.value; setDraf(d => ({ ...d, [r.id]: v })); }
+        }),
+        React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },
+          React.createElement("button", {
+            type: "button", className: "dm-btn", onClick: () => salinTeks(teks)
+          }, "Salin teks promosi"),
+          React.createElement("a", {
+            className: "dm-btn-line", style: { textDecoration: "none" },
+            href: "https://wa.me/?text=" + encodeURIComponent(teks),
+            target: "_blank", rel: "noreferrer"
+          }, "Kirim lewat WhatsApp"),
+          diubah ? React.createElement("button", {
+            type: "button", className: "dm-btn-line",
+            disabled: simpanTeksId === r.id,
+            onClick: () => simpanTeksPromosi(r, teks)
+          }, simpanTeksId === r.id ? "Menyimpan\u2026" : "Simpan perubahan teks") : null,
+          (diubah || manual) ? React.createElement("button", {
+            type: "button", className: "dm-btn-line",
+            disabled: simpanTeksId === r.id,
+            onClick: () => simpanTeksPromosi(r, "")
+          }, "Isi ulang otomatis") : null)));
+  }
+
   /* ---------- daftar ---------- */
   return React.createElement("section", { className: "dm-card" },
     React.createElement("div", { className: "dm-toolbar" },
@@ -6817,7 +6876,7 @@ function TabLinkKelas({ beriTahu }) {
                 React.createElement("th", null, "Status"),
                 React.createElement("th", null, ""))),
             React.createElement("tbody", null,
-              baris.map(r => React.createElement("tr", { key: r.id },
+              baris.map(r => [React.createElement("tr", { key: r.id },
                 React.createElement("td", null, React.createElement("b", null, r.judul)),
                 React.createElement("td", { className: "dm-mono" }, "?k=" + r.slug),
                 React.createElement("td", null, (r.kelas_id || []).length),
@@ -6860,7 +6919,21 @@ function TabLinkKelas({ beriTahu }) {
                     React.createElement("button", {
                       className: "dm-btn-line", onClick: () => ubahAktif(r)
                     }, r.aktif ? "Matikan" : "Aktifkan")))
-              ))))));
+              ), barisPromosi(r)])))));
+}
+
+/* Minta browser (Chrome/Safari) menyimpan atau memperbarui kata sandi
+   yang baru dipasang, supaya kata sandi aktif selalu tercatat di
+   pengelola sandi perangkat. Kata sandi tidak dikirim ke mana pun. */
+async function simpanKeBrowser(alamat, sandi) {
+  try {
+    if (!alamat || !sandi || !window.PasswordCredential || !navigator.credentials) return;
+    await navigator.credentials.store(new window.PasswordCredential({
+      id: alamat,
+      password: sandi,
+      name: "Back office DEWAMEDIK"
+    }));
+  } catch (e) {}
 }
 
 function TabKeamanan({ beriTahu }) {
@@ -6951,12 +7024,13 @@ function TabKeamanan({ beriTahu }) {
     setSandiGalat("");
     setSandiSibuk(true);
     try {
-      const { error } = await SB.auth.updateUser({ password: sandiBaru });
+      const { data: hasil, error } = await SB.auth.updateUser({ password: sandiBaru });
       if (error) throw error;
+      await simpanKeBrowser(hasil && hasil.user && hasil.user.email, sandiBaru);
       setSandiBaru("");
       setSandiUlang("");
       setLihatSandi(false);
-      beriTahu("Kata sandi baru tersimpan. Pakai yang ini saat masuk berikutnya.");
+      beriTahu("Kata sandi baru tersimpan. Bila browser menawarkan \u201cSimpan/Perbarui sandi\u201d, pilih Simpan agar tidak lupa.");
     } catch (e) {
       setSandiGalat("Gagal menyimpan: " + e.message);
     }

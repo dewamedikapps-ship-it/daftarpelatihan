@@ -434,6 +434,7 @@ const TTD_INVOICE = "ttd-dmn.jpg";
 const JENIS = ["BTCLS", "ACLS", "KKMN", "EKG", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS"];
 const PROFESI = ["Perawat", "Bidan", "Dokter", "Mahasiswa Keperawatan", "Lainnya"];
 const PLATARAN = ["Sudah punya", "Belum punya", "Belum tahu"];
+const UKURAN_TSHIRT = ["S", "M", "L", "XL", "XXL"];
 
 /* Data tetap pada invoice — tidak diubah lewat back office. */
 const KOP = {
@@ -1605,6 +1606,7 @@ function Pendaftaran({
     instansi: "",
     kota: "",
     profesi: "Perawat",
+    ukuran_tshirt: "",
     plataran: ""
   });
   const [berkas, setBerkas] = useState({
@@ -1844,6 +1846,7 @@ function Pendaftaran({
     if (!/^[0-9+\-\s]{8,}$/.test(data.hp)) s.hp = "Tulis nomor WhatsApp yang aktif.";
     if (!data.instansi.trim()) s.instansi = "Tulis asal instansi atau kampus.";
     if (!data.kota.trim()) s.kota = "Tulis kota atau kabupaten asal Anda.";
+    if (!data.ukuran_tshirt) s.ukuran_tshirt = "Pilih ukuran T-shirt Anda.";
     if (!data.plataran) s.plataran = "Pilih salah satu.";
     if (!berkas.foto) s.foto = "Pas foto belum diunggah.";
     if (!berkas.transfer) s.transfer = "Foto bukti transfer belum diunggah.";
@@ -1892,6 +1895,21 @@ function Pendaftaran({
       });
       if (error) throw new Error(error.message);
       if (!h || !h.ok) throw new Error(h && h.pesan || "Pendaftaran gagal dikirim.");
+
+      /* Ukuran T-shirt disimpan lewat panggilan terpisah supaya fungsi
+         kirim_pendaftaran tidak perlu diubah. Kalau langkah ini gagal,
+         pendaftaran tetap sah — ukuran bisa dilengkapi dari back office. */
+      try {
+        const {
+          error: galatTshirt
+        } = await SB.rpc("simpan_ukuran_tshirt", {
+          p_nomor: h.nomor,
+          p_ukuran: data.ukuran_tshirt
+        });
+        if (galatTshirt) console.warn("Ukuran T-shirt belum tersimpan:", galatTshirt.message);
+      } catch (eT) {
+        console.warn("Ukuran T-shirt belum tersimpan:", eT);
+      }
 
       if (window.dmCatatAsal) window.dmCatatAsal(h.nomor, null);
       setHasil({
@@ -2449,7 +2467,23 @@ function Pendaftaran({
     })
   }, PROFESI.map(p => /*#__PURE__*/React.createElement("option", {
     key: p
-  }, p)))))), /*#__PURE__*/React.createElement("div", {
+  }, p)))), /*#__PURE__*/React.createElement(Field, {
+    label: "Ukuran T-shirt",
+    hint: "T-shirt pelatihan dibagikan saat hari pertama.",
+    salah: salah.ukuran_tshirt
+  }, /*#__PURE__*/React.createElement("select", {
+    className: "dm-input",
+    value: data.ukuran_tshirt,
+    onChange: e => setData({
+      ...data,
+      ukuran_tshirt: e.target.value
+    })
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Pilih ukuran"), UKURAN_TSHIRT.map(u => /*#__PURE__*/React.createElement("option", {
+    key: u,
+    value: u
+  }, u)))))), /*#__PURE__*/React.createElement("div", {
     className: "dm-kelompok"
   }, /*#__PURE__*/React.createElement("p", {
     className: "dm-kelompok-judul"
@@ -3363,6 +3397,114 @@ function BackOffice({
     beriTahu: beriTahu
   }));
 }
+/* Rekap jumlah T-shirt per ukuran, mengikuti baris yang sedang tampil
+   (ikut filter status dan pencarian) supaya bisa dipakai memesan T-shirt. */
+function RekapTshirt({
+  baris
+}) {
+  const daftar = baris || [];
+  if (!daftar.length) return null;
+  const hitung = {};
+  UKURAN_TSHIRT.forEach(function (u) {
+    hitung[u] = 0;
+  });
+  var belum = 0;
+  daftar.forEach(function (r) {
+    var u = String(r.ukuran_tshirt || "").toUpperCase().trim();
+    if (hitung[u] === undefined) belum++;else hitung[u]++;
+  });
+  const gBungkus = {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: 8,
+    margin: "0 0 14px",
+    padding: "11px 13px",
+    background: "var(--dm-surface-soft,#F8FAFA)",
+    border: "1px solid var(--dm-border,#DDE6E8)",
+    borderRadius: "var(--dm-radius-sm,10px)"
+  };
+  const gJudul = {
+    fontSize: 12.5,
+    fontWeight: 700,
+    color: "var(--dm-text,#102A33)",
+    marginRight: 2
+  };
+  const gChip = {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 6,
+    background: "#fff",
+    border: "1px solid var(--dm-border,#DDE6E8)",
+    borderRadius: 999,
+    padding: "4px 11px",
+    fontSize: 12.5,
+    fontWeight: 700,
+    color: "var(--dm-text,#102A33)"
+  };
+  const gChipKosong = Object.assign({}, gChip, {
+    borderStyle: "dashed",
+    color: "var(--dm-text-secondary,#62747B)",
+    fontWeight: 600
+  });
+  const gSel = {
+    display: "inline-block",
+    minWidth: 30,
+    textAlign: "center",
+    background: "var(--dm-navy-800,#16304C)",
+    color: "#fff",
+    borderRadius: 6,
+    padding: "2px 7px",
+    fontSize: 11.5,
+    fontWeight: 700,
+    letterSpacing: ".04em",
+    fontStyle: "normal"
+  };
+  const gAngka = {
+    fontWeight: 600,
+    color: "var(--dm-text-secondary,#62747B)"
+  };
+  return /*#__PURE__*/React.createElement("div", {
+    style: gBungkus
+  }, /*#__PURE__*/React.createElement("b", {
+    style: gJudul
+  }, "T-shirt (", daftar.length, " pendaftar):"), UKURAN_TSHIRT.map(function (u) {
+    return /*#__PURE__*/React.createElement("span", {
+      style: gChip,
+      key: u
+    }, /*#__PURE__*/React.createElement("i", {
+      style: gSel
+    }, u), /*#__PURE__*/React.createElement("span", {
+      style: gAngka
+    }, hitung[u]));
+  }), belum ? /*#__PURE__*/React.createElement("span", {
+    style: gChipKosong
+  }, "Belum diisi ", belum) : null);
+}
+
+/* Lencana ukuran pada sel tabel pendaftar. */
+function SelTshirt({
+  nilai
+}) {
+  const ada = !!nilai;
+  return /*#__PURE__*/React.createElement("i", {
+    style: {
+      display: "inline-block",
+      minWidth: 30,
+      textAlign: "center",
+      borderRadius: 6,
+      padding: "2px 7px",
+      fontSize: 11.5,
+      fontWeight: ada ? 700 : 600,
+      fontStyle: "normal",
+      letterSpacing: ".04em",
+      background: ada ? "var(--dm-navy-800,#16304C)" : "transparent",
+      color: ada ? "#fff" : "var(--dm-text-secondary,#62747B)",
+      border: ada ? "1px solid transparent" : "1px dashed var(--dm-border,#DDE6E8)"
+    }
+  }, nilai || "—");
+}
+
 function TabPendaftar({
   beriTahu,
   peran
@@ -3503,7 +3645,7 @@ function TabPendaftar({
   function unduhCsv() {
     const data = tampil;
     if (!data.length) return beriTahu("Tidak ada data untuk diekspor.");
-    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Kota/kabupaten asal", "Profesi", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Kota pelaksanaan", "Jadwal", "Harga awal", "Kode member", "Persen Member Benefit", "Member Benefit", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
+    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Kota/kabupaten asal", "Profesi", "Ukuran T-shirt", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Kota pelaksanaan", "Jadwal", "Harga awal", "Kode member", "Persen Member Benefit", "Member Benefit", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
     const tglRingkas = v => {
       if (!v) return "";
       const d = new Date(v);
@@ -3521,7 +3663,7 @@ function TabPendaftar({
     // apostrof agar NIK tidak berubah jadi notasi ilmiah
     r.email, "'" + (r.hp || ""),
     // agar angka 0 di depan tidak hilang
-    r.instansi, r.kota || "", r.profesi, r.plataran, r.pelatihan ? r.pelatihan.judul : "", kotaKelas(r.pelatihan), r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "", Number(r.harga_awal) || 0, r.voucher_kode || "", Number(r.persen) || 0, Number(r.diskon) || 0, Number(r.total) || 0, r.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh", Number(r.jumlah_bayar != null ? r.jumlah_bayar : r.total) || 0, Number(r.sisa_bayar) || 0, r.minta_invoice ? "Ya" : "Tidak", r.invoice_instansi || "", r.kampanye || "", statusTeks[r.status] || r.status, r.catatan || ""]);
+    r.instansi, r.kota || "", r.profesi, r.ukuran_tshirt || "", r.plataran, r.pelatihan ? r.pelatihan.judul : "", kotaKelas(r.pelatihan), r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "", Number(r.harga_awal) || 0, r.voucher_kode || "", Number(r.persen) || 0, Number(r.diskon) || 0, Number(r.total) || 0, r.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh", Number(r.jumlah_bayar != null ? r.jumlah_bayar : r.total) || 0, Number(r.sisa_bayar) || 0, r.minta_invoice ? "Ya" : "Tidak", r.invoice_instansi || "", r.kampanye || "", statusTeks[r.status] || r.status, r.catatan || ""]);
     const sel = v => {
       if (typeof v === "number") return String(v); // angka polos, siap dijumlahkan
       const t = String(v ?? "");
@@ -3647,13 +3789,15 @@ function TabPendaftar({
   }, /*#__PURE__*/React.createElement(Ikon, {
     nama: "papan",
     ukuran: 15
-  }), " Unduh Excel (CSV)")), tampil.length === 0 ? /*#__PURE__*/React.createElement("p", {
+  }), " Unduh Excel (CSV)")), /*#__PURE__*/React.createElement(RekapTshirt, {
+    baris: tampil
+  }), tampil.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "dm-kosong"
   }, "Belum ada pendaftar yang cocok.") : /*#__PURE__*/React.createElement("div", {
     className: "dm-tabel-bungkus"
   }, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No. registrasi"), /*#__PURE__*/React.createElement("th", null, "Peserta"), /*#__PURE__*/React.createElement("th", null, "Pelatihan"), /*#__PURE__*/React.createElement("th", null, "Kode member"), /*#__PURE__*/React.createElement("th", null, "Total"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, tampil.map(r => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No. registrasi"), /*#__PURE__*/React.createElement("th", null, "Peserta"), /*#__PURE__*/React.createElement("th", null, "Pelatihan"), /*#__PURE__*/React.createElement("th", null, "T-shirt"), /*#__PURE__*/React.createElement("th", null, "Kode member"), /*#__PURE__*/React.createElement("th", null, "Total"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, tampil.map(r => /*#__PURE__*/React.createElement("tr", {
     key: r.id,
     className: mati(r) ? "dm-baris-mati" : null
   }, /*#__PURE__*/React.createElement("td", {
@@ -3674,7 +3818,9 @@ function TabPendaftar({
     className: "dm-hint"
   }, rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai)) : null, kotaKelas(r.pelatihan) ? /*#__PURE__*/React.createElement("span", {
     className: "dm-kota-kelas"
-  }, kotaKelas(r.pelatihan)) : null), /*#__PURE__*/React.createElement("td", {
+  }, kotaKelas(r.pelatihan)) : null), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(SelTshirt, {
+    nilai: r.ukuran_tshirt
+  })), /*#__PURE__*/React.createElement("td", {
     className: "dm-mono"
   }, r.voucher_kode ? `${r.voucher_kode} (${r.persen}%)` : "—"), /*#__PURE__*/React.createElement("td", {
     className: "dm-mono"
@@ -3715,6 +3861,8 @@ function TabPendaftar({
   }, "Kota / kabupaten"), /*#__PURE__*/React.createElement("p", null, detail.kota || "—")), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, "Profesi"), /*#__PURE__*/React.createElement("p", null, detail.profesi), /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint"
+  }, "Ukuran T-shirt"), /*#__PURE__*/React.createElement("p", null, detail.ukuran_tshirt || "—"), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, "Akun Plataran Sehat / SATUSEHAT SDMK"), /*#__PURE__*/React.createElement("p", null, detail.plataran), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"

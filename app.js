@@ -367,6 +367,20 @@ window.dmCatatAsal = async function (nomor, wa) {
 /* Foto latar hero: dokumentasi asli pelatihan DEWAMEDIK. */
 const HERO_FOTO = "hero-pelatihan.jpg";
 
+/* Tanggal dan jam pendaftaran masuk, waktu Indonesia Barat.
+   Contoh: "6 Okt 2026 · 14.32 WIB". */
+function waktuDaftar(v) {
+  try {
+    const d = new Date(v);
+    if (isNaN(d)) return "";
+    const tgl = d.toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+    const jam = d.toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: "2-digit", minute: "2-digit", hour12: false });
+    return tgl + " \u00b7 " + jam + " WIB";
+  } catch (e) {
+    return "";
+  }
+}
+
 /* Kota pelaksanaan kelas. Diisi pengurus di tab Jadwal; bila masih
    kosong, ditebak dari judul atau lokasi agar data lama tetap terpilah. */
 const KOTA_DIKENAL = [["Cirebon", /cirebon/i], ["Semarang", /semarang/i], ["Tangerang", /tangerang|\btng\b/i], ["Yogyakarta", /yogya|jogja/i], ["Surakarta", /surakarta|\bsolo\b/i], ["Tasikmalaya", /tasik/i], ["Pekalongan", /pekalongan/i], ["Depok", /depok/i], ["Banyuwangi", /banyuwangi/i], ["Palu", /\bpalu\b/i], ["Tanjungpinang", /tanjung ?pinang|\btjp\b/i], ["Jakarta", /jakarta/i], ["Bandung", /bandung/i]];
@@ -3802,7 +3816,11 @@ function TabPendaftar({
     className: mati(r) ? "dm-baris-mati" : null
   }, /*#__PURE__*/React.createElement("td", {
     className: "dm-mono"
-  }, r.nomor), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", null, r.nama), mati(r) ? /*#__PURE__*/React.createElement("span", {
+  }, r.nomor, r.dibuat ? /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint dm-waktu-daftar",
+    style: { fontFamily: "Inter, system-ui, sans-serif", margin: "4px 0 0", whiteSpace: "nowrap" },
+    title: "Waktu pendaftaran masuk"
+  }, waktuDaftar(r.dibuat)) : null), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("b", null, r.nama), mati(r) ? /*#__PURE__*/React.createElement("span", {
     className: "dm-tanda-mati"
   }, r.status === "refund" ? "REFUND" : "BATAL") : null, r.minta_invoice ? /*#__PURE__*/React.createElement("span", {
     className: "dm-tanda-invoice"

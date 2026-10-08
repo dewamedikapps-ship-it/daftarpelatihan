@@ -448,7 +448,46 @@ const TTD_INVOICE = "ttd-dmn.jpg";
 const JENIS = ["BTCLS", "ACLS", "KKMN", "EKG", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS"];
 const PROFESI = ["Perawat", "Bidan", "Dokter", "Mahasiswa Keperawatan", "Lainnya"];
 const PLATARAN = ["Sudah punya", "Belum punya", "Belum tahu"];
-const UKURAN_TSHIRT = ["S", "M", "L", "XL", "XXL"];
+const UKURAN_TSHIRT = ["S", "M", "L", "XL", "XXL", "XXXL"];
+/* Ukuran badan T-shirt dalam cm: [lebar, panjang atasan, lingkar dada]. */
+const UKURAN_TSHIRT_CM = {
+  S: [41, 64, 82],
+  M: [44, 66, 88],
+  L: [48, 68, 96],
+  XL: [51, 70, 102],
+  XXL: [55, 72, 110],
+  XXXL: [59, 77, 118]
+};
+function labelUkuran(u) {
+  const c = UKURAN_TSHIRT_CM[u];
+  return c ? u + " \u2014 lebar " + c[0] + " \u00b7 panjang " + c[1] + " \u00b7 lingkar dada " + c[2] + " cm" : u;
+}
+/* Tabel panduan ukuran di formulir. Baris bisa diketuk untuk memilih. */
+function PanduanUkuran({ pilih, onPilih }) {
+  const sel = { padding: "7px 8px", textAlign: "center", borderBottom: "1px solid var(--line,#D3DEDB)" };
+  return React.createElement("div", { className: "dm-panduan-ukuran", style: { margin: "-4px 0 16px" } },
+    React.createElement("p", { className: "dm-hint", style: { margin: "0 0 6px", fontWeight: 600 } },
+      "Panduan ukuran (cm) \u2014 ketuk baris untuk memilih"),
+    React.createElement("div", { style: { overflowX: "auto", border: "1px solid var(--line,#D3DEDB)", borderRadius: 10, background: "#fff" } },
+      React.createElement("table", { style: { width: "100%", borderCollapse: "collapse", fontSize: 13.5 } },
+        React.createElement("thead", null, React.createElement("tr", { style: { background: "#F6F8F8" } },
+          ["Ukuran", "Lebar", "Panjang atasan", "Lingkar dada"].map(h => React.createElement("th", { key: h, style: { ...sel, fontWeight: 700 } }, h)))),
+        React.createElement("tbody", null, UKURAN_TSHIRT.map(u => {
+          const c = UKURAN_TSHIRT_CM[u] || [];
+          const on = pilih === u;
+          return React.createElement("tr", {
+            key: u,
+            onClick: () => onPilih(u),
+            style: { cursor: "pointer", background: on ? "#E7F4F2" : undefined, fontWeight: on ? 700 : 400 }
+          },
+            React.createElement("td", { style: { ...sel, fontWeight: 700, whiteSpace: "nowrap" } }, (on ? "\u2713 " : "") + u),
+            React.createElement("td", { style: sel }, c[0]),
+            React.createElement("td", { style: sel }, c[1]),
+            React.createElement("td", { style: sel }, c[2]));
+        })))),
+    React.createElement("p", { className: "dm-hint", style: { margin: "6px 0 0" } },
+      "Tips: ukur lingkar dada Anda, lalu pilih ukuran yang sama atau sedikit lebih besar."));
+}
 
 /* Data tetap pada invoice — tidak diubah lewat back office. */
 const KOP = {
@@ -2497,7 +2536,13 @@ function Pendaftaran({
   }, "Pilih ukuran"), UKURAN_TSHIRT.map(u => /*#__PURE__*/React.createElement("option", {
     key: u,
     value: u
-  }, u)))))), /*#__PURE__*/React.createElement("div", {
+  }, labelUkuran(u))))), /*#__PURE__*/React.createElement(PanduanUkuran, {
+    pilih: data.ukuran_tshirt,
+    onPilih: u => setData({
+      ...data,
+      ukuran_tshirt: u
+    })
+  }))), /*#__PURE__*/React.createElement("div", {
     className: "dm-kelompok"
   }, /*#__PURE__*/React.createElement("p", {
     className: "dm-kelompok-judul"

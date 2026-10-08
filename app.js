@@ -367,6 +367,20 @@ window.dmCatatAsal = async function (nomor, wa) {
 /* Foto latar hero: dokumentasi asli pelatihan DEWAMEDIK. */
 const HERO_FOTO = "hero-pelatihan.jpg";
 
+/* Pustaka Excel (SheetJS) diambil hanya saat tombol unduh ditekan. */
+function muatPustakaXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (window.__muatXLSX) return window.__muatXLSX;
+  window.__muatXLSX = new Promise((selesai, gagal) => {
+    const sc = document.createElement("script");
+    sc.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+    sc.onload = () => window.XLSX ? selesai(window.XLSX) : gagal(new Error("Pustaka Excel tidak siap"));
+    sc.onerror = () => { window.__muatXLSX = null; gagal(new Error("Pustaka Excel gagal diunduh")); };
+    document.head.appendChild(sc);
+  });
+  return window.__muatXLSX;
+}
+
 /* Tanggal dan jam pendaftaran masuk, waktu Indonesia Barat.
    Contoh: "6 Okt 2026 · 14.32 WIB". */
 function waktuDaftar(v) {
@@ -3701,7 +3715,7 @@ function TabPendaftar({
      pemisah titik koma (standar Excel Indonesia), penanda UTF-8 agar
      huruf beraksen tidak rusak, dan angka ditulis polos tanpa "Rp"
      supaya bisa langsung dijumlahkan. */
-  function unduhCsv() {
+  async function unduhCsv() {
     const data = tampil;
     if (!data.length) return beriTahu("Tidak ada data untuk diekspor.");
     const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Kota/kabupaten asal", "Profesi", "Ukuran T-shirt", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Kota pelaksanaan", "Jadwal", "Harga awal", "Kode member", "Persen Member Benefit", "Member Benefit", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
@@ -3736,6 +3750,42 @@ function TabPendaftar({
     const p = x => String(x).padStart(2, "0");
     const labelBerkas = String(labelPilihan || "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     const namaBerkas = `Pendaftar-DEWAMEDIK-${labelBerkas ? labelBerkas + "-" : ""}${hariIni.getFullYear()}${p(hariIni.getMonth() + 1)}${p(hariIni.getDate())}.csv`;
+
+    /* Berkas Microsoft Excel (.xlsx) asli. NIK dan nomor WA disimpan
+       sebagai teks agar angka 0 di depan dan digit akhir tidak hilang;
+       nominal uang tetap angka supaya bisa dijumlahkan. Bila pustaka
+       Excel gagal dimuat, tetap jatuh ke CSV di bawah. */
+    try {
+      const XLSX = await muatPustakaXLSX();
+      const bersih = v => typeof v === "string" && v.charAt(0) === "'" ? v.slice(1) : v;
+      const judul = pakai.map(i => head[i]);
+      const barisX = isi.map(b => pakai.map(i => {
+        const v = bersih(b[i]);
+        return v === null || v === undefined ? "" : v;
+      }));
+      const ws = XLSX.utils.aoa_to_sheet([judul, ...barisX]);
+      judul.forEach((h, c) => {
+        if (h !== "NIK" && h !== "WhatsApp") return;
+        for (let r = 1; r <= barisX.length; r++) {
+          const ref = XLSX.utils.encode_cell({ r, c });
+          if (ws[ref]) { ws[ref].t = "s"; ws[ref].v = String(ws[ref].v); ws[ref].z = "@"; }
+        }
+      });
+      ws["!cols"] = judul.map((h, c) => {
+        let lebar = String(h).length;
+        barisX.forEach(b => { lebar = Math.max(lebar, String(b[c] ?? "").length); });
+        return { wch: Math.min(Math.max(lebar + 2, 8), 48) };
+      });
+      ws["!autofilter"] = { ref: XLSX.utils.encode_range({ s: { r: 0, c: 0 }, e: { r: barisX.length, c: judul.length - 1 } }) };
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pendaftar");
+      const namaXlsx = namaBerkas.replace(/\.csv$/, ".xlsx");
+      XLSX.writeFile(wb, namaXlsx);
+      beriTahu(`${data.length} baris diunduh sebagai ${namaXlsx}`);
+      return;
+    } catch (e) {
+      console.warn("Unduh Excel gagal, memakai CSV:", e);
+    }
 
     // \uFEFF adalah penanda UTF-8 yang dibaca Excel
     const blob = new Blob(["\uFEFF" + teks], {
@@ -3848,7 +3898,7 @@ function TabPendaftar({
   }, /*#__PURE__*/React.createElement(Ikon, {
     nama: "papan",
     ukuran: 15
-  }), " Unduh Excel (CSV)")), /*#__PURE__*/React.createElement(RekapTshirt, {
+  }), " Unduh Excel")), /*#__PURE__*/React.createElement(RekapTshirt, {
     baris: tampil
   }), tampil.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "dm-kosong"

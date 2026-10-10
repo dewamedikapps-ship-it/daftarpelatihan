@@ -1,0 +1,16 @@
+{
+  "name": "Pendaftaran Pelatihan - Akademia DEWAMEDIK",
+  "short_name": "DEWAMEDIK",
+  "description": "Pendaftaran pelatihan BTCLS, ACLS, dan pelatihan kesehatan lainnya di Akademia DEWAMEDIK.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0E2036",
+  "theme_color": "#0E2036",
+  "lang": "id",
+  "icons": [
+    { "src": "ikon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "ikon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "ikon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

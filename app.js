@@ -237,8 +237,9 @@ window.dmCatatAsal = async function (nomor, wa) {
     document.head.appendChild(g);
   }
 
-  window.dmMintaBiaya = function () {
+  window.dmMintaBiaya = function (kelasDiklik) {
     if (sedang) return;
+    var idKelas = kelasDiklik && kelasDiklik.id ? kelasDiklik.id : null;
     sedang = true;
     gaya();
 
@@ -339,6 +340,11 @@ window.dmCatatAsal = async function (nomor, wa) {
         var kt = (kota.value || "").trim();
         if (kt) {
           try { await SB.rpc("catat_kota_prospek", { p_wa: wn, p_kota: kt }); } catch (e) {}
+        }
+        /* Catat kelas yang diklik sebelum biaya dibuka, supaya di back
+           office terlihat orang ini tertarik kelas apa dan di kota mana. */
+        if (idKelas) {
+          try { await SB.rpc("catat_kelas_prospek", { p_wa: wn, p_pelatihan: idKelas }); } catch (e) {}
         }
         location.reload();
       } catch (e) {
@@ -2390,16 +2396,16 @@ function Pendaftaran({
     }, /*#__PURE__*/React.createElement("small", null, "Biaya pelatihan"), t.harga == null ? React.createElement("button", {
       type: "button",
       className: "dm-buka-biaya",
-      onClick: function (e) { e.stopPropagation(); window.dmMintaBiaya(); }
+      onClick: function (e) { e.stopPropagation(); window.dmMintaBiaya(t); }
     }, "Lihat biaya") : rp(t.harga))), /*#__PURE__*/React.createElement("div", {
       className: "dm-kelas-aksi"
     }, /*#__PURE__*/React.createElement("button", {
       className: "dm-btn-line",
-      onClick: () => t.harga == null ? window.dmMintaBiaya() : setDetailKelas(t)
+      onClick: () => t.harga == null ? window.dmMintaBiaya(t) : setDetailKelas(t)
     }, "Detail"), /*#__PURE__*/React.createElement("button", {
       className: "dm-btn dm-btn-navy dm-btn-kecil",
       disabled: penuh,
-      onClick: () => t.harga == null ? window.dmMintaBiaya() : pilihKelas(t)
+      onClick: () => t.harga == null ? window.dmMintaBiaya(t) : pilihKelas(t)
     }, penuh ? "Penuh" : terpilih ? "Terpilih" : "Pilih Kelas"))));
   })), salah.kelas ? /*#__PURE__*/React.createElement("p", {
     className: "dm-err"
@@ -7713,7 +7719,7 @@ function TabProspek({ beriTahu, peran }) {
   const kata = cari.trim().toLowerCase();
   const pakai = kata
     ? semua.filter(r => (r.nama + " " + r.whatsapp + " " + (r.email || "") + " " +
-        (r.kampanye || "") + " " + (r.kota || "") + " " + (r.lokasi || "")).toLowerCase().indexOf(kata) > -1)
+        (r.kampanye || "") + " " + (r.kota || "") + " " + (r.lokasi || "") + " " + (r.kelas_dilihat || "")).toLowerCase().indexOf(kata) > -1)
     : semua;
 
   const kini = Date.now();
@@ -7733,8 +7739,8 @@ function TabProspek({ beriTahu, peran }) {
       const t = String(v == null ? "" : v);
       return /[",\n;]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
     };
-    const isi = ["Nama;WhatsApp;Email;Kota ditulis sendiri;Perkiraan dari IP;Asal;Waktu"].concat(
-      semua.map(r => [r.nama, tampilWa(r.whatsapp), r.email || "", r.kota || "",
+    const isi = ["Nama;WhatsApp;Email;Kelas yang diklik;Kota ditulis sendiri;Perkiraan dari IP;Asal;Waktu"].concat(
+      semua.map(r => [r.nama, tampilWa(r.whatsapp), r.email || "", r.kelas_dilihat || "", r.kota || "",
         r.lokasi || "", r.kampanye || "", jam(r.dibuat_pada)].map(sel).join(";"))
     ).join("\r\n");
     simpanBerkas(new Blob(["﻿" + isi], { type: "text/csv;charset=utf-8" }),
@@ -7763,13 +7769,14 @@ function TabProspek({ beriTahu, peran }) {
         Nama: r.nama,
         WhatsApp: tampilWa(r.whatsapp),
         Email: r.email || "",
+        "Kelas yang diklik": r.kelas_dilihat || "",
         "Kota ditulis sendiri": r.kota || "",
         "Perkiraan dari IP": r.lokasi || "",
         Asal: r.kampanye || "",
         Waktu: jam(r.dibuat_pada)
       }));
       const lembar = XLSX.utils.json_to_sheet(baris);
-      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 24 },
+      lembar["!cols"] = [{ wch: 28 }, { wch: 20 }, { wch: 30 }, { wch: 44 }, { wch: 24 },
                          { wch: 34 }, { wch: 20 }, { wch: 22 }];
       const buku = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(buku, lembar, "Pelihat Harga");
@@ -7829,6 +7836,7 @@ function TabProspek({ beriTahu, peran }) {
                 React.createElement("th", null, "Nama"),
                 React.createElement("th", null, "WhatsApp"),
                 React.createElement("th", null, "Email"),
+                React.createElement("th", null, "Kelas diklik"),
                 React.createElement("th", null, "Lokasi"),
                 React.createElement("th", null, "Asal"),
                 React.createElement("th", null, "Waktu"),
@@ -7842,6 +7850,9 @@ function TabProspek({ beriTahu, peran }) {
                 React.createElement("td", null, r.email
                   ? React.createElement("a", { href: "mailto:" + r.email }, r.email)
                   : "—"),
+                React.createElement("td", null, r.kelas_dilihat
+                  ? React.createElement("span", { style: { fontWeight: 600 } }, r.kelas_dilihat)
+                  : React.createElement("span", { className: "dm-hint", title: "Tercatat sejak fitur ini dipasang; data lama belum punya keterangan kelas" }, "\u2014")),
                 React.createElement("td", null, (() => {
                   const l = lokasiBaris(r);
                   if (!l) return React.createElement("span", { className: "dm-hint" },

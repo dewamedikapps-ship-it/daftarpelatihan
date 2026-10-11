@@ -397,11 +397,25 @@ function LencanaBayar({ r }) {
   };
   const penuh = { ...gaya, background: "#E8F6EE", color: "#166534", borderColor: "#B7E2C6" };
   const dp = { ...gaya, background: "#FFF6E5", color: "#8A5A00", borderColor: "#F2D49B" };
-  if (!booking) return React.createElement("span", { style: penuh }, "Bayar penuh");
+  const total = Number(r.total) || 0;
+  const dibayar = r.jumlah_bayar != null ? Number(r.jumlah_bayar) || 0 : total;
+  const baris = (label, nilai, tebal) => React.createElement("p", {
+    className: "dm-hint",
+    style: { margin: "3px 0 0", whiteSpace: "nowrap" }
+  }, label + " ", React.createElement("b", { className: "dm-mono", style: { color: tebal ? "#0B1F2A" : undefined } }, rp(nilai)));
+  if (!booking) return React.createElement("div", null,
+    React.createElement("span", { style: penuh }, "Bayar penuh"),
+    baris("Transfer", dibayar, true));
   return React.createElement("div", null,
     React.createElement("span", { style: dp }, "Booking seat"),
-    React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", whiteSpace: "nowrap" } },
-      sisa > 0 ? "Belum lunas" : "Sudah lunas"));
+    sisa > 0
+      ? React.createElement(React.Fragment, null,
+          baris("DP ditransfer", dibayar, true),
+          baris("Sisa", sisa, false),
+          React.createElement("p", { className: "dm-hint", style: { margin: "3px 0 0", color: "#8A5A00", fontWeight: 600 } }, "Belum lunas"))
+      : React.createElement(React.Fragment, null,
+          baris("Total ditransfer", dibayar, true),
+          React.createElement("p", { className: "dm-hint", style: { margin: "3px 0 0", color: "#166534", fontWeight: 600 } }, "Sudah lunas")));
 }
 
 /* Tanggal dan jam pendaftaran masuk, waktu Indonesia Barat.

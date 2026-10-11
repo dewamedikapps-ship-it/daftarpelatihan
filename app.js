@@ -8622,7 +8622,25 @@ ReactDOM.createRoot(document.getElementById("akar")).render(React.createElement(
     st.textContent =
       ".dm-navlink a{font-weight:800 !important;color:#FFFFFF !important;}" +
       ".dm-brand i{font-weight:700 !important;color:#D6E6F2 !important;}" +
-      "@media (min-width:601px){.dm-akre-teks{font-size:12px !important;font-weight:800 !important;color:#FFFFFF !important;}}";
+      "@media (min-width:601px){.dm-akre-teks{font-size:12px !important;font-weight:800 !important;color:#FFFFFF !important;}}" +
+      /* iPad/tablet & HP: menu tetap tampil sebagai baris kedua yang bisa digeser,
+         dan nomor akreditasi tetap terbaca. */
+      "@media (max-width:1080px){" +
+        ".dm-header-in{flex-wrap:wrap !important;row-gap:6px;padding-bottom:6px;}" +
+        ".dm-navlink{display:flex !important;order:3;width:100%;margin:0 !important;gap:2px;overflow-x:auto;" +
+          "-webkit-overflow-scrolling:touch;scrollbar-width:none;border-top:1px solid rgba(255,255,255,.08);padding-top:4px;}" +
+        ".dm-navlink::-webkit-scrollbar{display:none;}" +
+        ".dm-navlink a{font-size:13px !important;padding:8px 11px !important;flex:none;}" +
+        ".dm-navlink a::after{display:none;}" +
+        ".dm-akre-teks small{display:block !important;}" +
+      "}" +
+      "@media (max-width:600px){" +
+        ".dm-akreditasi{padding:6px 9px !important;gap:7px !important;}" +
+        ".dm-akre-teks{font-size:10.5px !important;font-weight:800 !important;color:#FFFFFF !important;line-height:1.25 !important;}" +
+        ".dm-akre-teks small{font-size:10px !important;}" +
+        ".dm-akre-teks::after{content:none !important;display:none !important;}" +
+        ".dm-akreditasi{margin:0 !important;}" +
+      "}";
     document.head.appendChild(st);
   } catch (e) {}
 })();

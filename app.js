@@ -1769,7 +1769,9 @@ function App() {
     className: "dm-lencana"
   }, "B"), /*#__PURE__*/React.createElement("span", {
     className: "dm-akre-teks"
-  }, "Terakreditasi Kemenkes RI", /*#__PURE__*/React.createElement("small", null, setelan.akreditasi))) : null, sisi === "admin" ? /*#__PURE__*/React.createElement("nav", {
+  }, "Terakreditasi Kemenkes RI", /*#__PURE__*/React.createElement("small", {
+    style: { color: "#FFFFFF", fontWeight: 800, fontSize: 12, letterSpacing: ".02em", marginTop: 2 }
+  }, String(setelan.akreditasi).replace(/^\s*terakreditasi\s+kemenkes\s+ri\s*/i, "")))) : null, sisi === "admin" ? /*#__PURE__*/React.createElement("nav", {
     className: "dm-nav"
   }, /*#__PURE__*/React.createElement("button", {
     className: "dm-tab dm-tab-on",
@@ -8612,3 +8614,15 @@ function TabSetelan({
   }, "Simpan pengaturan")));
 }
 ReactDOM.createRoot(document.getElementById("akar")).render(React.createElement(App));
+
+/* Header publik: tulisan dipertebal agar akreditasi dan menu jelas terbaca. */
+(function () {
+  try {
+    var st = document.createElement("style");
+    st.textContent =
+      ".dm-navlink a{font-weight:800 !important;color:#FFFFFF !important;}" +
+      ".dm-brand i{font-weight:700 !important;color:#D6E6F2 !important;}" +
+      "@media (min-width:601px){.dm-akre-teks{font-size:12px !important;font-weight:800 !important;color:#FFFFFF !important;}}";
+    document.head.appendChild(st);
+  } catch (e) {}
+})();

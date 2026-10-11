@@ -387,6 +387,23 @@ function muatPustakaXLSX() {
   return window.__muatXLSX;
 }
 
+/* Lencana jenis pembayaran di tabel Pendaftar. */
+function LencanaBayar({ r }) {
+  const booking = r.tipe_bayar === "booking";
+  const sisa = Number(r.sisa_bayar) || 0;
+  const gaya = {
+    display: "inline-block", padding: "3px 10px", borderRadius: 999, fontSize: 12,
+    fontWeight: 700, whiteSpace: "nowrap", border: "1px solid"
+  };
+  const penuh = { ...gaya, background: "#E8F6EE", color: "#166534", borderColor: "#B7E2C6" };
+  const dp = { ...gaya, background: "#FFF6E5", color: "#8A5A00", borderColor: "#F2D49B" };
+  if (!booking) return React.createElement("span", { style: penuh }, "Bayar penuh");
+  return React.createElement("div", null,
+    React.createElement("span", { style: dp }, "Booking seat"),
+    React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", whiteSpace: "nowrap" } },
+      sisa > 0 ? "Belum lunas" : "Sudah lunas"));
+}
+
 /* Tanggal dan jam pendaftaran masuk, waktu Indonesia Barat.
    Contoh: "6 Okt 2026 · 14.32 WIB". */
 function waktuDaftar(v) {
@@ -3601,6 +3618,9 @@ function TabPendaftar({
      "id:<uuid>" = satu kelas. Tabel, angka ringkasan, dan unduhan Excel
      ikut pilihan ini. */
   const [fKelas, setFKelas] = useState("");
+  /* Saring jenis pembayaran: "" semua, "penuh", "booking" (semua DP),
+     "sisa" (DP yang belum lunas). */
+  const [fBayar, setFBayar] = useState("");
   const [detail, setDetail] = useState(null);
   const [tautan, setTautan] = useState({});
   const [alasan, setAlasan] = useState("");
@@ -3662,6 +3682,25 @@ function TabPendaftar({
       catatan
     });
     beriTahu("Tersimpan.");
+    muat();
+  }
+
+  /* Pelunasan booking seat: dibayar = total, sisa = 0. Dicatat
+     sebagai catatan tambahan agar jejaknya terlihat. */
+  async function tandaiLunas(r) {
+    const sisa = Number(r.sisa_bayar) || 0;
+    if (!window.confirm("Tandai " + r.nomor + " (" + r.nama + ") sudah LUNAS?\n\nSisa " + rp(sisa) + " dianggap sudah diterima.")) return;
+    const total = Number(r.total) || 0;
+    const tgl = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+    const catatanBaru = ((r.catatan || "").trim() ? r.catatan.trim() + "\n" : "") + "Pelunasan " + rp(sisa) + " diterima " + tgl + ".";
+    const { error } = await SB.from("pendaftaran").update({
+      jumlah_bayar: total,
+      sisa_bayar: 0,
+      catatan: catatanBaru
+    }).eq("id", r.id);
+    if (error) return beriTahu("Gagal menandai lunas: " + error.message);
+    setDetail({ ...r, jumlah_bayar: total, sisa_bayar: 0, catatan: catatanBaru });
+    beriTahu("Pembayaran " + r.nomor + " ditandai lunas.");
     muat();
   }
 
@@ -3842,7 +3881,11 @@ function TabPendaftar({
   const aktif = dasar.filter(r => !mati(r));
   const tampil = dasar
     .filter(r => filter === "aktif" ? !mati(r) : filter === "semua" ? true : r.status === filter)
-    .filter(r => cari ? (r.nama + r.email + r.nomor + r.nik + (r.kota || "")).toLowerCase().includes(cari.toLowerCase()) : true);
+    .filter(r => cari ? (r.nama + r.email + r.nomor + r.nik + (r.kota || "")).toLowerCase().includes(cari.toLowerCase()) : true)
+    .filter(r => !fBayar ? true
+      : fBayar === "penuh" ? r.tipe_bayar !== "booking"
+      : fBayar === "booking" ? r.tipe_bayar === "booking"
+      : r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0);
   const nilai = aktif.filter(r => r.status === "terverifikasi").reduce((a, b) => a + Number(b.total), 0);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "dm-stat"
@@ -3898,7 +3941,20 @@ function TabPendaftar({
     value: "batal"
   }, "Dibatalkan"), peran === "diklat" ? null : /*#__PURE__*/React.createElement("option", {
     value: "refund"
-  }, "Refund")), /*#__PURE__*/React.createElement("button", {
+  }, "Refund")), /*#__PURE__*/React.createElement("select", {
+    className: "dm-input" + (fBayar ? " dm-pilih-kelas-on" : ""),
+    value: fBayar,
+    "aria-label": "Jenis pembayaran",
+    onChange: e => setFBayar(e.target.value)
+  }, /*#__PURE__*/React.createElement("option", {
+    value: ""
+  }, "Semua pembayaran"), /*#__PURE__*/React.createElement("option", {
+    value: "penuh"
+  }, "Bayar penuh"), /*#__PURE__*/React.createElement("option", {
+    value: "booking"
+  }, "Booking seat"), /*#__PURE__*/React.createElement("option", {
+    value: "sisa"
+  }, "Booking seat \u2014 belum lunas")), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-line",
     onClick: unduhCsv
   }, /*#__PURE__*/React.createElement(Ikon, {
@@ -3912,7 +3968,7 @@ function TabPendaftar({
     className: "dm-tabel-bungkus"
   }, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No. registrasi"), /*#__PURE__*/React.createElement("th", null, "Peserta"), /*#__PURE__*/React.createElement("th", null, "Pelatihan"), /*#__PURE__*/React.createElement("th", null, "T-shirt"), /*#__PURE__*/React.createElement("th", null, "Kode member"), /*#__PURE__*/React.createElement("th", null, "Total"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, tampil.map(r => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "No. registrasi"), /*#__PURE__*/React.createElement("th", null, "Peserta"), /*#__PURE__*/React.createElement("th", null, "Pelatihan"), /*#__PURE__*/React.createElement("th", null, "T-shirt"), /*#__PURE__*/React.createElement("th", null, "Kode member"), /*#__PURE__*/React.createElement("th", null, "Total"), /*#__PURE__*/React.createElement("th", null, "Pembayaran"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, tampil.map(r => /*#__PURE__*/React.createElement("tr", {
     key: r.id,
     className: mati(r) ? "dm-baris-mati" : null
   }, /*#__PURE__*/React.createElement("td", {
@@ -3945,7 +4001,9 @@ function TabPendaftar({
     className: "dm-mono"
   }, rp(r.jumlah_bayar != null ? r.jumlah_bayar : r.total), r.tipe_bayar === "booking" ? /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
-  }, "DP · sisa ", rp(r.sisa_bayar)) : null), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
+  }, "DP · sisa ", rp(r.sisa_bayar)) : null), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(LencanaBayar, {
+    r: r
+  })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
     status: r.status
   })), /*#__PURE__*/React.createElement("td", {
     className: "dm-aksi-ket"
@@ -3997,7 +4055,14 @@ function TabPendaftar({
     className: "dm-mono"
   }, rp(detail.jumlah_bayar != null ? detail.jumlah_bayar : detail.total)), Number(detail.sisa_bayar) > 0 ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("br", null), "Sisa pelunasan ", /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
-  }, rp(detail.sisa_bayar))) : null))), /*#__PURE__*/React.createElement("h4", {
+  }, rp(detail.sisa_bayar))) : null), detail.tipe_bayar === "booking" && Number(detail.sisa_bayar) > 0 && peran !== "diklat" ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "dm-btn",
+    style: { marginTop: 8 },
+    onClick: () => tandaiLunas(detail)
+  }, "Tandai lunas") : null, detail.tipe_bayar === "booking" && !(Number(detail.sisa_bayar) > 0) ? /*#__PURE__*/React.createElement("p", {
+    style: { margin: "6px 0 0", color: "#166534", fontWeight: 700 }
+  }, "\u2713 Booking seat sudah lunas") : null)), /*#__PURE__*/React.createElement("h4", {
     className: "dm-h4"
   }, "Berkas"), /*#__PURE__*/React.createElement("div", {
     className: "dm-berkas-grid"

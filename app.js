@@ -388,7 +388,7 @@ function muatPustakaXLSX() {
 }
 
 /* Lencana jenis pembayaran di tabel Pendaftar. */
-function LencanaBayar({ r }) {
+function LencanaBayar({ r, ganda }) {
   const booking = r.tipe_bayar === "booking";
   const sisa = Number(r.sisa_bayar) || 0;
   const gaya = {
@@ -412,7 +412,11 @@ function LencanaBayar({ r }) {
       ? React.createElement(React.Fragment, null,
           baris("DP ditransfer", dibayar, true),
           baris("Sisa", sisa, false),
-          React.createElement("p", { className: "dm-hint", style: { margin: "3px 0 0", color: "#8A5A00", fontWeight: 600 } }, "Belum lunas"))
+          r.berkas_pelunasan && !r.pelunasan_ditolak
+            ? React.createElement(React.Fragment, null,
+                React.createElement("p", { className: "dm-hint", style: { margin: "3px 0 0", color: "#1D4ED8", fontWeight: 700 } }, "Pelunasan masuk \u2014 perlu dicek"),
+                ganda && ganda.length ? React.createElement("p", { className: "dm-hint", style: { margin: "3px 0 0", color: "#B91C1C", fontWeight: 700 } }, "\u26a0 Bukti sama dengan " + ganda.join(", ")) : null)
+            : React.createElement("p", { className: "dm-hint", style: { margin: "3px 0 0", color: r.pelunasan_ditolak ? "#B91C1C" : "#8A5A00", fontWeight: 600 } }, r.pelunasan_ditolak ? "Bukti pelunasan ditolak" : "Belum lunas"))
       : React.createElement(React.Fragment, null,
           baris("Total ditransfer", dibayar, true),
           React.createElement("p", { className: "dm-hint", style: { margin: "3px 0 0", color: "#166534", fontWeight: 600 } }, "Sudah lunas")));
@@ -1090,6 +1094,133 @@ function Fasilitas({
     })), /*#__PURE__*/React.createElement("figcaption", null, /*#__PURE__*/React.createElement("b", null, f.nama), f.keterangan ? /*#__PURE__*/React.createElement("i", null, f.keterangan) : null));
   })));
 }
+/* Unggah bukti pelunasan booking seat. Peserta cukup mengisi nama, WA,
+   dan email; server mencari sendiri booking yang belum lunas (2 dari 3
+   harus cocok, WA atau email wajib salah satunya; nama dicocokkan longgar).
+   Status TIDAK otomatis lunas: admin mengecek mutasi lalu Tandai lunas. */
+function UnggahPelunasan({ setelan, onTutup }) {
+  const [nama, setNama] = useState("");
+  const [wa, setWa] = useState("");
+  const [email, setEmail] = useState("");
+  const [sibuk, setSibuk] = useState(false);
+  const [pesan, setPesan] = useState("");
+  const [daftar, setDaftar] = useState(null);
+  const [pilih, setPilih] = useState("");
+  const [berkas, setBerkas] = useState(null);
+  const [selesai, setSelesai] = useState(null);
+  const h = React.createElement;
+  async function cari() {
+    setPesan("");
+    if (nama.trim().length < 3) return setPesan("Masukkan nama lengkap Anda.");
+    if (String(wa).replace(/\D/g, "").length < 9) return setPesan("Masukkan nomor WhatsApp yang dipakai saat mendaftar.");
+    if (!emailValid(email)) return setPesan("Masukkan alamat email yang dipakai saat mendaftar.");
+    setSibuk(true);
+    const { data, error } = await SB.rpc("cari_pelunasan", { p_nama: nama, p_wa: wa, p_email: email });
+    setSibuk(false);
+    if (error) return setPesan("Gagal menghubungi server. Coba lagi sebentar.");
+    if (!data || !data.ok) return setPesan(data && data.pesan || "Data tidak ditemukan.");
+    setDaftar(data.data || []);
+    setPilih(data.data && data.data.length === 1 ? data.data[0].nomor : "");
+  }
+  async function pilihBerkas(e) {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if (!f) return;
+    setPesan("");
+    try {
+      const b = await siapkanBerkas(f, "bukti");
+      try {
+        const buf = await f.arrayBuffer();
+        const hs = await crypto.subtle.digest("SHA-256", buf);
+        b.sidik = Array.from(new Uint8Array(hs)).map(x => x.toString(16).padStart(2, "0")).join("").slice(0, 40);
+      } catch (e) {}
+      if (b.blob.size > 2 * 1024 * 1024) throw new Error("Ukuran berkas maksimal 2 MB. Kirim foto/tangkapan layar bukti transfer saja.");
+      setBerkas(b);
+    } catch (err) {
+      setBerkas(null);
+      setPesan(err.message || "Berkas tidak dapat dibaca.");
+    }
+  }
+  async function kirim() {
+    setPesan("");
+    if (!pilih) return setPesan("Pilih kelas yang akan dilunasi.");
+    if (!berkas) return setPesan("Lampirkan bukti transfer pelunasan.");
+    setSibuk(true);
+    try {
+      /* Nama berkas = sidik isi berkas. Bukti yang sama persis (mis. tangkapan
+         layar milik orang lain) akan bernama sama dan ditandai di back office. */
+      const kunci = berkas.sidik || acakId().replace(/[^A-Za-z0-9_-]/g, "");
+      const path = "pelunasan/" + kunci + "." + (berkas.tipe === "application/pdf" ? "pdf" : "jpg");
+      const up = await SB.storage.from("bukti").upload(path, berkas.blob, { contentType: berkas.tipe, upsert: false });
+      if (up.error && !/exist|duplicate|409/i.test((up.error.message || "") + (up.error.statusCode || ""))) {
+        throw new Error(/row-level security|violates/i.test(up.error.message || "") ? "Berkas gagal diunggah karena izin di server. Hubungi admin DEWAMEDIK." : "Berkas gagal diunggah: " + up.error.message);
+      }
+      const { data, error } = await SB.rpc("kirim_pelunasan", { p_nomor: pilih, p_nama: nama, p_wa: wa, p_email: email, p_path: path });
+      if (error) throw new Error("Gagal menyimpan. Coba lagi sebentar.");
+      if (!data || !data.ok) throw new Error(data && data.pesan || "Gagal menyimpan.");
+      setSelesai(daftar.find(d => d.nomor === pilih) || { nomor: pilih });
+    } catch (err) {
+      setPesan(err.message || "Gagal mengunggah.");
+    }
+    setSibuk(false);
+  }
+  const rek = setelan && setelan.rek_nomor ? h("div", { className: "dm-catatan" },
+    "Transfer pelunasan hanya ke rekening resmi: ", h("b", null, [setelan.rek_bank, setelan.rek_nomor].filter(Boolean).join(" ")),
+    setelan.rek_atas_nama ? " a.n. " + setelan.rek_atas_nama : "", ".") : null;
+  let isi;
+  if (selesai) {
+    isi = h(React.Fragment, null,
+      h("div", { className: "dm-status dm-status-menunggu" },
+        h("span", { className: "dm-status-tanda" }, h(Ikon, { nama: "centang", ukuran: 20, tebal: 2.2 })),
+        h("div", null, h("b", null, "Bukti pelunasan terkirim"),
+          h("p", null, "Tim kami akan mencocokkan dengan mutasi rekening, biasanya kurang dari 1×24 jam kerja. Status berubah menjadi lunas setelah dicek."))),
+      h("div", { className: "dm-detail-list" },
+        h("div", null, h("span", null, "Nomor registrasi"), h("b", { className: "dm-mono" }, selesai.nomor)),
+        selesai.judul ? h("div", null, h("span", null, "Pelatihan"), h("b", null, selesai.judul)) : null,
+        selesai.sisa_bayar != null ? h("div", null, h("span", null, "Sisa yang dilunasi"), h("b", { className: "dm-mono" }, rp(selesai.sisa_bayar))) : null),
+      h("div", { className: "dm-row dm-row-akhir" }, h("button", { className: "dm-btn", onClick: onTutup }, "Selesai")));
+  } else if (!daftar) {
+    isi = h(React.Fragment, null,
+      h("p", { className: "dm-lead dm-lead-kecil" }, "Untuk peserta booking seat. Isi data yang Anda pakai saat mendaftar — kelas, lokasi, dan sisa pembayaran Anda akan muncul otomatis."),
+      h("div", { className: "dm-grid2" },
+        h(Field, { label: "Nama lengkap", hint: "Tidak perlu persis sama, gelar boleh tidak ditulis" },
+          h("input", { className: "dm-input", value: nama, onChange: e => setNama(e.target.value), placeholder: "Nama sesuai pendaftaran", autoComplete: "name" })),
+        h(Field, { label: "Nomor WhatsApp", hint: "Nomor yang dipakai saat mendaftar" },
+          h("input", { className: "dm-input dm-mono", type: "tel", inputMode: "tel", value: wa, onChange: e => setWa(e.target.value), placeholder: "08xxxxxxxxxx", autoComplete: "tel" }))),
+      h(Field, { label: "Email saat mendaftar" },
+        h("input", { className: "dm-input", type: "email", value: email, onChange: e => setEmail(e.target.value), placeholder: "nama@gmail.com", autoComplete: "email", onKeyDown: e => e.key === "Enter" && cari() })),
+      pesan ? h("p", { className: "dm-err" }, pesan) : null,
+      h("div", { className: "dm-row dm-row-akhir" },
+        h("button", { className: "dm-btn" + (sibuk ? " dm-memuat" : ""), onClick: cari, disabled: sibuk }, sibuk ? "Mencari" : "Cari pendaftaran saya"),
+        h("button", { className: "dm-btn-line", onClick: onTutup }, "Batal")));
+  } else {
+    isi = h(React.Fragment, null,
+      h("p", { className: "dm-lead dm-lead-kecil" }, daftar.length > 1 ? "Kami menemukan beberapa booking seat atas nama Anda. Pilih kelas yang ingin dilunasi." : "Kami menemukan booking seat Anda:"),
+      h("div", { style: { display: "grid", gap: 10, margin: "8px 0 14px" } }, daftar.map(d => h("label", {
+        key: d.nomor, className: "dm-card",
+        style: { display: "flex", gap: 12, alignItems: "flex-start", padding: 14, cursor: "pointer", margin: 0,
+          outline: pilih === d.nomor ? "2px solid #1D4ED8" : "none" }
+      },
+        daftar.length > 1 ? h("input", { type: "radio", name: "dm-lunas", checked: pilih === d.nomor, onChange: () => setPilih(d.nomor), style: { marginTop: 4 } }) : null,
+        h("div", { style: { flex: 1 } },
+          h("b", null, d.judul), h("p", { className: "dm-hint", style: { margin: "2px 0" } },
+            [d.kota, d.tanggal_mulai ? rentang(d.tanggal_mulai, d.tanggal_selesai) : ""].filter(Boolean).join(" · ")),
+          h("p", { className: "dm-hint", style: { margin: "2px 0" } }, "No. registrasi ", h("span", { className: "dm-mono" }, d.nomor)),
+          h("p", { style: { margin: "6px 0 0" } }, "Sisa pelunasan ", h("b", { className: "dm-mono", style: { fontSize: 17 } }, rp(d.sisa_bayar))),
+          d.ditolak ? h("p", { className: "dm-err", style: { margin: "6px 0 0" } }, "Bukti sebelumnya ditolak: ", d.ditolak, ". Silakan unggah ulang.")
+            : d.sudah_unggah ? h("p", { className: "dm-hint", style: { margin: "6px 0 0", color: "#1D4ED8", fontWeight: 600 } }, "Bukti sudah kami terima", d.diunggah ? " (" + waktuDaftar(d.diunggah) + ")" : "", " dan sedang dicek. Unggah lagi hanya bila ada yang keliru.") : null)))),
+      rek,
+      h(Field, { label: "Bukti transfer pelunasan", hint: "Foto atau tangkapan layar (JPG/PNG) atau PDF, maksimal 2 MB" },
+        h("input", { className: "dm-input", type: "file", accept: "image/*,application/pdf", onChange: pilihBerkas })),
+      berkas ? (berkas.pratinjau ? h("img", { src: berkas.pratinjau, alt: "Pratinjau bukti", style: { maxWidth: "100%", maxHeight: 220, borderRadius: 8, display: "block", margin: "6px 0" } })
+        : h("p", { className: "dm-hint" }, "PDF terlampir: ", berkas.nama)) : null,
+      pesan ? h("p", { className: "dm-err" }, pesan) : null,
+      h("div", { className: "dm-row dm-row-akhir" },
+        h("button", { className: "dm-btn" + (sibuk ? " dm-memuat" : ""), onClick: kirim, disabled: sibuk }, sibuk ? "Mengunggah" : "Kirim bukti pelunasan"),
+        h("button", { className: "dm-btn-line", onClick: () => { setDaftar(null); setBerkas(null); setPesan(""); } }, "Kembali")));
+  }
+  return h(Modal, { judul: "Unggah Bukti Pelunasan", onTutup, lebar: 620 }, isi);
+}
 function CekPendaftaran({
   setelan,
   onTutup
@@ -1201,7 +1332,7 @@ function CekPendaftaran({
     className: "dm-mono"
   }, hasil.nomor)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Nama peserta"), /*#__PURE__*/React.createElement("b", null, hasil.nama)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Pelatihan"), /*#__PURE__*/React.createElement("b", null, hasil.judul)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Jadwal"), /*#__PURE__*/React.createElement("b", null, rentang(hasil.tanggal_mulai, hasil.tanggal_selesai))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Lokasi"), /*#__PURE__*/React.createElement("b", null, hasil.lokasi)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Metode"), /*#__PURE__*/React.createElement("b", null, hasil.format)), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Biaya pelatihan"), /*#__PURE__*/React.createElement("b", null, rp(hasil.harga_awal))), Number(hasil.diskon) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Member Benefit ", hasil.persen, "%", hasil.voucher_kode ? ` · ${hasil.voucher_kode}` : ""), /*#__PURE__*/React.createElement("b", null, "− ", rp(hasil.diskon))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, hasil.tipe_bayar === "booking" ? "Uang muka dibayar" : "Total dibayar"), /*#__PURE__*/React.createElement("b", {
     className: "dm-detail-harga"
-  }, rp(hasil.jumlah_bayar != null ? hasil.jumlah_bayar : hasil.total))), Number(hasil.sisa_bayar) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Sisa pelunasan"), /*#__PURE__*/React.createElement("b", null, rp(hasil.sisa_bayar))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Tanggal mendaftar"), /*#__PURE__*/React.createElement("b", null, new Date(hasil.dibuat).toLocaleDateString("id-ID", {
+  }, rp(hasil.jumlah_bayar != null ? hasil.jumlah_bayar : hasil.total))), Number(hasil.sisa_bayar) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Sisa pelunasan"), /*#__PURE__*/React.createElement("b", null, rp(hasil.sisa_bayar), " \u00b7 ", /*#__PURE__*/React.createElement("a", { href: "?lunas" }, "Unggah bukti pelunasan"))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Tanggal mendaftar"), /*#__PURE__*/React.createElement("b", null, new Date(hasil.dibuat).toLocaleDateString("id-ID", {
     day: "numeric",
     month: "long",
     year: "numeric"
@@ -1517,6 +1648,13 @@ function App() {
   const [toast, setToast] = useState("");
   const ketukRef = useRef([]);
   const [bukaCek, setBukaCek] = useState(false);
+  const [bukaLunas, setBukaLunas] = useState(() => {
+    try {
+      return /(^|[?&])lunas\b/.test(location.search) || location.hash === "#pelunasan";
+    } catch (e) {
+      return false;
+    }
+  });
   function beriTahu(t) {
     setToast(t);
     setTimeout(() => setToast(""), 2600);
@@ -1612,6 +1750,12 @@ function App() {
       setBukaCek(true);
     }
   }, "Cek Pendaftaran"), /*#__PURE__*/React.createElement("a", {
+    href: "#pelunasan",
+    onClick: e => {
+      e.preventDefault();
+      setBukaLunas(true);
+    }
+  }, "Pelunasan"), /*#__PURE__*/React.createElement("a", {
     href: waBantuan(setelan, "bantuan"),
     target: "_blank",
     rel: "noreferrer"
@@ -1683,6 +1827,9 @@ function App() {
   })), bukaCek && setelan ? /*#__PURE__*/React.createElement(CekPendaftaran, {
     setelan: setelan,
     onTutup: () => setBukaCek(false)
+  }) : null, bukaLunas && setelan ? /*#__PURE__*/React.createElement(UnggahPelunasan, {
+    setelan: setelan,
+    onTutup: () => setBukaLunas(false)
   }) : null, siap && !galat && setelan && sisi !== "admin" ? /*#__PURE__*/React.createElement(Footer, {
     setelan: setelan
   }) : null, toast ? /*#__PURE__*/React.createElement("div", {
@@ -2104,7 +2251,16 @@ function Pendaftaran({
       }
     }, "Permintaan invoice Anda tercatat. Tim kami akan menghubungi Anda lewat WhatsApp untuk mengurusnya setelah pendaftaran diverifikasi.") : null, hasil.tipe_bayar === "booking" ? /*#__PURE__*/React.createElement("p", {
       className: "dm-catatan dm-catatan-tengah"
-    }, "Sisa pembayaran ", rp(hasil.sisa_bayar), " dilunasi sebelum pelatihan dimulai. Uang muka tidak dapat dikembalikan apabila peserta mengundurkan diri.") : null, /*#__PURE__*/React.createElement("p", {
+    }, "Sisa pembayaran ", rp(hasil.sisa_bayar), " dilunasi sebelum pelatihan dimulai. Uang muka tidak dapat dikembalikan apabila peserta mengundurkan diri.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("a", {
+      className: "dm-btn-line",
+      href: "?lunas",
+      target: "_blank",
+      rel: "noopener",
+      style: { display: "inline-block", marginTop: 10, textDecoration: "none" }
+    }, "Unggah bukti pelunasan"), /*#__PURE__*/React.createElement("span", {
+      className: "dm-hint",
+      style: { display: "block", marginTop: 6 }
+    }, "Simpan tautan ini: daftarpelatihan.dewamedik911.com/?lunas \u2014 atau buka menu Pelunasan di portal saat akan melunasi.")) : null, /*#__PURE__*/React.createElement("p", {
       className: "dm-hint"
     }, grupBaru
       ? "Kirim konfirmasinya dulu, lalu ajukan gabung ke grup kelas. Permintaan Anda kami setujui di grup setelah pembayaran terverifikasi."
@@ -3666,7 +3822,8 @@ function TabPendaftar({
       foto: r.berkas_foto,
       transfer: r.berkas_transfer,
       alumni: r.berkas_alumni,
-      member: r.berkas_member
+      member: r.berkas_member,
+      pelunasan: r.berkas_pelunasan
     };
     const hasil = {};
     for (const k of Object.keys(jalur)) {
@@ -3703,7 +3860,8 @@ function TabPendaftar({
      sebagai catatan tambahan agar jejaknya terlihat. */
   async function tandaiLunas(r) {
     const sisa = Number(r.sisa_bayar) || 0;
-    if (!window.confirm("Tandai " + r.nomor + " (" + r.nama + ") sudah LUNAS?\n\nSisa " + rp(sisa) + " dianggap sudah diterima.")) return;
+    if (!window.confirm("Tandai " + r.nomor + " (" + r.nama + ") sudah LUNAS?\n\nSisa " + rp(sisa) + " dianggap sudah diterima." +
+      (r.berkas_pelunasan ? "\n\nSudah dicek di mutasi rekening (bukan hanya dari foto bukti)?\n\u2022 Nominal " + rp(sisa) + " masuk\n\u2022 Tanggal setelah DP\n\u2022 Nama pengirim sesuai" : ""))) return;
     const total = Number(r.total) || 0;
     const tgl = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
     const catatanBaru = ((r.catatan || "").trim() ? r.catatan.trim() + "\n" : "") + "Pelunasan " + rp(sisa) + " diterima " + tgl + ".";
@@ -3715,6 +3873,16 @@ function TabPendaftar({
     if (error) return beriTahu("Gagal menandai lunas: " + error.message);
     setDetail({ ...r, jumlah_bayar: total, sisa_bayar: 0, catatan: catatanBaru });
     beriTahu("Pembayaran " + r.nomor + " ditandai lunas.");
+    muat();
+  }
+
+  async function tolakPelunasan(r) {
+    const sebab = (window.prompt("Alasan menolak bukti pelunasan " + r.nomor + " (akan dilihat peserta):", "Dana belum masuk ke rekening") || "").trim();
+    if (!sebab) return;
+    const { error } = await SB.from("pendaftaran").update({ pelunasan_ditolak: sebab }).eq("id", r.id);
+    if (error) return beriTahu("Gagal: " + error.message);
+    setDetail({ ...r, pelunasan_ditolak: sebab });
+    beriTahu("Bukti pelunasan ditolak. Peserta bisa mengunggah ulang.");
     muat();
   }
 
@@ -3899,6 +4067,7 @@ function TabPendaftar({
     .filter(r => !fBayar ? true
       : fBayar === "penuh" ? r.tipe_bayar !== "booking"
       : fBayar === "booking" ? r.tipe_bayar === "booking"
+      : fBayar === "cek" ? r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0 && !!r.berkas_pelunasan && !r.pelunasan_ditolak
       : r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0);
   const nilai = aktif.filter(r => r.status === "terverifikasi").reduce((a, b) => a + Number(b.total), 0);
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
@@ -3968,7 +4137,9 @@ function TabPendaftar({
     value: "booking"
   }, "Booking seat"), /*#__PURE__*/React.createElement("option", {
     value: "sisa"
-  }, "Booking seat \u2014 belum lunas")), /*#__PURE__*/React.createElement("button", {
+  }, "Booking seat \u2014 belum lunas"), /*#__PURE__*/React.createElement("option", {
+    value: "cek"
+  }, "Pelunasan perlu dicek (" + baris.filter(r => !mati(r) && r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0 && r.berkas_pelunasan && !r.pelunasan_ditolak).length + ")")), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-line",
     onClick: unduhCsv
   }, /*#__PURE__*/React.createElement(Ikon, {
@@ -4016,7 +4187,8 @@ function TabPendaftar({
   }, rp(r.jumlah_bayar != null ? r.jumlah_bayar : r.total), r.tipe_bayar === "booking" ? /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, "DP · sisa ", rp(r.sisa_bayar)) : null), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(LencanaBayar, {
-    r: r
+    r: r,
+    ganda: r.berkas_pelunasan ? baris.filter(x => x.id !== r.id && x.berkas_pelunasan === r.berkas_pelunasan).map(x => x.nomor) : []
   })), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
     status: r.status
   })), /*#__PURE__*/React.createElement("td", {
@@ -4074,13 +4246,23 @@ function TabPendaftar({
     className: "dm-btn",
     style: { marginTop: 8 },
     onClick: () => tandaiLunas(detail)
-  }, "Tandai lunas") : null, detail.tipe_bayar === "booking" && !(Number(detail.sisa_bayar) > 0) ? /*#__PURE__*/React.createElement("p", {
+  }, "Tandai lunas") : null, detail.tipe_bayar === "booking" && Number(detail.sisa_bayar) > 0 && detail.berkas_pelunasan && !detail.pelunasan_ditolak && peran !== "diklat" ? /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    className: "dm-btn-line",
+    style: { marginTop: 8, marginLeft: 8 },
+    onClick: () => tolakPelunasan(detail)
+  }, "Tolak bukti") : null, detail.tipe_bayar === "booking" && Number(detail.sisa_bayar) > 0 && detail.berkas_pelunasan ? /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint",
+    style: { margin: "6px 0 0", color: detail.pelunasan_ditolak ? "#B91C1C" : "#1D4ED8", fontWeight: 600 }
+  }, detail.pelunasan_ditolak ? "Bukti pelunasan ditolak: " + detail.pelunasan_ditolak : "Bukti pelunasan diunggah " + waktuDaftar(detail.pelunasan_diunggah) + ". Sebelum Tandai lunas, pastikan di mutasi rekening: dana " + rp(detail.sisa_bayar) + " benar-benar masuk, tanggalnya setelah DP, dan nama pengirim sesuai.") : null, detail.berkas_pelunasan && baris.some(x => x.id !== detail.id && x.berkas_pelunasan === detail.berkas_pelunasan) ? /*#__PURE__*/React.createElement("p", {
+    style: { margin: "6px 0 0", color: "#B91C1C", fontWeight: 700 }
+  }, "\u26a0 File bukti ini SAMA PERSIS dengan bukti pendaftar lain: " + baris.filter(x => x.id !== detail.id && x.berkas_pelunasan === detail.berkas_pelunasan).map(x => x.nomor + " (" + x.nama + ")").join(", ") + ". Kemungkinan bukti dipakai ulang \u2014 cek mutasi dengan teliti.") : null, detail.tipe_bayar === "booking" && !(Number(detail.sisa_bayar) > 0) ? /*#__PURE__*/React.createElement("p", {
     style: { margin: "6px 0 0", color: "#166534", fontWeight: 700 }
   }, "\u2713 Booking seat sudah lunas") : null)), /*#__PURE__*/React.createElement("h4", {
     className: "dm-h4"
   }, "Berkas"), /*#__PURE__*/React.createElement("div", {
     className: "dm-berkas-grid"
-  }, [["foto", "Pas foto"], ["transfer", "Bukti transfer"], ["alumni", "Sertifikat BTCLS"], ["member", "Kartu anggota"]].map(([k, l]) => /*#__PURE__*/React.createElement("div", {
+  }, [["foto", "Pas foto"], ["transfer", "Bukti transfer"], ["alumni", "Sertifikat BTCLS"], ["member", "Kartu anggota"]].concat(detail.tipe_bayar === "booking" ? [["pelunasan", "Bukti pelunasan"]] : []).map(([k, l]) => /*#__PURE__*/React.createElement("div", {
     key: k,
     className: "dm-berkas"
   }, /*#__PURE__*/React.createElement("span", null, l), tautan[k] ? tautan[k].pdf ? /*#__PURE__*/React.createElement("a", {

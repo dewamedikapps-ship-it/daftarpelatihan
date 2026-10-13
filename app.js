@@ -7133,6 +7133,44 @@ function TabLinkKelas({ beriTahu }) {
   /* Teks promosi & QR hanya dibuka untuk kelas yang dipilih, supaya
      daftar judul tetap ringkas dan tidak perlu menggulir jauh. */
   const [bukaPromosi, setBukaPromosi] = useState(null);
+  /* Panel per bulan: link dikelompokkan menurut bulan kelasnya. */
+  const [bulanLink, setBulanLink] = useState(null);
+  const NAMA_BULAN_LINK = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  function bulanDariLink(r) {
+    const set = {};
+    (r.kelas_id || []).forEach(id => {
+      const k = kelas.find(x => x.id === id);
+      if (k && k.tanggal_mulai) set[String(k.tanggal_mulai).slice(0, 7)] = true;
+    });
+    const ks = Object.keys(set).sort();
+    return ks.length ? ks : ["tanpa"];
+  }
+  function tglAwalLink(r) {
+    const t = (r.kelas_id || []).map(id => (kelas.find(x => x.id === id) || {}).tanggal_mulai).filter(Boolean).sort();
+    return t[0] || "9999";
+  }
+  function labelBulanLink(kunci) {
+    if (kunci === "tanpa") return "Tanpa jadwal";
+    const [y, m] = kunci.split("-");
+    return NAMA_BULAN_LINK[Number(m) - 1] + " " + y;
+  }
+  function daftarBulanLink() {
+    const n = {};
+    (baris || []).forEach(r => bulanDariLink(r).forEach(b => { n[b] = (n[b] || 0) + 1; }));
+    return Object.keys(n).sort((a, b) => a === "tanpa" ? 1 : b === "tanpa" ? -1 : a.localeCompare(b)).map(k => ({ k, n: n[k] }));
+  }
+  function bulanAktifLink() {
+    const ada = daftarBulanLink();
+    if (bulanLink && (bulanLink === "semua" || ada.some(x => x.k === bulanLink))) return bulanLink;
+    const kini = new Date().toISOString().slice(0, 7);
+    const pilih = ada.find(x => x.k !== "tanpa" && x.k >= kini) || ada[0];
+    return pilih ? pilih.k : "semua";
+  }
+  function linkTampil() {
+    const b = bulanAktifLink();
+    return (baris || []).filter(r => b === "semua" || bulanDariLink(r).indexOf(b) > -1)
+      .slice().sort((x, y) => tglAwalLink(x).localeCompare(tglAwalLink(y)));
+  }
   const [simpanTeksId, setSimpanTeksId] = useState(null);
 
   const kosong = { slug: "", judul: "", subjudul: "", kelas_id: [], aktif: true, wa_grup: "", teks_promosi: "", _manual: false };
@@ -7496,6 +7534,16 @@ function TabLinkKelas({ beriTahu }) {
       "gerbang biaya tetap berlaku, dan pendaftar yang masuk lewat tautan ini tercatat asalnya. " +
       "Klik judul atau tombol Promosi & QR untuk membuka teks promosi dan QR code kelas tersebut."),
 
+    baris.length > 0 ? React.createElement("div", {
+      style: { display: "flex", flexWrap: "wrap", gap: 8, margin: "0 0 14px" }
+    }, daftarBulanLink().concat([{ k: "semua", n: baris.length }]).map(x => React.createElement("button", {
+      key: x.k,
+      type: "button",
+      className: bulanAktifLink() === x.k ? "dm-btn" : "dm-btn-line",
+      style: { padding: "7px 14px", fontSize: 13.5 },
+      onClick: () => { setBulanLink(x.k); setBukaPromosi(null); }
+    }, (x.k === "semua" ? "Semua bulan" : labelBulanLink(x.k)) + " (" + x.n + ")"))) : null,
+
     baris.length === 0
       ? React.createElement("p", { className: "dm-kosong" },
           "Belum ada link kelas. Tekan “Buat link baru” untuk mulai.")
@@ -7509,7 +7557,7 @@ function TabLinkKelas({ beriTahu }) {
                 React.createElement("th", null, "Status"),
                 React.createElement("th", null, ""))),
             React.createElement("tbody", null,
-              baris.map(r => [React.createElement("tr", { key: r.id },
+              linkTampil().map(r => [React.createElement("tr", { key: r.id },
                 React.createElement("td", null, React.createElement("button", {
                   type: "button",
                   onClick: () => setBukaPromosi(bukaPromosi === r.id ? null : r.id),

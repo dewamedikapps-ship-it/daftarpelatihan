@@ -7494,8 +7494,8 @@ function TabLinkKelas({ beriTahu }) {
             React.createElement("thead", null,
               React.createElement("tr", null,
                 React.createElement("th", null, "Judul"),
+                React.createElement("th", null, "Kota & tanggal"),
                 React.createElement("th", null, "Tautan"),
-                React.createElement("th", null, "Kelas"),
                 React.createElement("th", null, "Status"),
                 React.createElement("th", null, ""))),
             React.createElement("tbody", null,
@@ -7507,14 +7507,22 @@ function TabLinkKelas({ beriTahu }) {
                   style: { background: "none", border: 0, padding: 0, cursor: "pointer", textAlign: "left", font: "inherit", color: "inherit" }
                 }, React.createElement("span", { style: { display: "inline-block", width: 16, color: "#2141A6" } }, bukaPromosi === r.id ? "\u25be" : "\u25b8"),
                   React.createElement("b", { style: { textDecoration: bukaPromosi === r.id ? "none" : "underline", textDecorationColor: "#C9D3E6", textUnderlineOffset: 3 } }, r.judul))),
-                React.createElement("td", { className: "dm-mono" }, "?k=" + r.slug),
-                React.createElement("td", null, (r.kelas_id || []).length),
+                React.createElement("td", null, (() => {
+                  const daftarK = (r.kelas_id || []).map(id => kelas.find(k => k.id === id)).filter(Boolean)
+                    .sort((a, b) => String(a.tanggal_mulai || "").localeCompare(String(b.tanggal_mulai || "")));
+                  if (!daftarK.length) return React.createElement("span", { className: "dm-hint" }, "\u2014");
+                  return daftarK.map(k => React.createElement("div", { key: k.id, style: { whiteSpace: "nowrap", lineHeight: 1.45, marginBottom: 2 } },
+                    React.createElement("b", { style: { fontSize: 13 } }, k.kota || k.lokasi || "-"),
+                    React.createElement("span", { className: "dm-hint", style: { marginLeft: 6 } },
+                      k.tanggal_mulai ? rentang(k.tanggal_mulai, k.tanggal_selesai) : "")));
+                })()),
+                React.createElement("td", { className: "dm-mono", style: { whiteSpace: "nowrap", fontSize: 12.5 } }, "?k=" + r.slug),
                 React.createElement("td", null,
                   React.createElement("span", {
                     style: { fontWeight: 600, color: r.aktif ? "#166534" : "#8a6d3b" }
                   }, r.aktif ? "Aktif" : "Nonaktif")),
                 React.createElement("td", null,
-                  React.createElement("div", { className: "dm-row" },
+                  React.createElement("div", { className: "dm-row dm-aksi-link", style: { gap: 6 } },
                     React.createElement("button", {
                       className: "dm-btn-line", onClick: () => salin(r.slug)
                     }, "Salin tautan"),
@@ -8632,6 +8640,7 @@ ReactDOM.createRoot(document.getElementById("akar")).render(React.createElement(
     var st = document.createElement("style");
     st.textContent =
       ".dm-navlink a{font-weight:800 !important;color:#FFFFFF !important;}" +
+      ".dm-aksi-link .dm-btn-line,.dm-aksi-link .dm-btn{padding:7px 11px !important;font-size:13px !important;margin:0 !important;}" +
       ".dm-brand i{font-weight:700 !important;color:#D6E6F2 !important;}" +
       "@media (min-width:601px){.dm-akre-teks{font-size:12px !important;font-weight:800 !important;color:#FFFFFF !important;}}" +
       /* iPad/tablet & HP: menu tetap tampil sebagai baris kedua yang bisa digeser,

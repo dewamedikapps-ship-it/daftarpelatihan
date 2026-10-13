@@ -7180,6 +7180,9 @@ function TabLinkKelas({ beriTahu }) {
   /* Teks promosi & QR hanya dibuka untuk kelas yang dipilih, supaya
      daftar judul tetap ringkas dan tidak perlu menggulir jauh. */
   const [bukaPromosi, setBukaPromosi] = useState(null);
+  /* Prompt flyer per kelas (untuk disalin ke GPT). */
+  const [flyerKelas, setFlyerKelas] = useState({});
+  const [flyerDraf, setFlyerDraf] = useState({});
   /* Panel per bulan: link dikelompokkan menurut bulan kelasnya. */
   const [bulanLink, setBulanLink] = useState(null);
   const NAMA_BULAN_LINK = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -7526,6 +7529,81 @@ function TabLinkKelas({ beriTahu }) {
 
   /* Kolom teks promosi di bawah tiap link: langsung terlihat, bisa
      disunting, disalin, atau dikirim ke WhatsApp tanpa membuka formulir. */
+  /* Prompt flyer gaya Dewa Medik: instruksi desain singkat + naskah flyer
+     yang terisi dari jadwal kelas. Tinggal salin lalu tempel ke GPT. */
+  function tglFlyer(a, b) {
+    const BL = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    if (!a) return "";
+    const [y1, m1, d1] = String(a).slice(0, 10).split("-");
+    const [y2, m2, d2] = String(b || a).slice(0, 10).split("-");
+    if (y1 === y2 && m1 === m2) return (d1 === d2 ? d1 : d1 + "\u2013" + d2) + " " + BL[Number(m1) - 1] + " " + y1;
+    if (y1 === y2) return d1 + " " + BL[Number(m1) - 1] + " \u2013 " + d2 + " " + BL[Number(m2) - 1] + " " + y1;
+    return d1 + " " + BL[Number(m1) - 1] + " " + y1 + " \u2013 " + d2 + " " + BL[Number(m2) - 1] + " " + y2;
+  }
+  function buatPromptFlyer(r, k) {
+    const jenis = String(k.jenis || "").trim().toUpperCase();
+    const tot = /^TOT/.test(jenis);
+    const acls = /ACLS/.test(jenis) && !tot;
+    const kota = kotaKelas(k);
+    const f = String(k.format || "").trim();
+    const metode = /daring/i.test(f) && /luring/i.test(f) ? "Blended Training | " + f
+      : /daring|online/i.test(f) ? "Daring | " + f : f ? "Luring | " + f : "Luring";
+    const hook = tot
+      ? [jenis + " bukan sekadar naik level.", "Ini tentang siap melahirkan penolong-penolong berikutnya."]
+      : acls
+        ? ["ACLS bukan sekadar sertifikat.", "Ini tentang tenang dan tepat di detik paling kritis."]
+        : [(jenis || "Pelatihan ini") + " bukan sekadar ikut pelatihan.", "Ini tentang siap ketika dibutuhkan."];
+    const fas = [
+      "\u2705 Sertifikat Resmi ber-SKP Kemenkes RI",
+      "\u2705 Materi Terkini",
+      "\u2705 Training Kit Eksklusif",
+      "\u2705 1x makan siang & 2x coffee break",
+      "\u2705 Akses Baladewa: eksklusif dan berkelanjutan",
+      "\u2705 Quickcards: ilmu tetap tajam, ulang materi kapan saja",
+      /ACLS/.test(jenis) && !tot ? "\u2705 Akses Pro 3 Bulan DEWA Clinical Tools" : "\u2705 DEWA Clinical Tools: asisten klinis di genggaman"
+    ];
+    const b = [];
+    b.push("Buatkan desain flyer pelatihan resmi Akademia DEWAMEDIK (PT Dewa Medik Nusantara), rasio 4:5 untuk feed Instagram.");
+    b.push("Gaya: profesional, premium, bersih. Warna navy, putih, aksen merah. Foto suasana pelatihan kegawatdaruratan yang realistis.");
+    b.push("Wajib ada: logo Kemenkes dan logo Dewa Medik Nusantara di atas, badge \"Terakreditasi Kemenkes RI \u2013 Akreditasi B, No. HK.02.02/F/4052/2024\", QR code menuju tautan pendaftaran.");
+    b.push("Larangan (SE Kemenkes 2692/2026): jangan tulis nomor SKP, jangan ada kata promo/diskon/voucher/early bird/gratis.");
+    b.push("Gunakan teks di bawah ini apa adanya, jangan diubah ejaan, angka, maupun nomornya:");
+    b.push("");
+    b.push("---");
+    hook.forEach(x => b.push(x));
+    b.push("Di Dewa Medik Nusantara, kami terus berevolusi menghadirkan pengalaman belajar yang lebih baik\u2014cara kita belajar, terhubung, dan berkembang.");
+    b.push("Standarnya tetap sama: Excellence.");
+    b.push("Pengalamannya yang terus kami tingkatkan.");
+    b.push("");
+    b.push("\u{1F6A8} " + jenis + " ANGKATAN \u{1F7E8}[isi angkatan] \u2014 " + (kota || "\u{1F7E8}[kota]").toUpperCase());
+    b.push("\u{1F4C5} " + (tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || "\u{1F7E8}[tanggal]"));
+    b.push("\u{1F4CD} " + (k.lokasi || "\u{1F7E8}[venue]"));
+    b.push("\u{1F4BB} " + metode);
+    if (Number(k.harga) > 0) b.push("\u{1F4B3} Biaya Pelatihan: " + rp(Number(k.harga)).replace(/\s+/g, ""));
+    b.push("");
+    b.push("Fasilitas peserta:");
+    fas.forEach(x => b.push(x));
+    b.push("");
+    b.push("Pembayaran:");
+    b.push("\u{1F3E6} " + (setelan.rek_bank || "Bank BRI"));
+    b.push("No. Rekening: " + (setelan.rek_nomor || "201001000824562"));
+    b.push("a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"));
+    b.push("");
+    b.push("\u{1F4F2} PENDAFTARAN");
+    b.push(alamat(r.slug));
+    b.push("");
+    b.push("\u{1F4DE} Informasi");
+    b.push("Arka \u2014 0821-2348-6576");
+    b.push("Eza \u2014 0851-6145-9345");
+    b.push("");
+    b.push("Come experience what\u2019s next.");
+    b.push("Every Second Counts. Be Ready to Save Lives.");
+    b.push("Dewa Medik Nusantara");
+    b.push("Excellence Is The Way. Excellence Evolved.");
+    b.push("---");
+    return b.join("\n");
+  }
+
   function barisPromosi(r) {
     const tersimpan = teksPromosiDari(r);
     const diubah = Object.prototype.hasOwnProperty.call(draf, r.id);
@@ -7562,7 +7640,48 @@ function TabLinkKelas({ beriTahu }) {
             type: "button", className: "dm-btn-line",
             disabled: simpanTeksId === r.id,
             onClick: () => simpanTeksPromosi(r, "")
-          }, "Isi ulang otomatis") : null)),
+          }, "Isi ulang otomatis") : null),
+        (() => {
+          const daftarK = (r.kelas_id || []).map(id => kelas.find(x => x.id === id)).filter(Boolean)
+            .sort((a, b) => String(a.tanggal_mulai || "").localeCompare(String(b.tanggal_mulai || "")));
+          if (!daftarK.length) return null;
+          const kid = daftarK.some(x => x.id === flyerKelas[r.id]) ? flyerKelas[r.id] : daftarK[0].id;
+          const k = daftarK.find(x => x.id === kid);
+          const kunci = r.id + ":" + kid;
+          const isi = Object.prototype.hasOwnProperty.call(flyerDraf, kunci) ? flyerDraf[kunci] : buatPromptFlyer(r, k);
+          return React.createElement("div", { style: { marginTop: 18, paddingTop: 14, borderTop: "1px dashed #D3DEDB" } },
+            React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", margin: "0 0 6px" } },
+              React.createElement("p", { className: "dm-hint", style: { margin: 0, fontWeight: 700 } }, "\u{1F3A8} Prompt flyer (salin ke GPT)"),
+              daftarK.length > 1 ? React.createElement("select", {
+                className: "dm-input", style: { width: "auto", padding: "5px 10px", fontSize: 13 },
+                value: kid, "aria-label": "Kelas untuk flyer",
+                onChange: e => { const v = e.target.value; setFlyerKelas(o => ({ ...o, [r.id]: v })); }
+              }, daftarK.map(x => React.createElement("option", { key: x.id, value: x.id },
+                (kotaKelas(x) || x.judul) + " \u00b7 " + tglFlyer(x.tanggal_mulai, x.tanggal_selesai)))) : null),
+            React.createElement("textarea", {
+              className: "dm-textarea dm-input", rows: 10,
+              style: { width: "100%", fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" },
+              value: isi,
+              onChange: e => { const v = e.target.value; setFlyerDraf(d => ({ ...d, [kunci]: v })); }
+            }),
+            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Ganti \u{1F7E8}[isi angkatan] dengan nomor angkatan sebelum disalin."),
+            React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },
+              React.createElement("button", {
+                type: "button", className: "dm-btn",
+                onClick: () => {
+                  if (navigator.clipboard) navigator.clipboard.writeText(isi).then(() => beriTahu("Prompt flyer disalin. Tempel di ChatGPT/Gemini."), () => beriTahu("Gagal menyalin. Blok teksnya lalu salin manual."));
+                  else beriTahu("Blok teksnya lalu salin manual.");
+                }
+              }, "Salin prompt flyer"),
+              React.createElement("a", {
+                className: "dm-btn-line", style: { textDecoration: "none" },
+                href: "https://chatgpt.com/", target: "_blank", rel: "noreferrer"
+              }, "Buka ChatGPT"),
+              Object.prototype.hasOwnProperty.call(flyerDraf, kunci) ? React.createElement("button", {
+                type: "button", className: "dm-btn-line",
+                onClick: () => setFlyerDraf(d => { const n = { ...d }; delete n[kunci]; return n; })
+              }, "Isi ulang otomatis") : null));
+        })()),
         React.createElement(QrLink, { url: alamat(r.slug), judul: r.judul, slug: r.slug, beriTahu }))));
   }
 

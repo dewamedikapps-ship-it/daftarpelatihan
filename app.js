@@ -4617,6 +4617,53 @@ function TabJadwal({
   const [baris, setBaris] = useState(null);
   const [edit, setEdit] = useState(null);
   const [tampilan, setTampilan] = useState("tabel");
+  /* Panel pilih bulan agar daftar jadwal tidak menumpuk. */
+  const [bulanJ, setBulanJ] = useState(null);
+  const NAMA_BLN_J = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+  const kunciBlnJ = t => t.tanggal_mulai ? String(t.tanggal_mulai).slice(0, 7) : "tanpa";
+  const labelBlnJ = k => k === "tanpa" ? "Tanpa tanggal" : NAMA_BLN_J[Number(k.slice(5, 7)) - 1] + " " + k.slice(0, 4);
+  function opsiBlnJ() {
+    const n = {};
+    (baris || []).forEach(t => { const k = kunciBlnJ(t); n[k] = (n[k] || 0) + 1; });
+    return Object.keys(n).sort((a, b) => a === "tanpa" ? 1 : b === "tanpa" ? -1 : a.localeCompare(b)).map(k => ({ k, n: n[k] }))
+      .concat([{ k: "semua", n: (baris || []).length }]);
+  }
+  function aktifBlnJ() {
+    const ada = opsiBlnJ();
+    if (bulanJ && ada.some(x => x.k === bulanJ)) return bulanJ;
+    const kini = new Date().toISOString().slice(0, 7);
+    const p = ada.find(x => x.k !== "tanpa" && x.k !== "semua" && x.k >= kini) || ada[0];
+    return p ? p.k : "semua";
+  }
+  function jadwalTampil() {
+    const b = aktifBlnJ();
+    if (b === "semua") return baris;
+    return baris.filter(t => kunciBlnJ(t) === b).slice()
+      .sort((x, y) => String(x.tanggal_mulai || "").localeCompare(String(y.tanggal_mulai || "")));
+  }
+  function panelBlnJ() {
+    const opsi = opsiBlnJ();
+    const aktif = aktifBlnJ();
+    const idx = opsi.findIndex(x => x.k === aktif);
+    const panah = (d, t) => React.createElement("button", {
+      type: "button", className: "dm-btn-line", disabled: !opsi[idx + d],
+      style: { padding: "7px 12px", fontSize: 15, lineHeight: 1, opacity: opsi[idx + d] ? 1 : .4 },
+      onClick: () => opsi[idx + d] && setBulanJ(opsi[idx + d].k),
+      "aria-label": d < 0 ? "Bulan sebelumnya" : "Bulan berikutnya"
+    }, t);
+    return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "0 0 14px", flexWrap: "wrap" } },
+      React.createElement("span", { className: "dm-hint", style: { fontWeight: 700 } }, "Bulan"),
+      panah(-1, "\u2039"),
+      React.createElement("select", {
+        className: "dm-input dm-pilih-kelas-on",
+        style: { width: "auto", minWidth: 210, fontWeight: 700 },
+        value: aktif,
+        "aria-label": "Pilih bulan jadwal",
+        onChange: e => setBulanJ(e.target.value)
+      }, opsi.map(x => React.createElement("option", { key: x.k, value: x.k },
+        (x.k === "semua" ? "Semua bulan" : labelBlnJ(x.k)) + " (" + x.n + " kelas)"))),
+      panah(1, "\u203a"));
+  }
   const kosong = {
     jenis: "ACLS",
     judul: "",
@@ -4703,9 +4750,9 @@ function TabJadwal({
     onPilih: t => setEdit(t)
   }) : /*#__PURE__*/React.createElement("div", {
     className: "dm-tabel-bungkus"
-  }, /*#__PURE__*/React.createElement("table", {
+  }, baris && baris.length ? panelBlnJ() : null, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
-  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Kelas"), /*#__PURE__*/React.createElement("th", null, "Jadwal"), /*#__PURE__*/React.createElement("th", null, "Harga"), /*#__PURE__*/React.createElement("th", null, "Kuota"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, baris.map(t => /*#__PURE__*/React.createElement("tr", {
+  }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Kelas"), /*#__PURE__*/React.createElement("th", null, "Jadwal"), /*#__PURE__*/React.createElement("th", null, "Harga"), /*#__PURE__*/React.createElement("th", null, "Kuota"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, jadwalTampil().map(t => /*#__PURE__*/React.createElement("tr", {
     key: t.id
   }, /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement("span", {
     className: "dm-jenis dm-j-" + t.jenis
@@ -7534,15 +7581,29 @@ function TabLinkKelas({ beriTahu }) {
       "gerbang biaya tetap berlaku, dan pendaftar yang masuk lewat tautan ini tercatat asalnya. " +
       "Klik judul atau tombol Promosi & QR untuk membuka teks promosi dan QR code kelas tersebut."),
 
-    baris.length > 0 ? React.createElement("div", {
-      style: { display: "flex", flexWrap: "wrap", gap: 8, margin: "0 0 14px" }
-    }, daftarBulanLink().concat([{ k: "semua", n: baris.length }]).map(x => React.createElement("button", {
-      key: x.k,
-      type: "button",
-      className: bulanAktifLink() === x.k ? "dm-btn" : "dm-btn-line",
-      style: { padding: "7px 14px", fontSize: 13.5 },
-      onClick: () => { setBulanLink(x.k); setBukaPromosi(null); }
-    }, (x.k === "semua" ? "Semua bulan" : labelBulanLink(x.k)) + " (" + x.n + ")"))) : null,
+    baris.length > 0 ? (() => {
+      const opsi = daftarBulanLink().concat([{ k: "semua", n: baris.length }]);
+      const aktif = bulanAktifLink();
+      const idx = opsi.findIndex(x => x.k === aktif);
+      const geser = d => { const o = opsi[idx + d]; if (o) { setBulanLink(o.k); setBukaPromosi(null); } };
+      const panah = (d, t) => React.createElement("button", {
+        type: "button", className: "dm-btn-line", disabled: !opsi[idx + d],
+        style: { padding: "7px 12px", fontSize: 15, lineHeight: 1, opacity: opsi[idx + d] ? 1 : .4 },
+        onClick: () => geser(d), "aria-label": d < 0 ? "Bulan sebelumnya" : "Bulan berikutnya"
+      }, t);
+      return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, margin: "0 0 14px", flexWrap: "wrap" } },
+        React.createElement("span", { className: "dm-hint", style: { fontWeight: 700 } }, "Bulan"),
+        panah(-1, "\u2039"),
+        React.createElement("select", {
+          className: "dm-input dm-pilih-kelas-on",
+          style: { width: "auto", minWidth: 210, fontWeight: 700 },
+          value: aktif,
+          "aria-label": "Pilih bulan",
+          onChange: e => { setBulanLink(e.target.value); setBukaPromosi(null); }
+        }, opsi.map(x => React.createElement("option", { key: x.k, value: x.k },
+          (x.k === "semua" ? "Semua bulan" : labelBulanLink(x.k)) + " (" + x.n + " link)"))),
+        panah(1, "\u203a"));
+    })() : null,
 
     baris.length === 0
       ? React.createElement("p", { className: "dm-kosong" },

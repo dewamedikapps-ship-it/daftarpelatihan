@@ -7130,6 +7130,9 @@ function TabLinkKelas({ beriTahu }) {
   const [setelan, setSetelan] = useState({});
   /* Suntingan teks promosi langsung di daftar, per link: { id: teks }. */
   const [draf, setDraf] = useState({});
+  /* Teks promosi & QR hanya dibuka untuk kelas yang dipilih, supaya
+     daftar judul tetap ringkas dan tidak perlu menggulir jauh. */
+  const [bukaPromosi, setBukaPromosi] = useState(null);
   const [simpanTeksId, setSimpanTeksId] = useState(null);
 
   const kosong = { slug: "", judul: "", subjudul: "", kelas_id: [], aktif: true, wa_grup: "", teks_promosi: "", _manual: false };
@@ -7480,7 +7483,8 @@ function TabLinkKelas({ beriTahu }) {
     React.createElement("p", { className: "dm-hint", style: { marginBottom: 14 } },
       "Satu tautan khusus yang hanya menampilkan kelas pilihan Anda — cocok untuk broadcast " +
       "satu kota atau satu angkatan. Halamannya sama dengan halaman pendaftaran biasa, " +
-      "gerbang biaya tetap berlaku, dan pendaftar yang masuk lewat tautan ini tercatat asalnya."),
+      "gerbang biaya tetap berlaku, dan pendaftar yang masuk lewat tautan ini tercatat asalnya. " +
+      "Klik judul atau tombol Promosi & QR untuk membuka teks promosi dan QR code kelas tersebut."),
 
     baris.length === 0
       ? React.createElement("p", { className: "dm-kosong" },
@@ -7496,7 +7500,13 @@ function TabLinkKelas({ beriTahu }) {
                 React.createElement("th", null, ""))),
             React.createElement("tbody", null,
               baris.map(r => [React.createElement("tr", { key: r.id },
-                React.createElement("td", null, React.createElement("b", null, r.judul)),
+                React.createElement("td", null, React.createElement("button", {
+                  type: "button",
+                  onClick: () => setBukaPromosi(bukaPromosi === r.id ? null : r.id),
+                  title: "Tampilkan teks promosi & QR",
+                  style: { background: "none", border: 0, padding: 0, cursor: "pointer", textAlign: "left", font: "inherit", color: "inherit" }
+                }, React.createElement("span", { style: { display: "inline-block", width: 16, color: "#2141A6" } }, bukaPromosi === r.id ? "\u25be" : "\u25b8"),
+                  React.createElement("b", { style: { textDecoration: bukaPromosi === r.id ? "none" : "underline", textDecorationColor: "#C9D3E6", textUnderlineOffset: 3 } }, r.judul))),
                 React.createElement("td", { className: "dm-mono" }, "?k=" + r.slug),
                 React.createElement("td", null, (r.kelas_id || []).length),
                 React.createElement("td", null,
@@ -7533,12 +7543,13 @@ function TabLinkKelas({ beriTahu }) {
                       }
                     }, "Ubah"),
                     React.createElement("button", {
-                      className: "dm-btn-line", onClick: () => salinTeks(teksPromosiDari(r))
-                    }, "Salin promosi"),
+                      className: bukaPromosi === r.id ? "dm-btn" : "dm-btn-line",
+                      onClick: () => setBukaPromosi(bukaPromosi === r.id ? null : r.id)
+                    }, bukaPromosi === r.id ? "Tutup promosi & QR" : "Promosi & QR"),
                     React.createElement("button", {
                       className: "dm-btn-line", onClick: () => ubahAktif(r)
                     }, r.aktif ? "Matikan" : "Aktifkan")))
-              ), barisPromosi(r)])))));
+              ), bukaPromosi === r.id ? barisPromosi(r) : null])))));
 }
 
 /* Minta browser (Chrome/Safari) menyimpan atau memperbarui kata sandi

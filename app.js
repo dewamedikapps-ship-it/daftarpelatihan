@@ -7246,9 +7246,30 @@ function TabLinkKelas({ beriTahu }) {
       .slice(0, 60);
   }
 
+  /* Subdomain per jenis pelatihan (aturan pengalihan di Cloudflare):
+     btcls.dewamedik911.com/smgnov -> daftarpelatihan.../btcls-smgnov.
+     Awalan yang lebih panjang dicek dulu (totbtcls sebelum btcls). */
+  const SUB_JENIS = ["totbtcls", "workshop", "webinar", "bonels", "btcls", "acls", "kkmn", "ekg"];
+  function alamatPendek(slug) {
+    slug = String(slug || "");
+    for (const j of SUB_JENIS) {
+      if (slug.indexOf(j + "-") === 0 && slug.length > j.length + 1) {
+        return { host: j + ".dewamedik911.com", jalur: slug.slice(j.length + 1) };
+      }
+    }
+    return null;
+  }
+
   function alamat(slug) {
-    /* Tautan pendek: domain/slug (dialihkan oleh 404.html ke ?k=slug). */
+    const p = alamatPendek(slug);
+    if (p) return "https://" + p.host + "/" + p.jalur;
+    /* Selain itu: domain/slug (dialihkan oleh 404.html ke ?k=slug). */
     return window.location.origin + "/" + slug;
+  }
+
+  function alamatTampil(slug) {
+    const p = alamatPendek(slug);
+    return p ? p.host + "/" + p.jalur : "/" + slug;
   }
 
   function salin(slug) {
@@ -7430,11 +7451,11 @@ function TabLinkKelas({ beriTahu }) {
 
       React.createElement(Field, {
         label: "Nama alamat",
-        hint: "Huruf dan tanda hubung, contoh: dewabtcls-smgnov. Huruf besar/kecil tidak berpengaruh saat diketik orang."
+        hint: "Awali dengan jenis pelatihan + tanda hubung, contoh: btcls-smgnov → btcls.dewamedik911.com/smgnov. Awalan yang dikenali: btcls, acls, totbtcls, ekg, kkmn, bonels, webinar, workshop."
       }, React.createElement("input", {
         className: "dm-input dm-mono",
         value: edit.slug,
-        placeholder: "dewabtcls-smgnov",
+        placeholder: "btcls-smgnov",
         onChange: e => setEdit({ ...edit, slug: e.target.value })
       })),
 
@@ -7795,7 +7816,7 @@ function TabLinkKelas({ beriTahu }) {
                     React.createElement("span", { className: "dm-hint", style: { marginLeft: 6 } },
                       k.tanggal_mulai ? rentang(k.tanggal_mulai, k.tanggal_selesai) : "")));
                 })()),
-                React.createElement("td", { className: "dm-mono", style: { whiteSpace: "nowrap", fontSize: 12.5 } }, "/" + r.slug),
+                React.createElement("td", { className: "dm-mono", style: { whiteSpace: "nowrap", fontSize: 12.5 } }, alamatTampil(r.slug)),
                 React.createElement("td", null,
                   React.createElement("span", {
                     style: { fontWeight: 600, color: r.aktif ? "#166534" : "#8a6d3b" }

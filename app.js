@@ -7319,6 +7319,12 @@ function TabLinkKelas({ beriTahu }) {
     b.push("Daftar dan unggah bukti transfer di:");
     b.push("\u{1F449} " + alamat(slug));
     b.push("");
+    b.push("\u{1F4DE} Informasi:");
+    b.push("Arka \u2014 0821-2348-6576");
+    b.push("Eza \u2014 0851-6145-9345");
+    b.push("Tama \u2014 0856-5556-4911");
+    b.push("Hawa \u2014 0851-1745-4911");
+    b.push("");
     b.push("Tempat terbatas, amankan kursi Anda sekarang.");
     b.push("");
     b.push("_Akademia DEWAMEDIK_");
@@ -7595,6 +7601,8 @@ function TabLinkKelas({ beriTahu }) {
     b.push("\u{1F4DE} Informasi");
     b.push("Arka \u2014 0821-2348-6576");
     b.push("Eza \u2014 0851-6145-9345");
+    b.push("Tama \u2014 0856-5556-4911");
+    b.push("Hawa \u2014 0851-1745-4911");
     b.push("");
     b.push("Come experience what\u2019s next.");
     b.push("Every Second Counts. Be Ready to Save Lives.");

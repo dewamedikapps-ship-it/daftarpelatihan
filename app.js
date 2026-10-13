@@ -7201,10 +7201,20 @@ function TabLinkKelas({ beriTahu }) {
       });
       b.push("");
     }
-    b.push("Yang Anda dapatkan:");
-    b.push("\u2705 Praktik langsung bersama instruktur berpengalaman");
-    b.push("\u2705 Sertifikat terintegrasi SATUSEHAT SDMK");
-    b.push("\u2705 Diselenggarakan lembaga pelatihan terakreditasi Kemenkes RI");
+    b.push("*Fasilitas peserta:*");
+    b.push("\u2705 Sertifikat Resmi ber-SKP Kemenkes RI");
+    b.push("\u2705 Materi Terkini");
+    b.push("\u2705 Training Kit Eksklusif");
+    b.push("\u2705 1x makan siang & 2x coffee break");
+    b.push("\u2705 Akses Baladewa: eksklusif dan berkelanjutan");
+    b.push("\u2705 Quickcards: ilmu tetap tajam, ulang materi kapan saja");
+    /* Lulusan ACLS mendapat Akses Pro 3 bulan DEWA Clinical Tools. */
+    const acls = dipilih.filter(k => /^ACLS/i.test(String(k.jenis || "").trim())).length;
+    if (dipilih.length && acls === dipilih.length) b.push("\u2705 Akses Pro 3 Bulan DEWA Clinical Tools");
+    else if (acls > 0) b.push("\u2705 DEWA Clinical Tools: asisten klinis di genggaman (peserta ACLS: Akses Pro 3 Bulan)");
+    else b.push("\u2705 DEWA Clinical Tools: asisten klinis di genggaman");
+    b.push("");
+    b.push("_Diselenggarakan lembaga pelatihan terakreditasi Kemenkes RI._");
     b.push("");
     const dp = Number(setelan.dp_nominal || 500000);
     b.push("Pilihan pembayaran:");

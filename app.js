@@ -7247,7 +7247,8 @@ function TabLinkKelas({ beriTahu }) {
   }
 
   function alamat(slug) {
-    return window.location.origin + window.location.pathname + "?k=" + slug;
+    /* Tautan pendek: domain/slug (dialihkan oleh 404.html ke ?k=slug). */
+    return window.location.origin + "/" + slug;
   }
 
   function salin(slug) {
@@ -7429,11 +7430,11 @@ function TabLinkKelas({ beriTahu }) {
 
       React.createElement(Field, {
         label: "Nama alamat",
-        hint: "Huruf kecil dan tanda hubung saja. Inilah yang muncul di tautan."
+        hint: "Huruf dan tanda hubung, contoh: dewabtcls-smgnov. Huruf besar/kecil tidak berpengaruh saat diketik orang."
       }, React.createElement("input", {
         className: "dm-input dm-mono",
         value: edit.slug,
-        placeholder: "solo-september",
+        placeholder: "dewabtcls-smgnov",
         onChange: e => setEdit({ ...edit, slug: e.target.value })
       })),
 
@@ -7794,7 +7795,7 @@ function TabLinkKelas({ beriTahu }) {
                     React.createElement("span", { className: "dm-hint", style: { marginLeft: 6 } },
                       k.tanggal_mulai ? rentang(k.tanggal_mulai, k.tanggal_selesai) : "")));
                 })()),
-                React.createElement("td", { className: "dm-mono", style: { whiteSpace: "nowrap", fontSize: 12.5 } }, "?k=" + r.slug),
+                React.createElement("td", { className: "dm-mono", style: { whiteSpace: "nowrap", fontSize: 12.5 } }, "/" + r.slug),
                 React.createElement("td", null,
                   React.createElement("span", {
                     style: { fontWeight: 600, color: r.aktif ? "#166534" : "#8a6d3b" }

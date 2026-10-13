@@ -7568,12 +7568,28 @@ function TabLinkKelas({ beriTahu }) {
       "\u2705 Quickcards: ilmu tetap tajam, ulang materi kapan saja",
       /ACLS/.test(jenis) && !tot ? "\u2705 Akses Pro 3 Bulan DEWA Clinical Tools" : "\u2705 DEWA Clinical Tools: asisten klinis di genggaman"
     ];
+    const blended = /daring/i.test(f) && /luring/i.test(f);
+    const Y = "\u{1F7E8}";
     const b = [];
-    b.push("Buatkan desain flyer pelatihan resmi Akademia DEWAMEDIK (PT Dewa Medik Nusantara), rasio 4:5 untuk feed Instagram.");
-    b.push("Gaya: profesional, premium, bersih. Warna navy, putih, aksen merah. Foto suasana pelatihan kegawatdaruratan yang realistis.");
-    b.push("Wajib ada: logo Kemenkes dan logo Dewa Medik Nusantara di atas, badge \"Terakreditasi Kemenkes RI \u2013 Akreditasi B, No. HK.02.02/F/4052/2024\", QR code menuju tautan pendaftaran.");
-    b.push("Larangan (SE Kemenkes 2692/2026): jangan tulis nomor SKP, jangan ada kata promo/diskon/voucher/early bird/gratis.");
-    b.push("Gunakan teks di bawah ini apa adanya, jangan diubah ejaan, angka, maupun nomornya:");
+    b.push("Buatkan desain flyer pelatihan resmi Akademia DEWAMEDIK (PT Dewa Medik Nusantara), rasio 4:5 (1080x1350) untuk feed Instagram, sesuai SE Kemenkes HK.02.03/F.V/2692/2026.");
+    b.push("");
+    b.push("TATA LETAK WAJIB:");
+    b.push("1. Pojok KIRI ATAS: logo Kementerian Kesehatan RI paling kiri, lalu logo Dewa Medik Nusantara tepat di sampingnya (berjajar sejajar). Proporsi dan warna logo tidak diubah.");
+    b.push("2. Pojok KANAN ATAS: status dan nomor akreditasi ditulis sebagai TEKS biasa (bukan badge, stempel, atau gambar):");
+    b.push("   \"Terakreditasi B\"");
+    b.push("   \"No. HK.02.02/F/4052/2024\"");
+    b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
+    b.push("4. Bagian TRAINER: nama trainer lengkap dengan gelar, dan judul materi ditulis tepat DI BAWAH nama trainer yang membawakannya. Foto trainer tidak wajib.");
+    b.push("5. Dua kotak QR code berdampingan di bagian bawah, masing-masing berlabel:");
+    b.push("   [QR PENDAFTARAN] \u2014 menuju tautan pendaftaran di bawah.");
+    b.push("   [QR VALIDASI SKP & KRITERIA PESERTA] \u2014 kotak kosong berbingkai untuk ditempel QR resmi dari Surat Keterangan Registrasi Kemenkes.");
+    b.push("6. Kalimat syarat ditampilkan jelas: \"Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK\".");
+    b.push("7. Kalimat \"Diselenggarakan oleh PT Dewa Medik Nusantara\" ditampilkan eksplisit.");
+    b.push("8. Gaya: profesional, premium, bersih. Warna navy, putih, aksen merah. Foto suasana pelatihan kegawatdaruratan yang realistis (tanpa foto pejabat Kemenkes).");
+    b.push("");
+    b.push("LARANGAN: jangan tulis angka/nilai SKP dalam bentuk apa pun (hanya lewat QR), jangan ada kata promo, diskon, voucher, early bird, cashback, doorprize, gratis, \"paling murah\", \"SKP on process\", atau klaim direkomendasikan Kemenkes.");
+    b.push("");
+    b.push("Gunakan teks di bawah ini apa adanya. Jangan ubah ejaan, angka, maupun nomornya. Isi bagian bertanda " + Y + " sebelum dikirim:");
     b.push("");
     b.push("---");
     hook.forEach(x => b.push(x));
@@ -7581,14 +7597,27 @@ function TabLinkKelas({ beriTahu }) {
     b.push("Standarnya tetap sama: Excellence.");
     b.push("Pengalamannya yang terus kami tingkatkan.");
     b.push("");
-    b.push("\u{1F6A8} " + jenis + " ANGKATAN \u{1F7E8}[isi angkatan] \u2014 " + (kota || "\u{1F7E8}[kota]").toUpperCase());
-    b.push("\u{1F4C5} " + (tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || "\u{1F7E8}[tanggal]"));
-    b.push("\u{1F4CD} " + (k.lokasi || "\u{1F7E8}[venue]"));
-    b.push("\u{1F4BB} " + metode);
+    b.push("\u{1F6A8} " + jenis + " ANGKATAN " + Y + "[isi angkatan] \u2014 " + (kota || Y + "[kota]").toUpperCase());
+    b.push("\u{1F4C5} " + (tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || Y + "[tanggal]") + " \u00b7 Pukul " + Y + "[jam mulai\u2013selesai] WIB");
+    if (blended) {
+      b.push("    \u2022 Daring: " + Y + "[tanggal daring] (Zoom/LMS Plataran Sehat)");
+      b.push("    \u2022 Luring: " + Y + "[tanggal luring] di " + (k.lokasi || Y + "[venue]"));
+    }
+    b.push("\u{1F4CD} " + (k.lokasi || Y + "[venue]"));
+    b.push("\u{1F4BB} Metode: " + metode);
     if (Number(k.harga) > 0) b.push("\u{1F4B3} Biaya Pelatihan: " + rp(Number(k.harga)).replace(/\s+/g, ""));
+    b.push("");
+    b.push("\u{1F468}\u200D\u2695\uFE0F TRAINER & MATERI");
+    b.push(Y + "[Nama trainer 1, gelar]");
+    b.push("   " + Y + "[judul materi yang dibawakan]");
+    b.push(Y + "[Nama trainer 2, gelar]");
+    b.push("   " + Y + "[judul materi yang dibawakan]");
+    b.push(Y + "[tambah/kurangi sesuai KAK]");
     b.push("");
     b.push("Fasilitas peserta:");
     fas.forEach(x => b.push(x));
+    b.push("");
+    b.push("\u26A0\uFE0F Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK");
     b.push("");
     b.push("Pembayaran:");
     b.push("\u{1F3E6} " + (setelan.rek_bank || "Bank BRI"));
@@ -7597,12 +7626,15 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("\u{1F4F2} PENDAFTARAN");
     b.push(alamat(r.slug));
+    b.push("[QR PENDAFTARAN]   [QR VALIDASI SKP & KRITERIA PESERTA]");
     b.push("");
     b.push("\u{1F4DE} Informasi");
     b.push("Arka \u2014 0821-2348-6576");
     b.push("Eza \u2014 0851-6145-9345");
     b.push("Tama \u2014 0856-5556-4911");
     b.push("Hawa \u2014 0851-1745-4911");
+    b.push("");
+    b.push("Diselenggarakan oleh PT Dewa Medik Nusantara");
     b.push("");
     b.push("Come experience what\u2019s next.");
     b.push("Every Second Counts. Be Ready to Save Lives.");
@@ -7672,7 +7704,7 @@ function TabLinkKelas({ beriTahu }) {
               value: isi,
               onChange: e => { const v = e.target.value; setFlyerDraf(d => ({ ...d, [kunci]: v })); }
             }),
-            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Ganti \u{1F7E8}[isi angkatan] dengan nomor angkatan sebelum disalin."),
+            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Isi semua bagian bertanda \u{1F7E8} (angkatan, jam, tanggal daring/luring, trainer & materi) sebelum disalin. QR Validasi SKP ditempel saat finishing dari Surat Keterangan Registrasi."),
             React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },
               React.createElement("button", {
                 type: "button", className: "dm-btn",

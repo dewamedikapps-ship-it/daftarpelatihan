@@ -1,6 +1,6 @@
 {
   "name": "Pendaftaran Pelatihan - Akademia DEWAMEDIK",
-  "short_name": "DEWAMEDIK",
+  "short_name": "Daftar Pelatihan DEWAMEDIK",
   "description": "Pendaftaran pelatihan BTCLS, ACLS, dan pelatihan kesehatan lainnya di Akademia DEWAMEDIK.",
   "start_url": "/",
   "scope": "/",

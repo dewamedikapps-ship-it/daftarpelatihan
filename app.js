@@ -7249,7 +7249,7 @@ function TabLinkKelas({ beriTahu }) {
   /* Subdomain per jenis pelatihan (aturan pengalihan di Cloudflare):
      btcls.dewamedik911.com/smgnov -> daftarpelatihan.../btcls-smgnov.
      Awalan yang lebih panjang dicek dulu (totbtcls sebelum btcls). */
-  const SUB_JENIS = ["totbtcls", "workshop", "webinar", "bonels", "btcls", "acls", "kkmn", "ekg"];
+  const SUB_JENIS = ["totbtcls", "workshop", "webinar", "bonels", "btcls", "acls", "kkmn", "pkid", "ekg"];
   function alamatPendek(slug) {
     slug = String(slug || "");
     for (const j of SUB_JENIS) {
@@ -7354,8 +7354,17 @@ function TabLinkKelas({ beriTahu }) {
     return b.join("\n");
   }
 
+  /* Teks yang pernah disunting manual menyimpan tautan lama (panjang).
+     Ganti otomatis dengan tautan pendek terbaru setiap kali ditampilkan. */
+  function perbaruiLink(teks, slug) {
+    if (!teks || !slug) return teks;
+    const s = String(slug).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pola = new RegExp("https?://daftarpelatihan\\.dewamedik911\\.com/(?:\\?k=)?" + s + "(?![A-Za-z0-9-])", "gi");
+    return String(teks).replace(pola, alamat(slug));
+  }
+
   function teksPromosiDari(r) {
-    return r.teks_promosi && String(r.teks_promosi).trim() ? r.teks_promosi : buatPromosi(r);
+    return r.teks_promosi && String(r.teks_promosi).trim() ? perbaruiLink(r.teks_promosi, r.slug) : buatPromosi(r);
   }
 
   function salinTeks(t) {
@@ -7451,7 +7460,7 @@ function TabLinkKelas({ beriTahu }) {
 
       React.createElement(Field, {
         label: "Nama alamat",
-        hint: "Awali dengan jenis pelatihan + tanda hubung, contoh: btcls-smgnov → btcls.dewamedik911.com/smgnov. Awalan yang dikenali: btcls, acls, totbtcls, ekg, kkmn, bonels, webinar, workshop."
+        hint: "Awali dengan jenis pelatihan + tanda hubung, contoh: btcls-smgnov → btcls.dewamedik911.com/smgnov. Awalan yang dikenali: btcls, acls, totbtcls, ekg, kkmn, pkid, bonels, webinar, workshop."
       }, React.createElement("input", {
         className: "dm-input dm-mono",
         value: edit.slug,
@@ -7845,7 +7854,7 @@ function TabLinkKelas({ beriTahu }) {
                           kelas_id: (r.kelas_id || []).slice(),
                           aktif: r.aktif,
                           wa_grup: r.wa_grup || "",
-                          teks_promosi: r.teks_promosi || "",
+                          teks_promosi: perbaruiLink(r.teks_promosi || "", r.slug),
                           _manual: !!(r.teks_promosi && String(r.teks_promosi).trim())
                         });
                       }

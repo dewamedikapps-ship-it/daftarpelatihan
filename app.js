@@ -7183,6 +7183,8 @@ function TabLinkKelas({ beriTahu }) {
   /* Prompt flyer per kelas (untuk disalin ke GPT). */
   const [flyerKelas, setFlyerKelas] = useState({});
   const [flyerDraf, setFlyerDraf] = useState({});
+  /* Trainer & materi dari KAK DCC (dikirim otomatis per jam ke tabel pemateri_dcc). */
+  const [pemateri, setPemateri] = useState([]);
   /* Panel per bulan: link dikelompokkan menurut bulan kelasnya. */
   const [bulanLink, setBulanLink] = useState(null);
   const NAMA_BULAN_LINK = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -7236,8 +7238,29 @@ function TabLinkKelas({ beriTahu }) {
     if (a.error) return beriTahu("Gagal memuat: " + a.error.message);
     setBaris(a.data || []);
     setKelas(b.error ? [] : b.data || []);
+    /* Data pemateri boleh belum ada (tabel belum dibuat) — prompt tetap jalan. */
+    try {
+      const d = await SB.from("pemateri_dcc").select("dcc_event_id,jenis,mulai,kota,judul,trainer,diperbarui");
+      setPemateri(d && !d.error && Array.isArray(d.data) ? d.data : []);
+    } catch (e) { setPemateri([]); }
   }
   useEffect(() => { muat(); }, []);
+
+  /* Cocokkan kelas portal dengan kelas DCC: jenis sama (huruf/angka saja)
+     dan tanggal mulai sama. Hanya dipakai bila trainer-nya sudah terisi. */
+  function normJenis(t) { return String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function pemateriKelas(k) {
+    if (!k || !k.tanggal_mulai) return null;
+    const j = normJenis(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
+    const cocok = pemateri.filter(p => String(p.mulai).slice(0, 10) === t && normJenis(p.jenis) === j
+      && Array.isArray(p.trainer) && p.trainer.length);
+    if (cocok.length <= 1) return cocok[0] || null;
+    /* Beberapa kelas sejenis mulai di hari yang sama: bedakan dengan kota. */
+    const nk = x => String(x || "").toLowerCase().replace(/\b(kota|kab|kabupaten)\b\.?/g, "").replace(/[^a-z]/g, "");
+    const kk = nk(kotaKelas(k) || k.kota || k.lokasi);
+    const perKota = kk ? cocok.filter(p => { const pk = nk(p.kota); return pk && (pk.indexOf(kk) > -1 || kk.indexOf(pk) > -1); }) : [];
+    return perKota.length === 1 ? perKota[0] : null;
+  }
 
   function rapikanSlug(t) {
     return String(t || "").toLowerCase()
@@ -7639,11 +7662,20 @@ function TabLinkKelas({ beriTahu }) {
     if (Number(k.harga) > 0) b.push("\u{1F4B3} Biaya Pelatihan: " + rp(Number(k.harga)).replace(/\s+/g, ""));
     b.push("");
     b.push("\u{1F468}\u200D\u2695\uFE0F TRAINER & MATERI");
-    b.push(Y + "[Nama trainer 1, gelar]");
-    b.push("   " + Y + "[judul materi yang dibawakan]");
-    b.push(Y + "[Nama trainer 2, gelar]");
-    b.push("   " + Y + "[judul materi yang dibawakan]");
-    b.push(Y + "[tambah/kurangi sesuai KAK]");
+    const pm = pemateriKelas(k);
+    if (pm) {
+      pm.trainer.forEach(t => {
+        if (!t || !t.nama) return;
+        b.push(String(t.nama).trim());
+        (Array.isArray(t.materi) ? t.materi : []).forEach(m => b.push("   \u2022 " + String(m).trim()));
+      });
+    } else {
+      b.push(Y + "[Nama trainer 1, gelar]");
+      b.push("   " + Y + "[judul materi yang dibawakan]");
+      b.push(Y + "[Nama trainer 2, gelar]");
+      b.push("   " + Y + "[judul materi yang dibawakan]");
+      b.push(Y + "[tambah/kurangi sesuai KAK]");
+    }
     b.push("");
     b.push("Fasilitas peserta:");
     fas.forEach(x => b.push(x));
@@ -7735,7 +7767,13 @@ function TabLinkKelas({ beriTahu }) {
               value: isi,
               onChange: e => { const v = e.target.value; setFlyerDraf(d => ({ ...d, [kunci]: v })); }
             }),
-            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Isi semua bagian bertanda \u{1F7E8} (angkatan, jam, tanggal daring/luring, trainer & materi) sebelum disalin. QR Validasi SKP ditempel saat finishing dari Surat Keterangan Registrasi."),
+            (() => {
+              const pm = pemateriKelas(k);
+              return React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
+                pm ? "\u2705 Trainer & materi diambil otomatis dari KAK DCC" + (pm.diperbarui ? " (diperbarui " + new Date(pm.diperbarui).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "") + ". Ganti trainer di DCC, flyer ikut berubah."
+                   : "\u{1F7E8} Trainer & materi belum ada di KAK DCC untuk kelas ini \u2014 susun KAK-nya di DCC, nanti terisi sendiri.");
+            })(),
+            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Isi semua bagian bertanda \u{1F7E8} (angkatan, jam, tanggal daring/luring) sebelum disalin. QR Validasi SKP ditempel saat finishing dari Surat Keterangan Registrasi."),
             React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },
               React.createElement("button", {
                 type: "button", className: "dm-btn",

@@ -7600,8 +7600,25 @@ function TabLinkKelas({ beriTahu }) {
     if (y1 === y2) return d1 + " " + BL[Number(m1) - 1] + " \u2013 " + d2 + " " + BL[Number(m2) - 1] + " " + y1;
     return d1 + " " + BL[Number(m1) - 1] + " " + y1 + " \u2013 " + d2 + " " + BL[Number(m2) - 1] + " " + y2;
   }
+  /* Nama resmi kepanjangan singkatan pelatihan. HANYA yang sudah pasti;
+     jenis lain ditulis singkatannya saja, dan GPT dilarang mengarang kepanjangan. */
+  const NAMA_RESMI_JENIS = {
+    BTCLS: "Basic Trauma & Cardiac Life Support",
+    ACLS: "Advanced Cardiac Life Support",
+    PKID: "Pelatihan Keperawatan Intensif Dasar",
+    EKG: "Elektrokardiografi"
+  };
+  function namaResmiJenis(jenis) {
+    const j = String(jenis || "").trim().toUpperCase();
+    if (NAMA_RESMI_JENIS[j]) return NAMA_RESMI_JENIS[j];
+    const t = j.match(/^TOT\s*(.+)$/);
+    if (t && NAMA_RESMI_JENIS[t[1].trim()]) return "TOT " + NAMA_RESMI_JENIS[t[1].trim()];
+    return "";
+  }
+
   function buatPromptFlyer(r, k) {
     const jenis = String(k.jenis || "").trim().toUpperCase();
+    const namaResmi = namaResmiJenis(jenis);
     const tot = /^TOT/.test(jenis);
     const acls = /ACLS/.test(jenis) && !tot;
     const kota = kotaKelas(k);
@@ -7633,6 +7650,10 @@ function TabLinkKelas({ beriTahu }) {
     b.push("   \"Terakreditasi B\"");
     b.push("   \"No. HK.02.02/F/4052/2024\"");
     b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
+    b.push(namaResmi
+      ? "   Judul besar \"" + jenis + "\", lalu TEPAT DI BAWAHNYA ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
+      : "   Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
+    b.push("   Aturan umum: jangan pernah mengarang kepanjangan singkatan (nama pelatihan, SKP, LMS, dll.). Hanya pakai kepanjangan yang tertulis di prompt ini.");
     b.push("4. Bagian TRAINER: nama trainer lengkap dengan gelar, dan judul materi ditulis tepat DI BAWAH nama trainer yang membawakannya. Foto trainer tidak wajib.");
     b.push("5. Dua kotak QR code berdampingan di bagian bawah, masing-masing berlabel:");
     b.push("   [QR PENDAFTARAN] \u2014 menuju tautan pendaftaran di bawah.");
@@ -7651,6 +7672,8 @@ function TabLinkKelas({ beriTahu }) {
     b.push("Standarnya tetap sama: Excellence.");
     b.push("Pengalamannya yang terus kami tingkatkan.");
     b.push("");
+    b.push(jenis);
+    if (namaResmi) b.push(namaResmi);
     b.push("\u{1F6A8} " + jenis + " ANGKATAN " + Y + "[isi angkatan] \u2014 " + (kota || Y + "[kota]").toUpperCase());
     b.push("\u{1F4C5} " + (tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || Y + "[tanggal]") + " \u00b7 Pukul " + Y + "[jam mulai\u2013selesai] WIB");
     if (blended) {

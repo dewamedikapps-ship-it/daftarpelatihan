@@ -438,7 +438,12 @@ function waktuDaftar(v) {
 
 /* Kota pelaksanaan kelas. Diisi pengurus di tab Jadwal; bila masih
    kosong, ditebak dari judul atau lokasi agar data lama tetap terpilah. */
-const KOTA_DIKENAL = [["Cirebon", /cirebon/i], ["Semarang", /semarang/i], ["Tangerang", /tangerang|\btng\b/i], ["Yogyakarta", /yogya|jogja/i], ["Surakarta", /surakarta|\bsolo\b/i], ["Tasikmalaya", /tasik/i], ["Pekalongan", /pekalongan/i], ["Depok", /depok/i], ["Banyuwangi", /banyuwangi/i], ["Palu", /\bpalu\b/i], ["Tanjungpinang", /tanjung ?pinang|\btjp\b/i], ["Jakarta", /jakarta/i], ["Bandung", /bandung/i]];
+const KOTA_DIKENAL = [["Cirebon", /cirebon/i], ["Semarang", /semarang/i], ["Tangerang", /tangerang|\btng\b/i], ["Yogyakarta", /yogya|jogja/i], ["Surakarta", /surakarta|\bsolo\b/i], ["Tasikmalaya", /tasik/i], ["Pekalongan", /pekalongan/i], ["Depok", /depok/i], ["Banyuwangi", /banyuwangi/i], ["Palu", /\bpalu\b|undata/i], ["Tanjungpinang", /tanjung ?pinang|\btjp\b/i], ["Jakarta", /jakarta/i], ["Bandung", /bandung/i]];
+/* Nama kota untuk saringan: tanpa awalan "Kota"/"Kabupaten", huruf awal kapital. */
+function kotaSaring(k) {
+  const t = kotaKelas(k).replace(/^(kota|kabupaten|kab\.?)\s+/i, "").trim();
+  return t ? t.toLowerCase().replace(/\b[a-z]/g, c => c.toUpperCase()) : "";
+}
 function kotaKelas(k) {
   if (!k) return "";
   if (k.kota && String(k.kota).trim()) return String(k.kota).trim();
@@ -1660,7 +1665,10 @@ function App() {
     setTimeout(() => setToast(""), 2600);
   }
   async function muatPublik() {
-    const [a, b, c, d, f, g] = await Promise.all([SB.from("pengaturan").select("*").eq("id", 1).single(), SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,format,kuota,status,sisa").order("tanggal_mulai"), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12), window.DM_SLUG ? SB.from("kampanye").select("*").eq("slug", window.DM_SLUG).eq("aktif", true).maybeSingle() : Promise.resolve({ data: null })]);
+    const [a, b, c, d, f, g] = await Promise.all([SB.from("pengaturan").select("*").eq("id", 1).single(), SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,kota,format,kuota,status,sisa").order("tanggal_mulai").then(function (r) {
+      /* Kolom kota mungkin belum ada di tampilan publik: ulangi tanpa kota. */
+      return r && r.error && /kota/i.test(r.error.message || "") ? SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,format,kuota,status,sisa").order("tanggal_mulai") : r;
+    }), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12), window.DM_SLUG ? SB.from("kampanye").select("*").eq("slug", window.DM_SLUG).eq("aktif", true).maybeSingle() : Promise.resolve({ data: null })]);
     if (a.error) throw new Error("Pengaturan gagal dimuat: " + a.error.message);
     if (b.error) throw new Error("Jadwal gagal dimuat: " + b.error.message);
     setSetelan(a.data);
@@ -1904,7 +1912,12 @@ function Pendaftaran({
   const refData = useRef(null);
   const refKelas = useRef(null);
   const training = useMemo(() => kelas.find(t => t.id === pilihId) || null, [pilihId, kelas]);
-  const pilihanLokasi = useMemo(() => Array.from(new Set(kelas.map(t => t.lokasi).filter(Boolean))), [kelas]);
+  /* Saringan memakai nama KOTA (bukan nama venue), digabung tanpa membedakan huruf besar/kecil. */
+  const pilihanLokasi = useMemo(() => {
+    const m = {};
+    kelas.forEach(t => { const k = kotaSaring(t); if (k) m[k.toLowerCase()] = k; });
+    return Object.values(m).sort((a, b) => a.localeCompare(b, "id"));
+  }, [kelas]);
   const pilihanMetode = useMemo(() => Array.from(new Set(kelas.map(t => t.format).filter(Boolean))), [kelas]);
   const pilihanJenis = useMemo(() => Array.from(new Set(kelas.map(t => t.jenis).filter(Boolean))), [kelas]);
   const pilihanBulan = useMemo(() => {
@@ -1923,7 +1936,7 @@ function Pendaftaran({
     const q = cari.trim().toLowerCase();
     const hasil = kelas.filter(t => {
       if (fJenis && t.jenis !== fJenis) return false;
-      if (fLokasi && t.lokasi !== fLokasi) return false;
+      if (fLokasi && kotaSaring(t).toLowerCase() !== fLokasi.toLowerCase()) return false;
       if (fMetode && t.format !== fMetode) return false;
       if (fBulan && String(t.tanggal_mulai || "").slice(0, 7) !== fBulan) return false;
       if (q) {
@@ -2431,14 +2444,14 @@ function Pendaftaran({
   }, "Semua jenis"), pilihanJenis.map(x => /*#__PURE__*/React.createElement("option", {
     key: x
   }, x)))), /*#__PURE__*/React.createElement(Field, {
-    label: "Lokasi"
+    label: "Kota"
   }, /*#__PURE__*/React.createElement("select", {
     className: "dm-input",
     value: fLokasi,
     onChange: e => setFLokasi(e.target.value)
   }, /*#__PURE__*/React.createElement("option", {
     value: ""
-  }, "Semua lokasi"), pilihanLokasi.map(x => /*#__PURE__*/React.createElement("option", {
+  }, "Semua kota"), pilihanLokasi.map(x => /*#__PURE__*/React.createElement("option", {
     key: x
   }, x)))), /*#__PURE__*/React.createElement(Field, {
     label: "Bulan"

@@ -7903,13 +7903,14 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("TATA LETAK WAJIB:");
     b.push("1. Pojok KIRI ATAS: logo Kementerian Kesehatan RI paling kiri, lalu logo Dewa Medik Nusantara tepat di sampingnya (berjajar sejajar). Proporsi dan warna logo tidak diubah.");
-    b.push("2. Pojok KANAN ATAS: status dan nomor akreditasi ditulis sebagai TEKS biasa (bukan badge, stempel, atau gambar):");
+    b.push("2. Pojok KANAN ATAS: status dan nomor akreditasi ditulis sebagai TEKS biasa (bukan badge, stempel, atau gambar), 3 baris berurutan:");
+    b.push("   \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" (huruf kecil di atas)");
     b.push("   \"Terakreditasi B\"");
     b.push("   \"No. HK.02.02/F/4052/2024\"");
     b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
     b.push(namaResmi
-      ? "   Judul besar \"" + jenis + "\"" + (untukPerawatK ? ", tepat di bawahnya \"for Nurse\"" : "") + ", lalu di bawahnya ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
-      : "   Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
+      ? "   Tepat di atas judul, kata kecil \"PELATIHAN\". Judul besar \"" + jenis + "\"" + (untukPerawatK ? ", tepat di bawahnya \"for Nurse\"" : "") + ", lalu di bawahnya ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
+      : "   Tepat di atas judul, kata kecil \"PELATIHAN\". Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
     b.push("   Aturan umum: jangan pernah mengarang kepanjangan singkatan (nama pelatihan, SKP, LMS, dll.). Hanya pakai kepanjangan yang tertulis di prompt ini.");
     b.push(!pemateriKelas(k) && materiKurikulum(k)
       ? "4. Bagian MATERI PELATIHAN: tampilkan daftar materi apa adanya sebagai poin-poin rapi. Jangan menambahkan nama trainer atau narasumber."
@@ -8087,9 +8088,9 @@ function TabLinkKelas({ beriTahu }) {
     p("Create a clean horizontal white header.", "");
     p("**Upper-left:**", "Place the original Kemenkes logo first, followed immediately by the original Dewa Medik Nusantara logo.", "");
     p("Use the original uploaded logo assets exactly as provided. Do not redraw, distort, recolor, or alter their lettering.", "");
-    p("**Upper-right:**", "Display accreditation as plain navy text:", "", "Terakreditasi B", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge or stamp.", "");
+    p("**Upper-right:**", "Display accreditation as plain navy text, three lines in this order:", "", "Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)", "", "Terakreditasi B", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge or stamp.", "");
     p("### 4. HERO — NEXT 30%", "");
-    p("**LEFT SIDE:**", "", "Very large, bold, condensed navy headline:", "", "# " + J, "");
+    p("**LEFT SIDE:**", "", "Directly above the headline, a small uppercase navy label:", "", "PELATIHAN", "", "Very large, bold, condensed navy headline:", "", "# " + J, "");
     if (untukPerawat) p("Directly underneath, exactly:", "", "**for Nurse**", "");
     if (namaResmi) {
       p((untukPerawat ? "Then" : "Directly underneath") + ", exactly:", "", "**" + namaResmi + "**", "");
@@ -8246,7 +8247,7 @@ function TabLinkKelas({ beriTahu }) {
       "H. ORGANIZER FOOTER: y=1240–1305 (65px)", "");
     p("HEADER:", "At top left, place the ORIGINAL uploaded Kemenkes logo, followed horizontally by the ORIGINAL uploaded Dewa Medik Nusantara shield logo and wordmark. Never redraw, modify or regenerate either logo.",
       "Top right in navy:", "Institusi penyelenggara pelatihan", "terakreditasi Kemenkes RI", "Terakreditasi B", "No. HK.02.02/F/4052/2024", "");
-    p("HERO:", "Very large bold navy " + J + " title on left with thin red ECG line crossing the bottom of the letters.");
+    p("HERO:", "Small uppercase navy label directly above the title: PELATIHAN", "Very large bold navy " + J + " title on left with thin red ECG line crossing the bottom of the letters.");
     if (untukPerawat) p("Directly below, exactly:", "for Nurse");
     if (namaResmi) p((untukPerawat ? "Then" : "Directly below") + ", exactly (do not translate, shorten, or rephrase):", namaResmi);
     else p("Write " + J + " as the abbreviation ONLY. Do NOT add any expansion or meaning of the abbreviation, because the official name is not provided here.");
@@ -8366,10 +8367,11 @@ function TabLinkKelas({ beriTahu }) {
     p("1. Kemenkes logo with the turquoise word **Kemenkes**.", "2. Original Dewa Medik Nusantara logo.", "");
     p("Do not redraw, recreate, recolor, or distort either logo.", "");
     p("Upper-right accreditation text, without badges:", "");
-    p("**Terakreditasi B**", "", "**No. HK.02.02/F/4052/2024**", "");
+    p("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI", "", "**Terakreditasi B**", "", "**No. HK.02.02/F/4052/2024**", "");
     p("## 4. HERO SECTION — 24%", "");
     p(hero, "");
     p("Modern medical simulation environment, navy uniforms, natural Indonesian faces, realistic equipment, and red-blue cinematic lighting.", "");
+    p("Small uppercase label directly above the headline:", "", "PELATIHAN", "");
     p("Large headline:", "", "**" + (jenis || Y + "[jenis pelatihan]") + "**", "");
     if (untukPerawat) p("Immediately below:", "", "**for Nurse**", "");
     if (namaResmi) {
@@ -8570,7 +8572,9 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("Do not redraw, modify, recolor, or replace either logo.");
     b.push("");
-    b.push("Upper right, plain text:");
+    b.push("Upper right, plain text, three lines in this order:");
+    b.push("");
+    b.push("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)");
     b.push("");
     b.push("Terakreditasi B");
     b.push("");
@@ -8582,6 +8586,10 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("Modern clinical training environment, realistic equipment, professional navy uniforms, dramatic but balanced lighting.");
     if (terang) b.push("Place the photograph inside a large rounded frame on the light background.");
+    b.push("");
+    b.push("Directly above the headline, a small uppercase label:");
+    b.push("");
+    b.push("PELATIHAN");
     b.push("");
     b.push("Place a very large headline:");
     b.push("");

@@ -8011,10 +8011,27 @@ function TabLinkKelas({ beriTahu }) {
     return DESAIN_FLYER[h % DESAIN_FLYER.length].id;
   }
   function buatPromptDesain(r, k, desain) {
-    if (desain === "infografis") return buatPromptInfografis(r, k);
-    if (desain === "putih") return buatPromptPutih(r, k);
-    if (desain === "grid") return buatPromptGrid(r, k);
-    return desain === "master" || desain === "terang" ? buatPromptMaster(r, k, desain === "terang") : buatPromptFlyer(r, k);
+    let t;
+    if (desain === "infografis") t = buatPromptInfografis(r, k);
+    else if (desain === "putih") t = buatPromptPutih(r, k);
+    else if (desain === "grid") t = buatPromptGrid(r, k);
+    else t = desain === "master" || desain === "terang" ? buatPromptMaster(r, k, desain === "terang") : buatPromptFlyer(r, k);
+    return tambahWajibFlyer(t, k);
+  }
+  /* Dua elemen wajib yang sering hilang bila GPT meniru gambar referensi lama:
+     label "PELATIHAN" di atas judul dan teks institusi terakreditasi di atas "Terakreditasi B". */
+  function tambahWajibFlyer(t, k) {
+    const J = String((k && k.jenis) || "").trim().toUpperCase() || "judul pelatihan";
+    const atas = [
+      "",
+      "⚠️ WAJIB / MANDATORY — tetap tampilkan walaupun gambar referensi tidak memilikinya (do NOT copy the reference here):",
+      "1. Kata \"PELATIHAN\" (huruf kapital, lebih kecil dari judul, warna navy) tepat DI ATAS judul besar \"" + J + "\". Urutan dari atas: PELATIHAN → " + J + " → baris berikutnya.",
+      "2. Pojok kanan atas, tepat DI ATAS \"Terakreditasi B\", tulis teks kecil: \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\". Urutan: Institusi penyelenggara pelatihan terakreditasi Kemenkes RI → Terakreditasi B → No. HK.02.02/F/4052/2024.",
+      ""
+    ].join("\n");
+    const bawah = "\n\n⚠️ CEK AKHIR / FINAL CHECK sebelum selesai: (1) kata \"PELATIHAN\" terlihat jelas di atas \"" + J + "\"; (2) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" terlihat di atas \"Terakreditasi B\". Jika salah satu belum ada, perbaiki dulu.";
+    const i = t.indexOf("\n");
+    return (i < 0 ? t + atas : t.slice(0, i + 1) + atas + t.slice(i + 1)) + bawah;
   }
 
   /* Desain 5 — Putih Editorial sesuai referensi (template Pak Ryan, Okt 2026), diisi otomatis per kelas. */

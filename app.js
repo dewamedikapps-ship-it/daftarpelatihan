@@ -7367,7 +7367,14 @@ function TabLinkKelas({ beriTahu }) {
   const [flyerKelas, setFlyerKelas] = useState({});
   const [flyerDraf, setFlyerDraf] = useState({});
   /* Desain prompt flyer yang dipilih per link+kelas (kosong = bawaan berselang-seling). */
-  const [flyerDesain, setFlyerDesain] = useState({});
+  const [flyerDesain, setFlyerDesainAsli] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("dm_desain_flyer") || "{}") || {}; } catch (e) { return {}; }
+  });
+  const setFlyerDesain = fn => setFlyerDesainAsli(o => {
+    const n = typeof fn === "function" ? fn(o) : fn;
+    try { localStorage.setItem("dm_desain_flyer", JSON.stringify(n)); } catch (e) {}
+    return n;
+  });
   /* Trainer & materi dari KAK DCC (dikirim otomatis per jam ke tabel pemateri_dcc). */
   const [pemateri, setPemateri] = useState([]);
   /* Jadwal pemateri yang diupload per kelas (mengalahkan data KAK DCC). */
@@ -7865,6 +7872,7 @@ function TabLinkKelas({ beriTahu }) {
     const acls = /ACLS/.test(jenis) && !tot;
     const kota = kotaKelas(k);
     const f = String(k.format || "").trim();
+    const untukPerawatK = /\bFN\b|for nurse|\bperawat\b/i.test(String(k.judul || "") + " " + String((r && r.judul) || ""));
     const metode = /daring/i.test(f) && /luring/i.test(f) ? "Blended Training | " + f
       : /daring|online/i.test(f) ? "Daring | " + f : f ? "Luring | " + f : "Luring";
     const hook = tot
@@ -7893,7 +7901,7 @@ function TabLinkKelas({ beriTahu }) {
     b.push("   \"No. HK.02.02/F/4052/2024\"");
     b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
     b.push(namaResmi
-      ? "   Judul besar \"" + jenis + "\", lalu TEPAT DI BAWAHNYA ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
+      ? "   Judul besar \"" + jenis + "\"" + (untukPerawatK ? ", tepat di bawahnya \"for Nurse\"" : "") + ", lalu di bawahnya ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
       : "   Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
     b.push("   Aturan umum: jangan pernah mengarang kepanjangan singkatan (nama pelatihan, SKP, LMS, dll.). Hanya pakai kepanjangan yang tertulis di prompt ini.");
     b.push("4. Bagian TRAINER: nama trainer lengkap dengan gelar, dan judul materi ditulis tepat DI BAWAH nama trainer yang membawakannya. Foto trainer tidak wajib.");
@@ -7915,8 +7923,9 @@ function TabLinkKelas({ beriTahu }) {
     b.push("Pengalamannya yang terus kami tingkatkan.");
     b.push("");
     b.push(jenis);
+    if (untukPerawatK) b.push("for Nurse");
     if (namaResmi) b.push(namaResmi);
-    b.push("\u{1F6A8} " + jenis + " ANGKATAN " + Y + "[isi angkatan] \u2014 " + (kota || Y + "[kota]").toUpperCase());
+    b.push("\u{1F6A8} " + jenis + (untukPerawatK ? " FOR NURSE" : "") + " ANGKATAN " + Y + "[isi angkatan] \u2014 " + (kota || Y + "[kota]").toUpperCase());
     b.push("\u{1F4C5} " + (tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || Y + "[tanggal]") + " \u00b7 Pukul " + Y + "[jam mulai\u2013selesai] WIB");
     if (blended) {
       b.push("    \u2022 Daring: " + Y + "[tanggal daring] (Zoom/LMS Plataran Sehat)");

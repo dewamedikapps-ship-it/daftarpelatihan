@@ -1101,6 +1101,50 @@ function Badge({
     className: cls
   }, txt);
 }
+/* Keputusan Member Benefit berbasis kartu (Kartu Member Dewa Medik / sertifikat alumni).
+   Harga normal dibayar dulu; benefit baru dipotong setelah admin menyetujui. */
+function BenefitKartu({ r, peran, beriTahu, selesai }) {
+  const [sibuk, setSibuk] = useState(false);
+  const st = r.benefit_status;
+  async function putuskan(setuju) {
+    const pot = Number(r.benefit_potongan) || 0;
+    if (setuju) {
+      const total = Math.max(0, (Number(r.harga_awal) || 0) - pot);
+      const dibayar = Number(r.jumlah_bayar != null ? r.jumlah_bayar : r.total) || 0;
+      const sisa = Math.max(0, total - dibayar);
+      const lebih = Math.max(0, dibayar - total);
+      if (!window.confirm("SETUJUI Member Benefit " + r.nomor + " (" + r.nama + ")?\n\nKartu Member Dewa Medik sudah dicek sah" + (r.member_id ? " (ID " + r.member_id + ")" : "") + ".\nBenefit " + (r.benefit_persen || 0) + "% = " + rp(pot) + "\nTotal baru " + rp(total) + (lebih > 0 ? "\n\nPeserta sudah membayar penuh: kembalikan " + rp(lebih) + " ke peserta." : "\nSisa pelunasan menjadi " + rp(sisa) + "."))) return;
+      const tgl = new Date().toLocaleDateString("id-ID", { timeZone: "Asia/Jakarta", day: "numeric", month: "short", year: "numeric" });
+      const catatan = ((r.catatan || "").trim() ? r.catatan.trim() + "\n" : "") + "Member Benefit " + rp(pot) + " disetujui " + tgl + (lebih > 0 ? "; kembalikan " + rp(lebih) + " ke peserta." : ".");
+      const ubah = { voucher_kode: r.benefit_kode, persen: r.benefit_persen, diskon: pot, total: total, sisa_bayar: sisa, benefit_status: "disetujui", catatan: catatan };
+      setSibuk(true);
+      const { error } = await SB.from("pendaftaran").update(ubah).eq("id", r.id);
+      setSibuk(false);
+      if (error) return beriTahu("Gagal menyimpan: " + error.message);
+      beriTahu(lebih > 0 ? "Benefit disetujui. Kembalikan " + rp(lebih) + " ke peserta." : "Benefit disetujui.");
+      selesai({ ...r, ...ubah });
+    } else {
+      const sebab = (window.prompt("Alasan menolak Member Benefit " + r.nomor + ":", "Kartu Member Dewa Medik tidak valid") || "").trim();
+      if (!sebab) return;
+      const catatan = ((r.catatan || "").trim() ? r.catatan.trim() + "\n" : "") + "Member Benefit ditolak: " + sebab;
+      setSibuk(true);
+      const { error } = await SB.from("pendaftaran").update({ benefit_status: "ditolak", catatan: catatan }).eq("id", r.id);
+      setSibuk(false);
+      if (error) return beriTahu("Gagal menyimpan: " + error.message);
+      beriTahu("Member Benefit ditolak. Harga tetap normal.");
+      selesai({ ...r, benefit_status: "ditolak", catatan: catatan });
+    }
+  }
+  const warna = st === "menunggu" ? "#FEF3C7" : st === "disetujui" ? "#DCFCE7" : st === "ditolak" ? "#FEE2E2" : "#F3F7F6";
+  return React.createElement("div", { style: { margin: "6px 0 10px", padding: "10px 12px", borderRadius: 10, background: warna, fontSize: 14, lineHeight: 1.5 } },
+    React.createElement("div", null, React.createElement("b", null, "Kartu Member Dewa Medik"), r.member_id ? " \u00b7 Nomor ID member: " : "", r.member_id ? React.createElement("b", { className: "dm-mono" }, r.member_id) : null),
+    st ? React.createElement("div", null, "Member Benefit ", r.benefit_persen || 0, "% (", rp(Number(r.benefit_potongan) || 0), ") \u2014 ",
+      React.createElement("b", null, st === "menunggu" ? "MENUNGGU VERIFIKASI: cek kartu di bagian Berkas" : st === "disetujui" ? "disetujui" : "ditolak")) : null,
+    st === "menunggu" && peran !== "diklat" ? React.createElement("div", { className: "dm-row", style: { gap: 8, marginTop: 8 } },
+      React.createElement("button", { type: "button", className: "dm-btn", disabled: sibuk, onClick: () => putuskan(true) }, "Setujui benefit"),
+      React.createElement("button", { type: "button", className: "dm-btn-line", disabled: sibuk, onClick: () => putuskan(false) }, "Tolak")) : null);
+}
+
 function Unggah({
   judul,
   keterangan,
@@ -2123,7 +2167,8 @@ function Pendaftaran({
     kota: "",
     profesi: "Perawat",
     ukuran_tshirt: "",
-    plataran: ""
+    plataran: "",
+    member_id: ""
   });
   const [berkas, setBerkas] = useState({
     transfer: null,
@@ -2312,7 +2357,10 @@ function Pendaftaran({
     };
   }, [training && training.id, berkas.alumni, berkas.member, email]);
   const dipakai = kodeManual && (!otomatis || kodeManual.potongan >= otomatis.potongan) ? kodeManual : otomatis;
-  const potongan = dipakai ? Number(dipakai.potongan) : 0;
+  /* Benefit dari kartu member/sertifikat alumni TIDAK langsung memotong harga:
+     dicek admin dulu, baru dipotong (dikembalikan/mengurangi pelunasan). */
+  const tunda = !!(dipakai && dipakai.tertunda);
+  const potongan = dipakai && !tunda ? Number(dipakai.potongan) : 0;
   const total = training ? Math.max(0, Number(training.harga) - potongan) : 0;
   const dp = Math.min(Number(setelan.dp_nominal || 500000), total);
   const bayarSekarang = tipeBayar === "booking" ? dp : total;
@@ -2371,6 +2419,7 @@ function Pendaftaran({
     if (!data.plataran) s.plataran = "Pilih salah satu.";
     if (!berkas.foto) s.foto = "Pas foto belum diunggah.";
     if (!berkas.transfer) s.transfer = "Foto bukti transfer belum diunggah.";
+    if (berkas.member && !String(data.member_id || "").trim()) s.member_id = "Tulis Nomor ID member yang tertera di Kartu Member Dewa Medik.";
     if (mintaInvoice && !invInstansi.trim()) s.invInstansi = "Tulis nama instansi yang akan ditagihkan.";
     if (!setuju) s.setuju = "Centang dulu pernyataan bahwa biaya tidak dapat dikembalikan.";
     setSalah(s);
@@ -2394,7 +2443,7 @@ function Pendaftaran({
       const {
         data: h,
         error
-      } = await SB.rpc("kirim_pendaftaran", {
+      } = await SB.rpc("kirim_pendaftaran_v2", {
         p_pelatihan: training.id,
         p_email: email,
         p_nik: data.nik,
@@ -2412,7 +2461,8 @@ function Pendaftaran({
         p_minta_invoice: mintaInvoice,
         p_inv_instansi: mintaInvoice ? invInstansi : null,
         p_inv_penerima: mintaInvoice ? invPenerima : null,
-        p_kota: data.kota.trim()
+        p_kota: data.kota.trim(),
+        p_member_id: berkas.member ? String(data.member_id || "").trim() : null
       });
       if (error) throw new Error(error.message);
       if (!h || !h.ok) throw new Error(h && h.pesan || "Pendaftaran gagal dikirim.");
@@ -2493,7 +2543,7 @@ function Pendaftaran({
       className: "dm-mono"
     }, rp(hasil.harga_awal))), Number(hasil.diskon) > 0 ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Member Benefit ", hasil.persen, "%"), /*#__PURE__*/React.createElement("b", {
       className: "dm-mono dm-vital"
-    }, "− ", rp(hasil.diskon))) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Jenis pendaftaran"), /*#__PURE__*/React.createElement("b", null, hasil.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh")), /*#__PURE__*/React.createElement("div", {
+    }, "− ", rp(hasil.diskon))) : null, hasil.benefit_status === "menunggu" ? /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Member Benefit ", hasil.benefit_persen, "%"), /*#__PURE__*/React.createElement("b", null, "menunggu verifikasi kartu")) : null, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Jenis pendaftaran"), /*#__PURE__*/React.createElement("b", null, hasil.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh")), /*#__PURE__*/React.createElement("div", {
       className: "dm-kwitansi-total"
     }, /*#__PURE__*/React.createElement("span", null, hasil.tipe_bayar === "booking" ? "Uang muka dibayar" : "Total dibayar"), /*#__PURE__*/React.createElement("b", {
       className: "dm-mono"
@@ -2561,7 +2611,10 @@ function Pendaftaran({
     className: "dm-putar-kecil"
   }), "Memeriksa kode member…") : /*#__PURE__*/React.createElement("div", {
     className: "dm-baris dm-baris-diskon"
-  }, /*#__PURE__*/React.createElement("span", null, "Member Benefit", dipakai ? ` · ${dipakai.persen}%` : ""), /*#__PURE__*/React.createElement("b", null, potongan > 0 ? "− " + rp(potongan) : rp(0))), /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("span", null, "Member Benefit", dipakai ? ` · ${dipakai.persen}%` : ""), /*#__PURE__*/React.createElement("b", null, tunda ? "menunggu verifikasi" : potongan > 0 ? "− " + rp(potongan) : rp(0))), tunda ? /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint",
+    style: { margin: "2px 0 6px" }
+  }, "Bayar dulu harga normal. Bila kartu Anda sah, Member Benefit ", rp(Number(dipakai.potongan)), " dikembalikan atau dipotong dari pelunasan.") : null, /*#__PURE__*/React.createElement("div", {
     className: "dm-baris"
   }, /*#__PURE__*/React.createElement("span", null, "Jenis pendaftaran"), /*#__PURE__*/React.createElement("b", null, tipeBayar === "booking" ? "Booking seat" : "Bayar penuh")), /*#__PURE__*/React.createElement("div", {
     className: "dm-baris dm-baris-total"
@@ -3138,8 +3191,8 @@ function Pendaftaran({
     })
   }) : null, syarat.member ? /*#__PURE__*/React.createElement(Unggah, {
     nada: true,
-    judul: "Kartu anggota",
-    keterangan: "Kartu member DEWAMEDIK. Format JPG, PNG, atau PDF. Boleh dilewati.",
+    judul: "Kartu Member Dewa Medik",
+    keterangan: "Khusus pemegang Kartu Member Dewa Medik. Format JPG, PNG, atau PDF. Lewati bila Anda bukan member. Member Benefit diberikan setelah kartu diverifikasi admin.",
     nilai: berkas.member,
     onPilih: f => setBerkas({
       ...berkas,
@@ -3149,7 +3202,19 @@ function Pendaftaran({
       ...berkas,
       member: null
     })
-  }) : null, /*#__PURE__*/React.createElement(Unggah, {
+  }) : null, syarat.member && berkas.member ? /*#__PURE__*/React.createElement(Field, {
+    label: "Nomor ID member",
+    salah: salah.member_id
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "dm-input",
+    value: data.member_id,
+    maxLength: 40,
+    onChange: e => setData({
+      ...data,
+      member_id: e.target.value
+    }),
+    placeholder: "Nomor ID di Kartu Member Dewa Medik"
+  })) : null, /*#__PURE__*/React.createElement(Unggah, {
     judul: "Pas foto",
     keterangan: "Wajah tampak jelas, latar polos, untuk dicetak di sertifikat. Format JPG, PNG, atau PDF.",
     wajib: true,
@@ -3324,7 +3389,7 @@ function Pendaftaran({
     className: "dm-bar-in"
   }, /*#__PURE__*/React.createElement("div", null, dipakai ? /*#__PURE__*/React.createElement("p", {
     className: "dm-bar-diskon"
-  }, "Member Benefit ", dipakai.persen, "% terpasang") : /*#__PURE__*/React.createElement("p", {
+  }, "Member Benefit ", dipakai.persen, tunda ? "% menunggu verifikasi kartu" : "% terpasang") : /*#__PURE__*/React.createElement("p", {
     className: "dm-bar-diskon dm-bar-sepi"
   }, !training ? "Pilih kelas untuk melihat total" : tipeBayar === "booking" ? "Uang muka yang perlu ditransfer sekarang" : "Total yang perlu ditransfer"), /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
@@ -4109,6 +4174,9 @@ function TabPendaftar({
     setTautan(hasil);
   }
   async function ubahStatus(r, status, catatan = "") {
+    if (status === "terverifikasi" && r.benefit_status === "menunggu") {
+      return beriTahu("Putuskan dulu Member Benefit-nya: cek Kartu Member Dewa Medik lalu tekan Setujui benefit atau Tolak.");
+    }
     const {
       error
     } = await SB.from("pendaftaran").update({
@@ -4436,7 +4504,10 @@ function TabPendaftar({
     className: "dm-tanda-mati"
   }, r.status === "refund" ? "REFUND" : "BATAL") : null, r.minta_invoice ? /*#__PURE__*/React.createElement("span", {
     className: "dm-tanda-invoice"
-  }, "Invoice") : null, /*#__PURE__*/React.createElement("p", {
+  }, "Invoice") : null, r.benefit_status === "menunggu" ? /*#__PURE__*/React.createElement("span", {
+    className: "dm-tanda-invoice",
+    style: { background: "#FEF3C7", color: "#92400E" }
+  }, "Cek kartu member") : null, /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, r.email), r.kota ? /*#__PURE__*/React.createElement("p", {
     className: "dm-hint dm-kota-peserta"
@@ -4505,7 +4576,12 @@ function TabPendaftar({
     className: "dm-hint"
   }, "Biaya"), /*#__PURE__*/React.createElement("p", {
     className: "dm-mono"
-  }, rp(detail.harga_awal), Number(detail.diskon) > 0 ? ` − ${rp(detail.diskon)} (${detail.voucher_kode})` : "", " = ", /*#__PURE__*/React.createElement("b", null, rp(detail.total))), /*#__PURE__*/React.createElement("p", {
+  }, rp(detail.harga_awal), Number(detail.diskon) > 0 ? ` − ${rp(detail.diskon)} (${detail.voucher_kode})` : "", " = ", /*#__PURE__*/React.createElement("b", null, rp(detail.total))), detail.member_id || detail.benefit_status ? /*#__PURE__*/React.createElement(BenefitKartu, {
+    r: detail,
+    peran: peran,
+    beriTahu: beriTahu,
+    selesai: baru => { setDetail(baru); muat(); }
+  }) : null, /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, "Jenis pendaftaran"), /*#__PURE__*/React.createElement("p", null, detail.tipe_bayar === "booking" ? "Booking seat" : "Bayar penuh", " · dibayar", " ", /*#__PURE__*/React.createElement("b", {
     className: "dm-mono"
@@ -4532,7 +4608,7 @@ function TabPendaftar({
     className: "dm-h4"
   }, "Berkas"), /*#__PURE__*/React.createElement("div", {
     className: "dm-berkas-grid"
-  }, [["foto", "Pas foto"], ["transfer", "Bukti transfer"], ["alumni", "Sertifikat BTCLS"], ["member", "Kartu anggota"]].concat(detail.tipe_bayar === "booking" ? [["pelunasan", "Bukti pelunasan"]] : []).map(([k, l]) => /*#__PURE__*/React.createElement("div", {
+  }, [["foto", "Pas foto"], ["transfer", "Bukti transfer"], ["alumni", "Sertifikat BTCLS"], ["member", "Kartu Member Dewa Medik"]].concat(detail.tipe_bayar === "booking" ? [["pelunasan", "Bukti pelunasan"]] : []).map(([k, l]) => /*#__PURE__*/React.createElement("div", {
     key: k,
     className: "dm-berkas"
   }, /*#__PURE__*/React.createElement("span", null, l), tautan[k] ? tautan[k].pdf ? /*#__PURE__*/React.createElement("a", {
@@ -5281,7 +5357,7 @@ function TabVoucher({
     style: {
       marginBottom: 12
     }
-  }, "Kode member bersyarat berkas terpasang otomatis begitu peserta mengunggah berkasnya. Bila ada dua kode yang cocok, peserta mendapat Member Benefit yang paling besar."), /*#__PURE__*/React.createElement("div", {
+  }, "Kode member bersyarat berkas (Kartu Member Dewa Medik / sertifikat alumni) TIDAK langsung memotong harga: peserta membayar harga normal, lalu admin memeriksa kartunya di Pendaftar \u2192 Periksa dan menekan Setujui benefit atau Tolak. Bila ada dua kode yang cocok, dipakai Member Benefit yang paling besar."), /*#__PURE__*/React.createElement("div", {
     className: "dm-tabel-bungkus"
   }, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
@@ -5295,7 +5371,7 @@ function TabVoucher({
     className: "dm-mono"
   }, v.persen, "%", Number(v.maks_diskon) > 0 ? ` · maks ${rp(v.maks_diskon)}` : ""), /*#__PURE__*/React.createElement("td", null, (v.jenis_berlaku || []).join(", ")), /*#__PURE__*/React.createElement("td", {
     className: "dm-hint"
-  }, [v.wajib_alumni ? "Sertifikat BTCLS" : null, v.wajib_member ? "Kartu anggota" : null].filter(Boolean).join(" + ") || "Tanpa syarat"), /*#__PURE__*/React.createElement("td", {
+  }, [v.wajib_alumni ? "Sertifikat BTCLS" : null, v.wajib_member ? "Kartu Member Dewa Medik" : null].filter(Boolean).join(" + ") || "Tanpa syarat"), /*#__PURE__*/React.createElement("td", {
     className: "dm-mono"
   }, v.kuota > 0 ? v.kuota : "∞"), /*#__PURE__*/React.createElement("td", null, /*#__PURE__*/React.createElement(Badge, {
     status: v.aktif ? "buka" : "tutup"

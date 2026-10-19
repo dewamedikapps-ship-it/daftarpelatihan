@@ -1612,9 +1612,35 @@ var KERJASAMA_BENTUK = [
   ["belum-tahu", "Belum menentukan", "Kami bantu carikan bentuk yang paling sesuai"]
 ];
 
+var KS_PROVINSI = ["Aceh", "Sumatera Utara", "Sumatera Barat", "Riau", "Kepulauan Riau", "Jambi", "Bengkulu", "Sumatera Selatan", "Kepulauan Bangka Belitung", "Lampung", "Banten", "DKI Jakarta", "Jawa Barat", "Jawa Tengah", "DI Yogyakarta", "Jawa Timur", "Bali", "Nusa Tenggara Barat", "Nusa Tenggara Timur", "Kalimantan Barat", "Kalimantan Tengah", "Kalimantan Selatan", "Kalimantan Timur", "Kalimantan Utara", "Sulawesi Utara", "Gorontalo", "Sulawesi Tengah", "Sulawesi Barat", "Sulawesi Selatan", "Sulawesi Tenggara", "Maluku", "Maluku Utara", "Papua", "Papua Barat", "Papua Barat Daya", "Papua Tengah", "Papua Pegunungan", "Papua Selatan"];
+/* Minta lokasi perangkat (GPS) sekali saat Kirim. Tidak pernah menghalangi
+   pengiriman: bila ditolak/gagal, pengajuan tetap terkirim dengan statusnya. */
+function ambilLokasiPerangkat() {
+  return new Promise(selesai => {
+    try {
+      if (!navigator.geolocation) return selesai({ gps_status: "tidak didukung" });
+      let beres = false;
+      const akhiri = v => { if (!beres) { beres = true; selesai(v); } };
+      setTimeout(() => akhiri({ gps_status: "waktu habis" }), 15000);
+      navigator.geolocation.getCurrentPosition(
+        pos => akhiri({
+          gps_lat: Number(pos.coords.latitude.toFixed(6)),
+          gps_lng: Number(pos.coords.longitude.toFixed(6)),
+          gps_akurasi: Math.round(pos.coords.accuracy || 0),
+          gps_status: "dibagikan"
+        }),
+        err => akhiri({ gps_status: err && err.code === 1 ? "ditolak" : "gagal" }),
+        { enableHighAccuracy: false, timeout: 12000, maximumAge: 300000 }
+      );
+    } catch (e) {
+      selesai({ gps_status: "gagal" });
+    }
+  });
+}
+
 function FormKerjasama({ langsung } = {}) {
   const kosong = {
-    institusi: "", pic_nama: "", pic_jabatan: "", email: "", whatsapp: "", kota: "",
+    institusi: "", pic_nama: "", pic_jabatan: "", email: "", whatsapp: "", kota: "", provinsi: "",
     program: [], jumlah_peserta: "", waktu_rencana: "", bentuk: "belum-tahu",
     perlu_penawaran: false, catatan: ""
   };
@@ -1647,11 +1673,19 @@ function FormKerjasama({ langsung } = {}) {
     if (kirim) return;
     setPesan("");
     if (d.institusi.trim().length < 3) { setPesan("Nama institusi belum lengkap."); return; }
+    if (d.kota.trim().length < 3) { setPesan("Kota/kabupaten institusi wajib diisi."); return; }
+    if (!d.provinsi) { setPesan("Provinsi institusi wajib dipilih."); return; }
     if (d.pic_nama.trim().length < 3) { setPesan("Nama penanggung jawab belum lengkap."); return; }
     if (d.whatsapp.replace(/\D/g, "").length < 9) { setPesan("Nomor WhatsApp belum benar."); return; }
     setKirim(true);
     try {
+      const lok = await ambilLokasiPerangkat();
       const { error } = await SB.from("kerjasama_pengajuan").insert({
+        provinsi: d.provinsi,
+        gps_lat: lok.gps_lat == null ? null : lok.gps_lat,
+        gps_lng: lok.gps_lng == null ? null : lok.gps_lng,
+        gps_akurasi: lok.gps_akurasi == null ? null : lok.gps_akurasi,
+        gps_status: lok.gps_status || null,
         institusi: d.institusi.trim(),
         kota: d.kota.trim() || null,
         pic_nama: d.pic_nama.trim(),
@@ -1729,8 +1763,14 @@ function FormKerjasama({ langsung } = {}) {
         React.createElement("div", { className: "dm-grid2" },
           React.createElement(Field, { label: "Nama institusi" },
             React.createElement("input", { className: "dm-input", value: d.institusi, onChange: e => ubah("institusi", e.target.value), placeholder: "RSUD Kota Tangerang" })),
-          React.createElement(Field, { label: "Kota" },
-            React.createElement("input", { className: "dm-input", value: d.kota, onChange: e => ubah("kota", e.target.value), placeholder: "Tangerang" }))
+          React.createElement(Field, { label: "Kota / kabupaten" },
+            React.createElement("input", { className: "dm-input", value: d.kota, required: true, onChange: e => ubah("kota", e.target.value), placeholder: "Kota Tangerang" }))
+        ),
+        React.createElement("div", { className: "dm-grid2" },
+          React.createElement(Field, { label: "Provinsi" },
+            React.createElement("select", { className: "dm-input", value: d.provinsi, required: true, onChange: e => ubah("provinsi", e.target.value) },
+              React.createElement("option", { value: "" }, "Pilih provinsi"),
+              KS_PROVINSI.map(x => React.createElement("option", { key: x, value: x }, x))))
         ),
         React.createElement("div", { className: "dm-grid2" },
           React.createElement(Field, { label: "Nama penanggung jawab" },
@@ -1795,6 +1835,8 @@ function FormKerjasama({ langsung } = {}) {
         )
       ),
 
+      React.createElement("p", { className: "dm-hint", style: { marginTop: 8 } },
+        "Untuk verifikasi pengajuan, kami mencatat perkiraan lokasi jaringan internet Anda dan, bila Anda izinkan, lokasi perangkat saat menekan Kirim. Data ini hanya dipakai tim DEWAMEDIK untuk memastikan pengajuan berasal dari institusi yang benar."),
       pesan ? React.createElement("p", { className: "dm-err" }, pesan) : null,
       React.createElement("div", { className: "dm-row dm-row-akhir" },
         React.createElement("button", { className: "dm-btn", type: "submit", disabled: kirim },
@@ -9720,6 +9762,59 @@ function TabProspek({ beriTahu, peran }) {
 }
 
 var KS_LINK = "https://daftarpelatihan.dewamedik911.com/kerjasama";
+/* Tiga sumber lokasi pengajuan: isian pemohon, jaringan (IP, dicatat server),
+   dan GPS perangkat (bila diizinkan). Terjemahan alamat dicari sekali lalu disimpan. */
+function normProv(x) {
+  return String(x || "").toLowerCase().replace(/provinsi|daerah khusus ibukota|daerah istimewa|special region of|province/g, "").replace(/[^a-z]/g, "");
+}
+function LokasiPengajuan({ r, bolehSimpan }) {
+  const [ipLok, setIpLok] = useState(r.ip_lokasi || "");
+  const [gpsAl, setGpsAl] = useState(r.gps_alamat || "");
+  const [gpsProv, setGpsProv] = useState("");
+  useEffect(() => {
+    let batal = false;
+    if (!r.ip_lokasi && r.ip_alamat) {
+      fetch("https://ipwho.is/" + encodeURIComponent(r.ip_alamat) + "?fields=success,city,region,country")
+        .then(x => x.json()).then(j => {
+          if (batal || !j || !j.success) return;
+          const t = [j.city, j.region, j.country].filter(Boolean).join(", ");
+          setIpLok(t);
+          if (bolehSimpan && t) SB.from("kerjasama_pengajuan").update({ ip_lokasi: t }).eq("id", r.id).then(() => {});
+        }).catch(() => {});
+    }
+    if (r.gps_lat != null && r.gps_lng != null) {
+      fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=id&lat=" + r.gps_lat + "&lon=" + r.gps_lng)
+        .then(x => x.json()).then(j => {
+          if (batal || !j) return;
+          const a = j.address || {};
+          setGpsProv(a.state || "");
+          if (r.gps_alamat) return;
+          const t = [a.village || a.suburb || a.neighbourhood, a.city || a.town || a.county || a.municipality, a.state].filter(Boolean).join(", ") || j.display_name || "";
+          setGpsAl(t);
+          if (bolehSimpan && t) SB.from("kerjasama_pengajuan").update({ gps_alamat: t }).eq("id", r.id).then(() => {});
+        }).catch(() => {});
+    }
+    return () => { batal = true; };
+  }, [r.id]);
+  if (!r.ip_alamat && !r.gps_status && !r.provinsi) return null;
+  const beda = r.provinsi && gpsProv && normProv(gpsProv) && normProv(r.provinsi) && normProv(gpsProv).indexOf(normProv(r.provinsi)) < 0 && normProv(r.provinsi).indexOf(normProv(gpsProv)) < 0;
+  const gaya = { margin: "6px 0", padding: "8px 10px", background: beda ? "#FDECEC" : "#F3F7F6", borderRadius: 8, fontSize: 13, lineHeight: 1.5 };
+  return React.createElement("div", { className: "dm-ks-lokasi", style: gaya },
+    React.createElement("div", null, React.createElement("b", null, "Isian: "), [r.kota, r.provinsi].filter(Boolean).join(", ") || "—"),
+    React.createElement("div", null, React.createElement("b", null, "Jaringan (perkiraan): "),
+      r.ip_alamat ? (ipLok || "mencari…") + (r.ip_negara && r.ip_negara !== "ID" ? " ⚠ luar negeri (" + r.ip_negara + ")" : "") : "—",
+      r.ip_alamat ? React.createElement("span", { className: "dm-hint" }, " · IP " + r.ip_alamat) : null),
+    React.createElement("div", null, React.createElement("b", null, "GPS perangkat: "),
+      r.gps_lat != null && r.gps_lng != null
+        ? React.createElement(React.Fragment, null,
+            (gpsAl || "mencari alamat…") + (r.gps_akurasi ? " (±" + r.gps_akurasi + " m) " : " "),
+            React.createElement("a", { href: "https://www.google.com/maps?q=" + r.gps_lat + "," + r.gps_lng, target: "_blank", rel: "noopener" }, "Buka peta"))
+        : (r.gps_status === "ditolak" ? "pemohon menolak membagikan lokasi" : r.gps_status ? "tidak tersedia (" + r.gps_status + ")" : "—")),
+    beda ? React.createElement("div", { style: { color: "#B42318", fontWeight: 600, marginTop: 4 } },
+      "⚠ Provinsi GPS (" + gpsProv + ") berbeda dengan isian (" + r.provinsi + "). Mohon dikonfirmasi.") : null,
+    React.createElement("div", { className: "dm-hint", style: { marginTop: 2 } }, "Lokasi jaringan hanya perkiraan; data seluler sering terbaca kota lain.")
+  );
+}
 function TabKerjasama({ beriTahu, peran }) {
   const [baris, setBaris] = useState(null);
   const [saring, setSaring] = useState("semua");
@@ -9762,8 +9857,8 @@ function TabKerjasama({ beriTahu, peran }) {
   function unduh() {
     if (!baris || !baris.length) return;
     const aman = v => '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
-    const isi = "Waktu Masuk;Institusi;Kota;Penanggung Jawab;Jabatan;WhatsApp;Email;Program;Bentuk;Jumlah Peserta;Rencana Waktu;Minta Penawaran;Catatan Pemohon;Status;Catatan Internal\n" +
-      baris.map(r => [r.dibuat_pada, r.institusi, r.kota, r.pic_nama, r.pic_jabatan, r.whatsapp, r.email,
+    const isi = "Waktu Masuk;Institusi;Kota;Provinsi;Lokasi Jaringan (perkiraan);IP;GPS Status;GPS Alamat;GPS Lat;GPS Lng;Penanggung Jawab;Jabatan;WhatsApp;Email;Program;Bentuk;Jumlah Peserta;Rencana Waktu;Minta Penawaran;Catatan Pemohon;Status;Catatan Internal\n" +
+      baris.map(r => [r.dibuat_pada, r.institusi, r.kota, r.provinsi, r.ip_lokasi, r.ip_alamat, r.gps_status, r.gps_alamat, r.gps_lat, r.gps_lng, r.pic_nama, r.pic_jabatan, r.whatsapp, r.email,
         (r.program || []).join(", "), KS_BENTUK_LABEL[r.bentuk] || r.bentuk, r.jumlah_peserta, r.waktu_rencana,
         r.perlu_penawaran ? "Ya" : "Tidak", r.catatan, r.status, r.catatan_internal].map(aman).join(";")).join("\n");
     const b = new Blob(["﻿" + isi], { type: "text/csv;charset=utf-8" });
@@ -9820,7 +9915,8 @@ function TabKerjasama({ beriTahu, peran }) {
               React.createElement("span", { className: "dm-ks-waktu" },
                 new Date(r.dibuat_pada).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })),
               React.createElement("p", { className: "dm-ks-pic" },
-                r.pic_nama + (r.pic_jabatan ? " · " + r.pic_jabatan : "") + (r.kota ? " · " + r.kota : "")),
+                r.pic_nama + (r.pic_jabatan ? " · " + r.pic_jabatan : "") + (r.kota ? " · " + r.kota : "") + (r.provinsi ? ", " + r.provinsi : "")),
+              React.createElement(LokasiPengajuan, { r: r, bolehSimpan: peran !== "diklat" }),
               React.createElement("p", { className: "dm-ks-kontak" },
                 r.whatsapp + (r.email ? " · " + r.email : "")),
               React.createElement("p", { className: "dm-ks-butuh" },

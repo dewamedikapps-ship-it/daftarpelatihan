@@ -16,7 +16,9 @@
 (function () {
   var p = decodeURIComponent(location.pathname || "").replace(/^\/+|\/+$/g, "");
   var s = p.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-  var tujuan = /^[a-z0-9][a-z0-9-]{0,58}[a-z0-9]$/.test(s) && p.indexOf("/") < 0 ? "/?k=" + s : "/";
+  /* Alamat khusus: formulir institusi dan pelunasan. */
+  var KHUSUS = { "kerjasama": "/?kerjasama", "kerja-sama": "/?kerjasama", "institusi": "/?kerjasama", "pengajuan-institusi": "/?kerjasama", "pelunasan": "/?lunas", "lunas": "/?lunas" };
+  var tujuan = KHUSUS[s] || (/^[a-z0-9][a-z0-9-]{0,58}[a-z0-9]$/.test(s) && p.indexOf("/") < 0 ? "/?k=" + s : "/");
   location.replace(tujuan);
 })();
 </script>

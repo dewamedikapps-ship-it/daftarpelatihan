@@ -1612,7 +1612,7 @@ var KERJASAMA_BENTUK = [
   ["belum-tahu", "Belum menentukan", "Kami bantu carikan bentuk yang paling sesuai"]
 ];
 
-function FormKerjasama() {
+function FormKerjasama({ langsung } = {}) {
   const kosong = {
     institusi: "", pic_nama: "", pic_jabatan: "", email: "", whatsapp: "", kota: "",
     program: [], jumlah_peserta: "", waktu_rencana: "", bentuk: "belum-tahu",
@@ -1624,7 +1624,7 @@ function FormKerjasama() {
   const [pesan, setPesan] = useState("");
   /* Formulir panjang ini menutup diri di halaman depan supaya calon peserta
      perorangan tidak salah mengisinya. Baru terbuka bila sengaja diklik. */
-  const [terbuka, setTerbuka] = useState(false);
+  const [terbuka, setTerbuka] = useState(!!langsung);
   useEffect(() => {
     const buka = () => {
       setTerbuka(true);
@@ -1687,7 +1687,7 @@ function FormKerjasama() {
           }, "Ajukan untuk institusi lain"),
           React.createElement("button", {
             className: "dm-btn-ghost",
-            onClick: () => { setD(kosong); setSelesai(false); setTerbuka(false); }
+            onClick: () => { setD(kosong); setSelesai(false); setTerbuka(!!langsung); }
           }, "Selesai"))
       )
     );
@@ -1717,7 +1717,7 @@ function FormKerjasama() {
       React.createElement("span", { className: "dm-ks-label" }, "Untuk Institusi"),
       React.createElement("h3", null, "Pengajuan Kerja Sama Pelatihan"),
       React.createElement("p", null, "Rumah sakit, puskesmas, kampus, dan instansi yang ingin melatih tenaga kesehatannya dapat mengajukan kerja sama di sini. Kami menyusun jadwal, kurikulum, dan rincian biaya sesuai kebutuhan institusi Anda."),
-      React.createElement("button", {
+      langsung ? null : React.createElement("button", {
         className: "dm-btn-ghost dm-ks-tutup",
         onClick: () => setTerbuka(false)
       }, "Tutup formulir")
@@ -1823,6 +1823,15 @@ function App() {
   const [toast, setToast] = useState("");
   const ketukRef = useRef([]);
   const [bukaCek, setBukaCek] = useState(false);
+  /* Tautan khusus institusi: daftarpelatihan.dewamedik911.com/kerjasama
+     (atau ?kerjasama / ?institusi) langsung membuka formulir pengajuan kerja sama. */
+  const [modeInstitusi, setModeInstitusi] = useState(() => {
+    try {
+      return /(^|[?&])(kerjasama|institusi)\b/i.test(location.search) || location.hash === "#pengajuan-institusi";
+    } catch (e) {
+      return false;
+    }
+  });
   const [bukaLunas, setBukaLunas] = useState(() => {
     try {
       return /(^|[?&])lunas\b/.test(location.search) || location.hash === "#pelunasan";
@@ -1913,7 +1922,16 @@ function App() {
   }), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("b", null, "Akademia DEWAMEDIK"), /*#__PURE__*/React.createElement("i", null, "PT. Dewa Medik Nusantara"))), sisi !== "admin" ? /*#__PURE__*/React.createElement("nav", {
     className: "dm-navlink"
   }, /*#__PURE__*/React.createElement("a", {
-    href: "#jadwal"
+    href: "#jadwal",
+    onClick: e => {
+      if (!modeInstitusi) return;
+      e.preventDefault();
+      try {
+        history.replaceState(null, "", "/");
+      } catch (x) {}
+      setModeInstitusi(false);
+      window.scrollTo(0, 0);
+    }
   }, "Jadwal Pelatihan"), /*#__PURE__*/React.createElement("a", {
     className: "dm-nav-ks",
     href: "#kerjasama",
@@ -1995,7 +2013,32 @@ function App() {
     }
   }, /*#__PURE__*/React.createElement(BackOffice, {
     beriTahu: beriTahu
-  })) : /*#__PURE__*/React.createElement(Pendaftaran, {
+  })) : modeInstitusi ? /*#__PURE__*/React.createElement("div", {
+    className: "dm-wrap dm-mode-institusi",
+    style: {
+      paddingTop: 24,
+      paddingBottom: 24,
+      maxWidth: 860
+    }
+  }, /*#__PURE__*/React.createElement(FormKerjasama, {
+    langsung: true
+  }), /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint",
+    style: {
+      textAlign: "center",
+      marginTop: 16
+    }
+  }, "Ingin mendaftar pelatihan sebagai peserta perorangan? ", /*#__PURE__*/React.createElement("a", {
+    href: "/",
+    onClick: e => {
+      e.preventDefault();
+      try {
+        history.replaceState(null, "", "/");
+      } catch (x) {}
+      setModeInstitusi(false);
+      window.scrollTo(0, 0);
+    }
+  }, "Lihat jadwal pelatihan"))) : /*#__PURE__*/React.createElement(Pendaftaran, {
     setelan: setelan,
     kampanye: kampanye,
     kelas: kelas,
@@ -9676,6 +9719,7 @@ function TabProspek({ beriTahu, peran }) {
   );
 }
 
+var KS_LINK = "https://daftarpelatihan.dewamedik911.com/kerjasama";
 function TabKerjasama({ beriTahu, peran }) {
   const [baris, setBaris] = useState(null);
   const [saring, setSaring] = useState("semua");
@@ -9751,6 +9795,15 @@ function TabKerjasama({ beriTahu, peran }) {
       )
     ),
 
+    React.createElement("div", { className: "dm-row", style: { alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, padding: "10px 12px", background: "#F3F7F6", borderRadius: 10 } },
+      React.createElement("span", null, "Link untuk institusi: ", React.createElement("b", { className: "dm-mono" }, KS_LINK)),
+      React.createElement("button", {
+        className: "dm-btn-line",
+        onClick: () => {
+          if (navigator.clipboard) navigator.clipboard.writeText(KS_LINK).then(() => beriTahu("Link pengajuan institusi disalin."), () => beriTahu(KS_LINK));
+          else beriTahu(KS_LINK);
+        }
+      }, "Salin link")),
     React.createElement("p", { className: "dm-hint", style: { marginBottom: 12 } },
       baris.length + " pengajuan tercatat" + (jumlahBaru ? " · " + jumlahBaru + " belum ditindaklanjuti" : " · semuanya sudah ditindaklanjuti") +
       ". Pengajuan masuk dari bagian Kerja Sama di halaman pendaftaran."),

@@ -7453,11 +7453,11 @@ function TabLinkKelas({ beriTahu }) {
   const [flyerDraf, setFlyerDraf] = useState({});
   /* Desain prompt flyer yang dipilih per link+kelas (kosong = bawaan berselang-seling). */
   const [flyerDesain, setFlyerDesainAsli] = useState(() => {
-    try { return JSON.parse(localStorage.getItem("dm_desain_flyer") || "{}") || {}; } catch (e) { return {}; }
+    try { return JSON.parse(localStorage.getItem("dm_desain_flyer_v2") || "{}") || {}; } catch (e) { return {}; }
   });
   const setFlyerDesain = fn => setFlyerDesainAsli(o => {
     const n = typeof fn === "function" ? fn(o) : fn;
-    try { localStorage.setItem("dm_desain_flyer", JSON.stringify(n)); } catch (e) {}
+    try { localStorage.setItem("dm_desain_flyer_v2", JSON.stringify(n)); } catch (e) {}
     return n;
   });
   /* Trainer & materi dari KAK DCC (dikirim otomatis per jam ke tabel pemateri_dcc). */

@@ -8121,6 +8121,7 @@ function TabLinkKelas({ beriTahu }) {
   /* Pilihan desain prompt flyer. Default berselang-seling antar kelas
      (supaya feed bervariasi); pengurus tetap bisa memilih sendiri. */
   const DESAIN_FLYER = [
+    { id: "utama", nama: "Desain Utama — seperti contoh ACLS (rekomendasi)" },
     { id: "klasik", nama: "Desain 1 — Klasik (naskah lengkap)" },
     { id: "master", nama: "Desain 2 — Master Canva (navy–merah)" },
     { id: "terang", nama: "Desain 3 — Master Canva (terang)" },
@@ -8129,18 +8130,133 @@ function TabLinkKelas({ beriTahu }) {
     { id: "grid", nama: "Desain 6 — Grid Padat (materi + fasilitas)" }
   ];
   function desainBawaan(k) {
-    const s = String((k && k.id) || "");
-    let h = 0;
-    for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
-    return DESAIN_FLYER[h % DESAIN_FLYER.length].id;
+    return "utama";
   }
   function buatPromptDesain(r, k, desain) {
     let t;
     if (desain === "infografis") t = buatPromptInfografis(r, k);
     else if (desain === "putih") t = buatPromptPutih(r, k);
     else if (desain === "grid") t = buatPromptGrid(r, k);
+    else if (desain === "utama") return buatPromptUtama(r, k);
     else t = desain === "master" || desain === "terang" ? buatPromptMaster(r, k, desain === "terang") : buatPromptFlyer(r, k);
     return tambahWajibFlyer(t, k);
+  }
+  /* DESAIN UTAMA — satu master prompt ketat ala XMAN 119 dengan tata letak contoh flyer ACLS
+     Pak Ryan (19 Okt 2026). Semua isi otomatis dari data kelas; tidak ada 🟨 bila data lengkap. */
+  const ALAMAT_VENUE = [
+    [/kantor\s*dewa\s*medik|kantor\s*dewamedik|irigasi\s*sipon/i, "Jl. Irigasi Sipon No.206, Poris Plawad Utara, Cipondoh, Kota Tangerang"]
+  ];
+  function buatPromptUtama(r, k) {
+    const jenis = String(k.jenis || "").trim().toUpperCase();
+    const J = jenis || "PELATIHAN";
+    const namaResmi = namaResmiJenis(jenis);
+    const tot = /^TOT/.test(jenis);
+    const untukPerawat = /\bFN\b|for nurse|\bperawat\b/i.test(String(k.judul || "") + " " + String((r && r.judul) || ""));
+    const kota = kotaKelas(k);
+    const f = String(k.format || "").trim();
+    const blended = /daring/i.test(f) && /luring/i.test(f);
+    const daring = !blended && /daring|online/i.test(f);
+    const Y = "\u{1F7E8}";
+    const tgl = (tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || Y + "[tanggal]").toUpperCase();
+    const HARI = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
+    const hariDari = x => x ? HARI[new Date(String(x).slice(0, 10) + "T00:00:00Z").getUTCDay()] : "";
+    const h1 = hariDari(k.tanggal_mulai), h2 = hariDari(k.tanggal_selesai || k.tanggal_mulai);
+    const hari = h1 ? (h1 === h2 || !k.tanggal_selesai ? h1 : h1 + " – " + h2) : Y + "[hari]";
+    const venue = String(k.lokasi || "").trim();
+    const al = (ALAMAT_VENUE.find(a => a[0].test(venue)) || [])[1] || "";
+    const lokasiBaris2 = al || (kota && !new RegExp(kota, "i").test(venue) ? kota : "");
+    const bank = setelan.rek_bank || "Bank BRI";
+    const harga = Number(k.harga) > 0 ? rp(Number(k.harga)).replace(/\s+/g, "") : "";
+    const pm = pemateriKelas(k);
+    const tr = pm ? pm.trainer.filter(t => t && t.nama) : [];
+    const km = tr.length ? null : materiKurikulum(k);
+    const fas = [
+      "Sertifikat Resmi ber-SKP Kemenkes RI",
+      "Materi Terkini",
+      "Training Kit Eksklusif",
+      "1x makan siang & 2x coffee break",
+      "Akses Baladewa: eksklusif dan berkelanjutan",
+      "Quickcards: ilmu tetap tajam, ulang materi kapan saja",
+      /ACLS/.test(jenis) && !tot ? "Akses Pro 3 Bulan DEWA Clinical Tools" : "DEWA Clinical Tools: asisten klinis di genggaman"
+    ];
+    let foto;
+    if (tot) foto = ["Senior Indonesian healthcare instructor in navy medical scrubs coaching trainers around a training manikin.", "Participants observing and taking notes."];
+    else if (/BTCLS/.test(jenis)) foto = ["Indonesian male healthcare worker in navy scrubs performing chest compressions on an adult training manikin.", "Indonesian female healthcare worker in a navy hijab stabilising the head with a cervical collar."];
+    else if (/ACLS/.test(jenis)) foto = ["Indonesian male healthcare worker in navy scrubs performing chest compressions on an adult training manikin.", "Indonesian female healthcare worker in navy scrubs giving bag-valve-mask ventilation."];
+    else if (/PKID/.test(jenis)) foto = ["Indonesian male ICU nurse in navy scrubs adjusting a mechanical ventilator.", "Indonesian female ICU nurse in a navy hijab checking the bedside monitor."];
+    else if (/EKG/.test(jenis)) foto = ["Indonesian nurses in navy scrubs analysing a 12-lead ECG strip beside a cardiac monitor; one wears a navy hijab."];
+    else foto = ["Indonesian healthcare workers in navy scrubs practising emergency skills on a training manikin; one wears a navy hijab."];
+    const b = [];
+    const p = (...x) => x.forEach(y => Array.isArray(y) ? y.forEach(z => b.push(z)) : b.push(y));
+    const L = arr => arr.map(t => "- " + t);
+    let n = 0;
+    const H = t => { n++; p("", "## " + n + ". " + t, ""); };
+    p("# MASTER PROMPT — PELATIHAN " + J + (untukPerawat ? " FOR NURSE" : "") + (kota ? " " + kota.toUpperCase() : "") + " — DEWA MEDIK NUSANTARA",
+      "## STRICT 1080 × 1350 INSTAGRAM / CANVA DESIGN", "",
+      "Create a premium, photorealistic, professional Instagram training flyer for **Akademia DEWAMEDIK — PT Dewa Medik Nusantara**.", "",
+      "**CRITICAL: CANVAS SIZE**",
+      L(["Exactly 1080 × 1350 px, 4:5 portrait (width ÷ height = 0.8).", "Full-bleed, edge to edge. No white borders, no mockup, no frame, no letterboxing.", "Do not make a 3:4, 2:3, 9:16 or A4 poster. Do not stretch the design.", "All text inside the safe area X = 32–1048 px."]));
+    H("STYLE");
+    p("White and light-gray medical editorial background, deep navy #0B1E3F, bright medical red #E91C25. Rounded navy title bars, white cards with soft shadows, small clean icons, dark navy footer. Bold condensed headline font, clean sans-serif for details.");
+    H("HEADER — Y 0–110 px");
+    p("Upper-left: the ORIGINAL attached Kemenkes logo, a thin divider, then the ORIGINAL attached Dewa Medik Nusantara logo. Use the supplied images exactly; do not redraw, recolor or distort.", "",
+      "Upper-right, three lines of navy text, right-aligned:",
+      L(["Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (small)", "**Terakreditasi B** (large, bold)", "No. HK.02.02/F/4052/2024"]),
+      "No badge, stamp or seal.");
+    H("HERO — Y 110–470 px");
+    p("LEFT side, stacked title (all lines mandatory):",
+      L(["**PELATIHAN** — white bold capitals inside a red rounded banner", "**" + J + "** — huge bold navy letters, the largest text on the flyer, with a thin red ECG line beside it"]
+        .concat(untukPerawat ? ["**for Nurse** — large bold navy, directly below"] : [])
+        .concat(namaResmi ? ["**" + namaResmi + "** — white text inside a red rounded banner (write exactly; do not translate or rephrase)"] : [])));
+    if (!namaResmi) p("Write " + J + " as the abbreviation only. Do not add any expansion of the abbreviation.");
+    p("", "Below the title, three small round icons with short navy labels: **KOMPETENSI LEBIH KUAT** · **PASIEN LEBIH AMAN** · **PRAKTIK LEBIH TERARAH**", "",
+      "RIGHT side: realistic photo in a modern simulation room —", L(foto), "Navy medical uniforms, realistic equipment and monitors, natural Indonesian faces, soft white fade into the left side.");
+    H("INFORMATION ROW — Y 480–640 px");
+    p("Three white cards side by side, each with a navy title bar and a red round icon:", "",
+      "**METODE** (laptop icon)", "**" + (blended ? "Blended Training" : daring ? "Daring" : "Luring") + "**" + (f ? " — " + f : ""), "",
+      "**TANGGAL PELAKSANAAN** (calendar icon)", "**" + tgl + "** — large bold red, the most prominent text after the title",
+      hari + " · Pukul " + Y + "[jam mulai–selesai] WIB");
+    if (blended) p("Navy label \"Daring\": " + tglDL(k, "daring", Y + "[tanggal daring]") + " · Zoom/LMS Plataran Sehat", "Red label \"Luring\": " + tglDL(k, "luring", Y + "[tanggal luring]"));
+    if (!daring) { p("", "**LOKASI LURING** (red location pin)", "**" + (venue || Y + "[venue]") + "**"); if (lokasiBaris2) p(lokasiBaris2); }
+    else p("", "**PLATFORM** (video icon)", "**Zoom / LMS Plataran Sehat**");
+    H("FACILITIES & " + (tr.length ? "TRAINERS" : "MATERIALS") + " — Y 650–960 px");
+    p("LEFT card (about 55% width), navy title bar with gift icon: **FASILITAS PESERTA**", "Rows with navy check icons:", L(fas),
+      "At the bottom, a light-red strip with a red exclamation icon: **Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK**", "");
+    if (tr.length) {
+      p("RIGHT card (about 45% width), navy title bar with people icon: **TRAINER & MATERI**", "Numbered red circles; trainer name in bold navy, topics in small text below:");
+      tr.forEach(t => { p("**" + String(t.nama).trim() + "**"); (Array.isArray(t.materi) ? t.materi : []).forEach(m => p("  - " + String(m).trim())); });
+    } else if (km && km.length) {
+      p("RIGHT card (about 45% width), navy title bar with book icon: **MATERI PELATIHAN**", "Compact list with small red bullets; include every item exactly as written:", L(km));
+    } else {
+      p("RIGHT card (about 45% width), navy title bar with book icon: **MATERI PELATIHAN**", "- " + Y + "[materi 1]", "- " + Y + "[materi 2]", "- " + Y + "[materi 3]");
+    }
+    p("Do not add trainer photos.");
+    H("BOTTOM ROW — Y 970–1240 px");
+    p("Three columns:", "",
+      "**COLUMN 1 — SCAN PENDAFTARAN** (navy title bar with QR icon)",
+      "A large square QR area (about 60% of the column width, centered) framed by four bright red corner brackets. The real registration QR will be placed here in Canva.",
+      "Directly below the QR, a rounded navy bar with a link icon and this link in bold white text, clearly readable (at least 20 px):", alamat(r.slug), "",
+      "**COLUMN 2 — SCAN VALIDASI SKP & KRITERIA PESERTA** (navy title bar with QR icon)",
+      "A square QR area of the same size framed by four navy corner brackets, for the official Kemenkes QR (placed in Canva). Below it, small text: Scan QR dari Surat Keterangan Registrasi Kemenkes.", "",
+      "**COLUMN 3 — BIAYA, PEMBAYARAN & NARAHUBUNG**");
+    if (harga) p("Red coin icon, **BIAYA PELATIHAN**, then **" + harga + "** in large bold red (smaller than the " + J + " title).");
+    p("**PEMBAYARAN** — original " + bank + " logo, No. Rekening: **" + (setelan.rek_nomor || "201001000824562") + "**, a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"),
+      "**INFORMASI & NARAHUBUNG** (navy bar), 2 × 2 grid with green WhatsApp icons:",
+      L(["Arka — 0821-2348-6576", "Eza — 0851-6145-9345", "Tama — 0856-5556-4911", "Hawa — 0851-1745-4911"]));
+    H("FOOTER — Y 1250–1350 px");
+    p("Dark navy footer, four parts separated by thin lines:",
+      L(["Diselenggarakan oleh **PT Dewa Medik Nusantara**", "Instagram, TikTok, YouTube icons · **@dewamedik_hc**", "Globe icon · **www.dewamedik911.com** · **daftarpelatihan.dewamedik911.com**", "Script text: *Excellence Is The Way. Excellence Evolved.*"]));
+    H("MINIMUM TEXT SIZES");
+    p(L(["Title " + J + ": 150 px or larger", "PELATIHAN banner: 48 px", "Dates: 34 px", "Card titles: 22 px", "Body text and list items: 16 px or larger", "Phone numbers and link: 20 px, bold"]));
+    H("RULES");
+    p(L(["Spell every word, number, name and link exactly as written above.",
+      "Never invent the expansion of any abbreviation; use only the expansions written here.",
+      "No SKP numbers, no discount or promo words (promo, diskon, voucher, early bird, cashback, gratis, \"paling murah\"), no claim of Kemenkes recommendation (SE Kemenkes HK.02.03/F.V/2692/2026).",
+      "No photos of Ministry of Health officials, no \"Official Partner\" or recommendation badges.",
+      "No extra text, social media accounts, contacts or logos that are not listed here."]));
+    H("FINAL CHECK BEFORE OUTPUT");
+    p(L(["1080 × 1350, full-bleed, nothing cut off.", "\"PELATIHAN\" appears above \"" + J + "\".", "\"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" appears above \"Terakreditasi B\".", "SCAN PENDAFTARAN box is large and the link below it is readable.", "Dates, location, fee, account number and all four contacts are correct."]));
+    return b.join("\n");
   }
   /* Dua elemen wajib yang sering hilang bila GPT meniru gambar referensi lama:
      label "PELATIHAN" di atas judul dan teks institusi terakreditasi di atas "Terakreditasi B". */
@@ -8992,7 +9108,7 @@ function TabLinkKelas({ beriTahu }) {
               const pm = pemateriKelas(k);
               const wkt = pm && pm.diperbarui ? " (diperbarui " + new Date(pm.diperbarui).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "";
               return React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
-                !pm ? (materiKurikulum(k) ? "\u{1F4DA} Trainer belum ada \u2014 prompt memakai daftar materi " + String(k.jenis || "").toUpperCase() + " saja. Upload jadwal pemateri di bawah (atau susun KAK di DCC) agar nama trainer ikut tampil."
+                !pm ? (materiKurikulum(k) ? "\u26A0\uFE0F Trainer belum ada \u2014 prompt memakai daftar materi " + String(k.jenis || "").toUpperCase() + " saja. Menurut SE Kemenkes 2692/2026 flyer WAJIB memuat nama narasumber + materi di bawah namanya: upload jadwal pemateri di bawah (atau susun KAK di DCC) sebelum flyer diterbitkan."
                                          : "\u{1F7E8} Trainer & materi belum ada \u2014 upload jadwal pemateri di bawah, atau susun KAK-nya di DCC.")
                   : pm.sumber === "upload" ? "\u2705 Trainer & materi dari jadwal yang diupload" + (pm.nama_file ? ": " + pm.nama_file : "") + wkt + "."
                   : "\u2705 Trainer & materi diambil otomatis dari KAK DCC" + wkt + ". Ganti trainer di DCC, flyer ikut berubah.");
@@ -9031,7 +9147,7 @@ function TabLinkKelas({ beriTahu }) {
                     React.createElement("button", { type: "button", className: "dm-btn", disabled: !!ed.sibuk, onClick: () => simpanPemateri(k) }, ed.sibuk ? "Tunggu\u2026" : "Simpan"),
                     React.createElement("button", { type: "button", className: "dm-btn-line", disabled: !!ed.sibuk, onClick: () => setEditPem(null) }, "Batal"))) : null);
             })(),
-            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Isi bagian bertanda \u{1F7E8} (mis. angkatan, jam) sebelum disalin. Saat membuat flyer, lampirkan logo + QR pendaftaran (tombol Unduh QR) ke GPT. QR Validasi SKP ditempel saat finishing dari Surat Keterangan Registrasi."),
+            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Cara pakai: 1) Salin prompt flyer  2) Unduh logo DMN (+ logo Kemenkes)  3) Buka chat ChatGPT BARU, lampirkan kedua logo, tempel prompt. QR pendaftaran & QR validasi SKP ditempel di Canva."),
             React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },
               React.createElement("button", {
                 type: "button", className: "dm-btn",
@@ -9040,6 +9156,10 @@ function TabLinkKelas({ beriTahu }) {
                   else beriTahu("Blok teksnya lalu salin manual.");
                 }
               }, "Salin prompt flyer"),
+              React.createElement("a", {
+                className: "dm-btn-line", style: { textDecoration: "none" },
+                href: "/logo-dmn.png", download: "logo-dewa-medik-nusantara.png"
+              }, "Unduh logo DMN"),
               React.createElement("a", {
                 className: "dm-btn-line", style: { textDecoration: "none" },
                 href: "https://chatgpt.com/", target: "_blank", rel: "noreferrer"

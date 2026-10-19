@@ -7941,6 +7941,40 @@ function TabLinkKelas({ beriTahu }) {
     if (y1 === y2) return d1 + " " + BL[Number(m1) - 1] + " \u2013 " + d2 + " " + BL[Number(m2) - 1] + " " + y1;
     return d1 + " " + BL[Number(m1) - 1] + " " + y1 + " \u2013 " + d2 + " " + BL[Number(m2) - 1] + " " + y2;
   }
+  /* Tanggal daring & luring dihitung dari format "N hari daring + M hari luring"
+     dan tanggal kelas. Bila tidak cocok dengan tanggal selesai, tetap 🟨 untuk diisi manual. */
+  function tglDL(k, bagian, cadangan) {
+    try {
+      const m = String((k && k.format) || "").match(/(\d+)\s*hari\s*daring[^\d]*(\d+)\s*hari\s*luring/i);
+      if (!m || !k.tanggal_mulai) return cadangan;
+      const nd = Number(m[1]), nl = Number(m[2]);
+      const d0 = Date.parse(String(k.tanggal_mulai).slice(0, 10) + "T00:00:00Z");
+      const iso = n => new Date(d0 + n * 86400000).toISOString().slice(0, 10);
+      const akhir = iso(nd + nl - 1);
+      if (k.tanggal_selesai && String(k.tanggal_selesai).slice(0, 10) !== akhir) return cadangan;
+      return bagian === "daring" ? tglFlyer(iso(0), iso(nd - 1)) : tglFlyer(iso(nd), akhir);
+    } catch (e) {
+      return cadangan;
+    }
+  }
+  /* Kotak pendaftaran & validasi SKP — mengikuti contoh flyer ACLS Pak Ryan (Okt 2026). */
+  function qrDaftarEN(url) {
+    return [
+      "Navy title bar with a small white QR-code icon: **SCAN PENDAFTARAN**", "",
+      "Inside the panel, a LARGE square QR area (about 60% of the panel width, centered) on white, framed by four bright red corner brackets.",
+      "Fill the QR area with the ATTACHED registration QR image exactly as provided (downloaded from the portal with \"Unduh QR\"); do not redraw, crop or alter it. If no QR image is attached, keep the square plain white for insertion in Canva. Never invent a QR pattern.", "",
+      "Directly below the QR, a rounded navy pill-shaped bar with a small white link icon, containing the registration link in bold white text, fully legible:", "",
+      url, ""
+    ];
+  }
+  function qrValidasiEN() {
+    return [
+      "Navy title bar with a small white QR-code icon: **SCAN VALIDASI SKP & KRITERIA PESERTA**", "",
+      "A LARGE square QR area (same size as the registration QR, centered) on white, framed by four navy corner brackets, left plain white for the official QR from the Surat Keterangan Registrasi Kemenkes (inserted in Canva). Do not invent a QR.", "",
+      "Below it, small navy centered text:", "",
+      "Scan QR dari Surat Keterangan Registrasi Kemenkes.", ""
+    ];
+  }
   /* Nama resmi kepanjangan singkatan pelatihan. HANYA yang sudah pasti;
      jenis lain ditulis singkatannya saja, dan GPT dilarang mengarang kepanjangan. */
   const NAMA_RESMI_JENIS = {
@@ -8000,9 +8034,9 @@ function TabLinkKelas({ beriTahu }) {
     b.push(!pemateriKelas(k) && materiKurikulum(k)
       ? "4. Bagian MATERI PELATIHAN: tampilkan daftar materi apa adanya sebagai poin-poin rapi. Jangan menambahkan nama trainer atau narasumber."
       : "4. Bagian TRAINER: nama trainer lengkap dengan gelar, dan judul materi ditulis tepat DI BAWAH nama trainer yang membawakannya. Foto trainer tidak wajib.");
-    b.push("5. Dua kotak QR code berdampingan di bagian bawah, masing-masing berlabel:");
-    b.push("   [QR PENDAFTARAN] \u2014 menuju tautan pendaftaran di bawah.");
-    b.push("   [QR VALIDASI SKP & KRITERIA PESERTA] \u2014 kotak kosong berbingkai untuk ditempel QR resmi dari Surat Keterangan Registrasi Kemenkes.");
+    b.push("5. Dua kotak QR berdampingan di bagian bawah, masing-masing dengan bar judul navy berikon QR:");
+    b.push("   \"SCAN PENDAFTARAN\" \u2014 kotak QR besar di tengah dengan siku merah di keempat sudut. Isi dengan GAMBAR QR yang dilampirkan (unduh dari portal, tombol \"Unduh QR\") apa adanya; bila tidak dilampirkan, biarkan putih polos. Jangan membuat pola QR sendiri. Tepat di bawah QR: bar navy membulat dengan ikon link berisi tautan pendaftaran (huruf putih tebal, jelas terbaca).");
+    b.push("   \"SCAN VALIDASI SKP & KRITERIA PESERTA\" \u2014 kotak QR sama besar dengan siku navy, dibiarkan putih untuk ditempel QR resmi dari Surat Keterangan Registrasi Kemenkes; di bawahnya teks kecil \"Scan QR dari Surat Keterangan Registrasi Kemenkes.\"");
     b.push("6. Kalimat syarat ditampilkan jelas: \"Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK\".");
     b.push("7. Kalimat \"Diselenggarakan oleh PT Dewa Medik Nusantara\" ditampilkan eksplisit.");
     b.push("8. Gaya: profesional, premium, bersih. Warna navy, putih, aksen merah. Foto suasana pelatihan kegawatdaruratan yang realistis (tanpa foto pejabat Kemenkes).");
@@ -8028,8 +8062,8 @@ function TabLinkKelas({ beriTahu }) {
     b.push("\u{1F6A8} " + jenis + (untukPerawatK ? " FOR NURSE" : "") + " ANGKATAN " + Y + "[isi angkatan] \u2014 " + (kota || Y + "[kota]").toUpperCase());
     b.push("\u{1F4C5} " + (tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || Y + "[tanggal]") + " \u00b7 Pukul " + Y + "[jam mulai\u2013selesai] WIB");
     if (blended) {
-      b.push("    \u2022 Daring: " + Y + "[tanggal daring] (Zoom/LMS Plataran Sehat)");
-      b.push("    \u2022 Luring: " + Y + "[tanggal luring] di " + (k.lokasi || Y + "[venue]"));
+      b.push("    \u2022 Daring: " + tglDL(k, "daring", Y + "[tanggal daring]") + " (Zoom/LMS Plataran Sehat)");
+      b.push("    \u2022 Luring: " + tglDL(k, "luring", Y + "[tanggal luring]") + " di " + (k.lokasi || Y + "[venue]"));
     }
     b.push("\u{1F4CD} " + (k.lokasi || Y + "[venue]"));
     b.push("\u{1F4BB} Metode: " + metode);
@@ -8216,7 +8250,7 @@ function TabLinkKelas({ beriTahu }) {
     p("Below it, a single white horizontal information card divided into four sections:", "");
     p("**SECTION A — DATE**", "", "Red calendar icon.", "", "TANGGAL PELAKSANAAN", "", "**" + tglBesar + "**", "", "**" + blnBesar + "**", "", "The date must be large and red.", "");
     p("**SECTION B — TIME & SCHEDULE**", "", "Clock icon.", "", "Pukul " + Y + "[JAM MULAI–SELESAI] WIB", "");
-    if (blended) p("Daring: " + Y + "[TANGGAL DARING]", "(Zoom/LMS Plataran Sehat)", "", "Luring: " + Y + "[TANGGAL LURING]", "di " + (k.lokasi || Y + "[venue]"), "");
+    if (blended) p("Daring: " + tglDL(k, "daring", Y + "[TANGGAL DARING]"), "(Zoom/LMS Plataran Sehat)", "", "Luring: " + tglDL(k, "luring", Y + "[TANGGAL LURING]"), "di " + (k.lokasi || Y + "[venue]"), "");
     else if (daring) p("Daring via Zoom/LMS Plataran Sehat", "");
     p("**SECTION C — " + (daring ? "PLATFORM" : "LOCATION") + "**", "", daring ? "Laptop icon." : "Red location pin.", "");
     if (daring) p("PLATFORM", "", "Zoom/LMS Plataran Sehat", "");
@@ -8255,12 +8289,8 @@ function TabLinkKelas({ beriTahu }) {
     }
     p("### 7. BOTTOM INFORMATION — NEXT 17%", "");
     p("Three-column layout matching the reference.", "");
-    p("**LEFT COLUMN — REGISTRATION QR**", "", "Bright red title bar with link icon.", "", "**SCAN PENDAFTARAN**", "");
-    p("Large empty white QR placeholder with four red corner brackets.", "", "Below:", "", alamat(r.slug), "");
-    p("Leave QR space empty for inserting a real scannable QR code in Canva.", "");
-    p("**CENTER COLUMN — SKP VALIDATION QR**", "", "Navy title bar with document icon.", "", "**SCAN VALIDASI SKP & KRITERIA PESERTA**", "");
-    p("Large empty white QR placeholder with four navy corner brackets.", "", "Below:", "", "Scan QR dari Surat Keterangan Registrasi Kemenkes", "");
-    p("Do not invent a validation QR code.", "");
+    p("**LEFT COLUMN — REGISTRATION QR**", "", ...qrDaftarEN(alamat(r.slug)));
+    p("**CENTER COLUMN — SKP VALIDATION QR**", "", ...qrValidasiEN());
     p("**RIGHT COLUMN — PAYMENT & CONTACTS**", "");
     if (Number(k.harga) > 0) p("At the top, bright red and white fee panel:", "", "**BIAYA PELATIHAN**", "", "**" + rp(Number(k.harga)).replace(/\s+/g, "") + "**", "");
     p("Below, white payment panel:", "", "PEMBAYARAN", "", bank, "", "No. Rekening:", setelan.rek_nomor || "201001000824562", "", "a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"), "");
@@ -8362,7 +8392,7 @@ function TabLinkKelas({ beriTahu }) {
     p("Right half: " + foto + ". White fade between text and photo.");
     p("Red diagonal brushstroke at bottom-right:", "Every Second Counts.", "Be Ready to Save Lives.", "");
     p("SCHEDULE:", "Prominent navy rounded rectangular information panel with red calendar icon.", tgl);
-    if (blended) p("Daring: " + Y + "[tanggal daring]", "(Zoom/LMS Plataran Sehat)", "Luring: " + Y + "[tanggal luring]", "di " + venue);
+    if (blended) p("Daring: " + tglDL(k, "daring", Y + "[tanggal daring]"), "(Zoom/LMS Plataran Sehat)", "Luring: " + tglDL(k, "luring", Y + "[tanggal luring]"), "di " + venue);
     else if (daring) p("Daring via Zoom/LMS Plataran Sehat");
     else p("Luring di " + venue);
     p("");
@@ -8388,9 +8418,8 @@ function TabLinkKelas({ beriTahu }) {
     if (Number(k.harga) > 0) p("Large navy " + rp(Number(k.harga)).replace(/\s+/g, ""));
     else p("Large navy " + Y + "[biaya pelatihan]");
     p("Navy payment box, original " + bank + " logo", "Pembayaran:", "No. Rekening: " + (setelan.rek_nomor || "201001000824562"), "a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"), "");
-    p("Middle registration panel, approximately 32.5%:", "Navy header PENDAFTARAN", "Bright red URL bar:", alamat(r.slug),
-      "Large EMPTY white square with red corner markers and sufficient quiet zone, reserved for the real registration QR code (inserted later in Canva). Do not invent a QR.", "Red caption QR PENDAFTARAN", "");
-    p("Right validation panel, approximately 32.5%:", "Navy header VALIDASI SKP & KRITERIA PESERTA", "Large EMPTY white square with double navy border, reserved for official Kemenkes QR. Do not invent a QR.", "Navy caption QR VALIDASI SKP & KRITERIA PESERTA", "");
+    p("Middle registration panel, approximately 32.5%:", ...qrDaftarEN(alamat(r.slug)));
+    p("Right validation panel, approximately 32.5%:", ...qrValidasiEN());
     p("FULL WIDTH REQUIREMENT BANNER:", "Pale pink with red warning triangle:", "Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK", "");
     p("NAVY CONTACT FOOTER:", "Informasi & Narahubung", "Four horizontally aligned WhatsApp contact columns, names above large bold numbers:",
       "Arka — 0821-2348-6576", "Eza — 0851-6145-9345", "Tama — 0856-5556-4911", "Hawa — 0851-1745-4911",
@@ -8493,7 +8522,7 @@ function TabLinkKelas({ beriTahu }) {
     p("**LEFT PANEL — METODE**", "", blended ? "Blended Training" : daring ? "Daring" : "Luring", "");
     if (f) p(f, "");
     p("**CENTER PANEL — TANGGAL PELAKSANAAN**", "", tgl, "");
-    if (blended) p("Daring: " + Y + "[tanggal daring]", "", "Zoom/LMS Plataran Sehat", "", "Luring: " + Y + "[tanggal luring]", "");
+    if (blended) p("Daring: " + tglDL(k, "daring", Y + "[tanggal daring]"), "", "Zoom/LMS Plataran Sehat", "", "Luring: " + tglDL(k, "luring", Y + "[tanggal luring]"), "");
     else p("Pukul " + Y + "[jam mulai–selesai] WIB", "");
     if (daring) p("**RIGHT PANEL — PLATFORM**", "", "Zoom/LMS Plataran Sehat", "");
     else {
@@ -8533,12 +8562,8 @@ function TabLinkKelas({ beriTahu }) {
     p("The facilities panel must be visually more prominent than the trainer panel.", "");
     p("## 7. LOWER INFORMATION AREA — 22%", "");
     p("Use a structured three-column layout.", "");
-    p("**COLUMN 1 — QR PENDAFTARAN**", "", "Heading:", "", "SCAN PENDAFTARAN", "");
-    p("Large empty white square with red corner markers.", "", "Link:", "", alamat(r.slug), "");
-    p("Reserve the entire QR square for insertion of a genuine QR code in Canva.", "");
-    p("**COLUMN 2 — QR VALIDASI SKP**", "", "Heading:", "", "SCAN VALIDASI SKP & KRITERIA PESERTA", "");
-    p("Large empty white square with navy corner markers.", "", "Supporting text:", "", "Scan QR dari Surat Keterangan Registrasi Kemenkes.", "");
-    p("Do not generate a fake QR code.", "");
+    p("**COLUMN 1 — QR PENDAFTARAN**", "", ...qrDaftarEN(alamat(r.slug)));
+    p("**COLUMN 2 — QR VALIDASI SKP**", "", ...qrValidasiEN());
     p("**COLUMN 3 — PAYMENT AND CONTACTS**", "");
     if (Number(k.harga) > 0) p("Heading:", "", "BIAYA PELATIHAN", "", "**" + rp(Number(k.harga)).replace(/\s+/g, "") + "**", "");
     p("Heading:", "", "PEMBAYARAN", "");
@@ -8734,11 +8759,11 @@ function TabLinkKelas({ beriTahu }) {
     b.push(tgl);
     b.push("");
     if (blended) {
-      b.push("Daring: " + Y + "[tanggal daring]");
+      b.push("Daring: " + tglDL(k, "daring", Y + "[tanggal daring]"));
       b.push("");
       b.push("Zoom/LMS Plataran Sehat");
       b.push("");
-      b.push("Luring: " + Y + "[tanggal luring]");
+      b.push("Luring: " + tglDL(k, "luring", Y + "[tanggal luring]"));
     } else {
       b.push("Pukul " + Y + "[jam mulai–selesai] WIB");
     }
@@ -8832,28 +8857,10 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("**COLUMN 1 — QR PENDAFTARAN**");
     b.push("");
-    b.push("Large white square QR area.");
-    b.push("");
-    b.push("Heading:");
-    b.push("");
-    b.push("SCAN PENDAFTARAN");
-    b.push("");
-    b.push("Link:");
-    b.push("");
-    b.push(alamat(r.slug));
-    b.push("");
-    b.push("Insert an actual functional QR code if supported; otherwise leave the square empty for manual insertion in Canva.");
-    b.push("");
+    qrDaftarEN(alamat(r.slug)).forEach(x => b.push(x));
     b.push("**COLUMN 2 — QR VALIDASI SKP**");
     b.push("");
-    b.push("Large white square QR area.");
-    b.push("");
-    b.push("Heading:");
-    b.push("");
-    b.push("SCAN VALIDASI SKP & KRITERIA PESERTA");
-    b.push("");
-    b.push("Leave the QR square completely empty for the official QR code from the Surat Keterangan Registrasi Kemenkes.");
-    b.push("");
+    qrValidasiEN().forEach(x => b.push(x));
     b.push("**COLUMN 3 — CONTACT PERSON**");
     b.push("");
     b.push("Heading:");
@@ -9024,7 +9031,7 @@ function TabLinkKelas({ beriTahu }) {
                     React.createElement("button", { type: "button", className: "dm-btn", disabled: !!ed.sibuk, onClick: () => simpanPemateri(k) }, ed.sibuk ? "Tunggu\u2026" : "Simpan"),
                     React.createElement("button", { type: "button", className: "dm-btn-line", disabled: !!ed.sibuk, onClick: () => setEditPem(null) }, "Batal"))) : null);
             })(),
-            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Isi semua bagian bertanda \u{1F7E8} (angkatan, jam, tanggal daring/luring) sebelum disalin. QR Validasi SKP ditempel saat finishing dari Surat Keterangan Registrasi."),
+            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Isi bagian bertanda \u{1F7E8} (mis. angkatan, jam) sebelum disalin. Saat membuat flyer, lampirkan logo + QR pendaftaran (tombol Unduh QR) ke GPT. QR Validasi SKP ditempel saat finishing dari Surat Keterangan Registrasi."),
             React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },
               React.createElement("button", {
                 type: "button", className: "dm-btn",

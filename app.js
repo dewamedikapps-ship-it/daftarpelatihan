@@ -7498,6 +7498,13 @@ function TabLinkKelas({ beriTahu }) {
     if (up && Array.isArray(up.trainer) && up.trainer.length) return { ...up, sumber: "upload" };
     return pemateriDcc(k);
   }
+  /* Daftar materi inti per jenis (kiriman DCC "kurikulum:<JENIS>"), dipakai bila kelas belum punya trainer. */
+  function materiKurikulum(k) {
+    const j = normJenis(k && k.jenis);
+    const row = pemateri.find(p => String(p.dcc_event_id || "").indexOf("kurikulum:") === 0 && normJenis(p.jenis) === j);
+    const m = row && Array.isArray(row.trainer) && row.trainer[0] && Array.isArray(row.trainer[0].materi) ? row.trainer[0].materi : [];
+    return m.length ? m.map(x => String(x).trim()).filter(Boolean) : null;
+  }
   function pemateriDcc(k) {
     if (!k || !k.tanggal_mulai) return null;
     const j = normJenis(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
@@ -7904,7 +7911,9 @@ function TabLinkKelas({ beriTahu }) {
       ? "   Judul besar \"" + jenis + "\"" + (untukPerawatK ? ", tepat di bawahnya \"for Nurse\"" : "") + ", lalu di bawahnya ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
       : "   Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
     b.push("   Aturan umum: jangan pernah mengarang kepanjangan singkatan (nama pelatihan, SKP, LMS, dll.). Hanya pakai kepanjangan yang tertulis di prompt ini.");
-    b.push("4. Bagian TRAINER: nama trainer lengkap dengan gelar, dan judul materi ditulis tepat DI BAWAH nama trainer yang membawakannya. Foto trainer tidak wajib.");
+    b.push(!pemateriKelas(k) && materiKurikulum(k)
+      ? "4. Bagian MATERI PELATIHAN: tampilkan daftar materi apa adanya sebagai poin-poin rapi. Jangan menambahkan nama trainer atau narasumber."
+      : "4. Bagian TRAINER: nama trainer lengkap dengan gelar, dan judul materi ditulis tepat DI BAWAH nama trainer yang membawakannya. Foto trainer tidak wajib.");
     b.push("5. Dua kotak QR code berdampingan di bagian bawah, masing-masing berlabel:");
     b.push("   [QR PENDAFTARAN] \u2014 menuju tautan pendaftaran di bawah.");
     b.push("   [QR VALIDASI SKP & KRITERIA PESERTA] \u2014 kotak kosong berbingkai untuk ditempel QR resmi dari Surat Keterangan Registrasi Kemenkes.");
@@ -7935,14 +7944,17 @@ function TabLinkKelas({ beriTahu }) {
     b.push("\u{1F4BB} Metode: " + metode);
     if (Number(k.harga) > 0) b.push("\u{1F4B3} Biaya Pelatihan: " + rp(Number(k.harga)).replace(/\s+/g, ""));
     b.push("");
-    b.push("\u{1F468}\u200D\u2695\uFE0F TRAINER & MATERI");
     const pm = pemateriKelas(k);
+    const km = pm ? null : materiKurikulum(k);
+    b.push(km ? "\u{1F4DA} MATERI PELATIHAN" : "\u{1F468}\u200D\u2695\uFE0F TRAINER & MATERI");
     if (pm) {
       pm.trainer.forEach(t => {
         if (!t || !t.nama) return;
         b.push(String(t.nama).trim());
         (Array.isArray(t.materi) ? t.materi : []).forEach(m => b.push("   \u2022 " + String(m).trim()));
       });
+    } else if (km) {
+      km.forEach(m => b.push("\u2022 " + m));
     } else {
       b.push(Y + "[Nama trainer 1, gelar]");
       b.push("   " + Y + "[judul materi yang dibawakan]");
@@ -8108,9 +8120,16 @@ function TabLinkKelas({ beriTahu }) {
     p("White background with individual horizontal rows and navy icons.", "", "Include exactly:", "");
     fas.forEach((x, i) => p((i + 1) + ". " + x));
     p("", "At the bottom, a light red warning strip with red exclamation icon:", "", "**Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK**", "");
+    const tr = pm ? pm.trainer.filter(t => t && t.nama) : [];
+    const km = tr.length ? null : materiKurikulum(k);
+    if (km) {
+      p("**RIGHT PANEL — 52% WIDTH**", "", "Bright red title bar with book icon:", "", "**MATERI PELATIHAN**", "");
+      p("Use a compact vertical list with red circular markers and fine gray dividers.", "", "Include exactly:", "");
+      km.forEach(m => p("- " + m));
+      p("", "Do not add any trainer names or portraits.", "");
+    } else {
     p("**RIGHT PANEL — 52% WIDTH**", "", "Bright red title bar with trainer icon:", "", "**TRAINER & MATERI**", "");
     p("Use a compact vertical timeline layout with red circular markers and fine gray dividers.", "");
-    const tr = pm ? pm.trainer.filter(t => t && t.nama) : [];
     p((tr.length ? (tr.length === 1 ? "One trainer row" : tr.length + " trainer rows") : "Trainer rows") + ", names bold navy on the left and material titles in smaller text on the right.", "", "Trainer names:", "");
     if (tr.length) {
       tr.forEach(t => {
@@ -8123,6 +8142,7 @@ function TabLinkKelas({ beriTahu }) {
       p("**" + Y + "[Nama trainer 2, gelar]**", "- " + Y + "[judul materi]", "");
     }
     p("Do not add trainer portraits.", "");
+    }
     p("### 7. BOTTOM INFORMATION — NEXT 17%", "");
     p("Three-column layout matching the reference.", "");
     p("**LEFT COLUMN — REGISTRATION QR**", "", "Bright red title bar with link icon.", "", "**SCAN PENDAFTARAN**", "");
@@ -8258,6 +8278,13 @@ function TabLinkKelas({ beriTahu }) {
     fas.forEach(x => p("✓ " + x, ""));
     p("At the bottom, a clearly visible warning strip:", "");
     p("**Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK**", "");
+    const km = pm ? null : materiKurikulum(k);
+    if (km) {
+      p("**RIGHT PANEL — 47% WIDTH**", "", "Compact heading:", "", "**MATERI PELATIHAN**", "");
+      p("Use the following topics exactly, as a clean bulleted list.", "");
+      km.forEach(m => p("- " + m));
+      p("", "Do not add any trainer names or photographs.", "");
+    } else {
     p("**RIGHT PANEL — 47% WIDTH**", "", "Compact heading:", "", "**TRAINER & MATERI**", "");
     p("Use the following trainer names and topics exactly.", "");
     if (pm) {
@@ -8272,6 +8299,7 @@ function TabLinkKelas({ beriTahu }) {
       p("**" + Y + "[Nama trainer 2, gelar]**", "- " + Y + "[judul materi]", "");
     }
     p("Use smaller, clean typography for trainer details.", "", "No trainer photographs.", "");
+    }
     p("The facilities panel must be visually more prominent than the trainer panel.", "");
     p("## 7. LOWER INFORMATION AREA — 22%", "");
     p("Use a structured three-column layout.", "");
@@ -8510,9 +8538,15 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("Compact section:");
     b.push("");
-    b.push("**TRAINER & MATERI**");
+    const km = pm ? null : materiKurikulum(k);
+    b.push(km ? "**MATERI PELATIHAN**" : "**TRAINER & MATERI**");
     b.push("");
-    if (pm) {
+    if (km) {
+      km.forEach(m => b.push("- " + m));
+      b.push("");
+      b.push("Do not add any trainer names.");
+      b.push("");
+    } else if (pm) {
       pm.trainer.forEach(t => {
         if (!t || !t.nama) return;
         b.push(String(t.nama).trim());
@@ -8716,7 +8750,8 @@ function TabLinkKelas({ beriTahu }) {
               const pm = pemateriKelas(k);
               const wkt = pm && pm.diperbarui ? " (diperbarui " + new Date(pm.diperbarui).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "";
               return React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
-                !pm ? "\u{1F7E8} Trainer & materi belum ada \u2014 upload jadwal pemateri di bawah, atau susun KAK-nya di DCC."
+                !pm ? (materiKurikulum(k) ? "\u{1F4DA} Trainer belum ada \u2014 prompt memakai daftar materi " + String(k.jenis || "").toUpperCase() + " saja. Upload jadwal pemateri di bawah (atau susun KAK di DCC) agar nama trainer ikut tampil."
+                                         : "\u{1F7E8} Trainer & materi belum ada \u2014 upload jadwal pemateri di bawah, atau susun KAK-nya di DCC.")
                   : pm.sumber === "upload" ? "\u2705 Trainer & materi dari jadwal yang diupload" + (pm.nama_file ? ": " + pm.nama_file : "") + wkt + "."
                   : "\u2705 Trainer & materi diambil otomatis dari KAK DCC" + wkt + ". Ganti trainer di DCC, flyer ikut berubah.");
             })(),

@@ -7909,8 +7909,8 @@ function TabLinkKelas({ beriTahu }) {
     b.push("   \"No. HK.02.02/F/4052/2024\"");
     b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
     b.push(namaResmi
-      ? "   Tepat di atas judul, kata kecil \"PELATIHAN\". Judul besar \"" + jenis + "\"" + (untukPerawatK ? ", tepat di bawahnya \"for Nurse\"" : "") + ", lalu di bawahnya ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
-      : "   Tepat di atas judul, kata kecil \"PELATIHAN\". Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
+      ? "   BLOK JUDUL (satu kesatuan, ditulis bertumpuk dari atas): baris 1 \"PELATIHAN\" (huruf kapital tebal, ±40% tinggi judul, lebar sama dengan judul), baris 2 judul besar \"" + jenis + "\"" + (untukPerawatK ? ", tepat di bawahnya \"for Nurse\"" : "") + ", lalu di bawahnya ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
+      : "   BLOK JUDUL (satu kesatuan, ditulis bertumpuk dari atas): baris 1 \"PELATIHAN\" (huruf kapital tebal, ±40% tinggi judul), baris 2 judul besar. Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
     b.push("   Aturan umum: jangan pernah mengarang kepanjangan singkatan (nama pelatihan, SKP, LMS, dll.). Hanya pakai kepanjangan yang tertulis di prompt ini.");
     b.push(!pemateriKelas(k) && materiKurikulum(k)
       ? "4. Bagian MATERI PELATIHAN: tampilkan daftar materi apa adanya sebagai poin-poin rapi. Jangan menambahkan nama trainer atau narasumber."
@@ -7927,11 +7927,16 @@ function TabLinkKelas({ beriTahu }) {
     b.push("Gunakan teks di bawah ini apa adanya. Jangan ubah ejaan, angka, maupun nomornya. Isi bagian bertanda " + Y + " sebelum dikirim:");
     b.push("");
     b.push("---");
+    b.push("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI");
+    b.push("Terakreditasi B");
+    b.push("No. HK.02.02/F/4052/2024");
+    b.push("");
     hook.forEach(x => b.push(x));
     b.push("Di Dewa Medik Nusantara, kami terus berevolusi menghadirkan pengalaman belajar yang lebih baik\u2014cara kita belajar, terhubung, dan berkembang.");
     b.push("Standarnya tetap sama: Excellence.");
     b.push("Pengalamannya yang terus kami tingkatkan.");
     b.push("");
+    b.push("PELATIHAN");
     b.push(jenis);
     if (untukPerawatK) b.push("for Nurse");
     if (namaResmi) b.push(namaResmi);
@@ -8025,7 +8030,7 @@ function TabLinkKelas({ beriTahu }) {
     const atas = [
       "",
       "⚠️ WAJIB / MANDATORY — tetap tampilkan walaupun gambar referensi tidak memilikinya (do NOT copy the reference here):",
-      "1. Kata \"PELATIHAN\" (huruf kapital, lebih kecil dari judul, warna navy) tepat DI ATAS judul besar \"" + J + "\". Urutan dari atas: PELATIHAN → " + J + " → baris berikutnya.",
+      "1. Judul ditulis 2 baris: \"PELATIHAN\" lalu \"" + J + "\" (PELATIHAN = huruf kapital tebal ±40% tinggi judul, tepat di atasnya). The title text is literally \"PELATIHAN " + J + "\" stacked on two lines — never render " + J + " alone.",
       "2. Pojok kanan atas, tepat DI ATAS \"Terakreditasi B\", tulis teks kecil: \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\". Urutan: Institusi penyelenggara pelatihan terakreditasi Kemenkes RI → Terakreditasi B → No. HK.02.02/F/4052/2024.",
       ""
     ].join("\n");
@@ -8107,7 +8112,7 @@ function TabLinkKelas({ beriTahu }) {
     p("Use the original uploaded logo assets exactly as provided. Do not redraw, distort, recolor, or alter their lettering.", "");
     p("**Upper-right:**", "Display accreditation as plain navy text, three lines in this order:", "", "Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)", "", "Terakreditasi B", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge or stamp.", "");
     p("### 4. HERO — NEXT 30%", "");
-    p("**LEFT SIDE:**", "", "Directly above the headline, a small uppercase navy label:", "", "PELATIHAN", "", "Very large, bold, condensed navy headline:", "", "# " + J, "");
+    p("**LEFT SIDE:**", "", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "", "## PELATIHAN", "# " + J, "", "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the headline height, left-aligned with the headline. Line 2 \"" + J + "\": very large, bold, condensed navy headline.", "");
     if (untukPerawat) p("Directly underneath, exactly:", "", "**for Nurse**", "");
     if (namaResmi) {
       p((untukPerawat ? "Then" : "Directly underneath") + ", exactly:", "", "**" + namaResmi + "**", "");
@@ -8264,7 +8269,7 @@ function TabLinkKelas({ beriTahu }) {
       "H. ORGANIZER FOOTER: y=1240–1305 (65px)", "");
     p("HEADER:", "At top left, place the ORIGINAL uploaded Kemenkes logo, followed horizontally by the ORIGINAL uploaded Dewa Medik Nusantara shield logo and wordmark. Never redraw, modify or regenerate either logo.",
       "Top right in navy:", "Institusi penyelenggara pelatihan", "terakreditasi Kemenkes RI", "Terakreditasi B", "No. HK.02.02/F/4052/2024", "");
-    p("HERO:", "Small uppercase navy label directly above the title: PELATIHAN", "Very large bold navy " + J + " title on left with thin red ECG line crossing the bottom of the letters.");
+    p("HERO:", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "PELATIHAN", J, "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the title height. Line 2: very large bold navy " + J + " title on left with thin red ECG line crossing the bottom of the letters.");
     if (untukPerawat) p("Directly below, exactly:", "for Nurse");
     if (namaResmi) p((untukPerawat ? "Then" : "Directly below") + ", exactly (do not translate, shorten, or rephrase):", namaResmi);
     else p("Write " + J + " as the abbreviation ONLY. Do NOT add any expansion or meaning of the abbreviation, because the official name is not provided here.");
@@ -8388,8 +8393,8 @@ function TabLinkKelas({ beriTahu }) {
     p("## 4. HERO SECTION — 24%", "");
     p(hero, "");
     p("Modern medical simulation environment, navy uniforms, natural Indonesian faces, realistic equipment, and red-blue cinematic lighting.", "");
-    p("Small uppercase label directly above the headline:", "", "PELATIHAN", "");
-    p("Large headline:", "", "**" + (jenis || Y + "[jenis pelatihan]") + "**", "");
+    p("TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "", "**PELATIHAN**", "**" + (jenis || Y + "[jenis pelatihan]") + "**", "");
+    p("Line 1 \"PELATIHAN\": bold white capitals about 40% of the headline height. Line 2: the large headline.", "");
     if (untukPerawat) p("Immediately below:", "", "**for Nurse**", "");
     if (namaResmi) {
       p("Below the title:", "", "**" + namaResmi + "**", "");
@@ -8604,13 +8609,12 @@ function TabLinkKelas({ beriTahu }) {
     b.push("Modern clinical training environment, realistic equipment, professional navy uniforms, dramatic but balanced lighting.");
     if (terang) b.push("Place the photograph inside a large rounded frame on the light background.");
     b.push("");
-    b.push("Directly above the headline, a small uppercase label:");
+    b.push("TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):");
     b.push("");
-    b.push("PELATIHAN");
-    b.push("");
-    b.push("Place a very large headline:");
-    b.push("");
+    b.push("**PELATIHAN**");
     b.push("**" + (jenis || Y + "[jenis pelatihan]") + "**");
+    b.push("");
+    b.push("Line 1 \"PELATIHAN\": bold capitals about 40% of the headline height. Line 2: a very large headline.");
     if (untukPerawat) {
       b.push("");
       b.push("Directly underneath:");

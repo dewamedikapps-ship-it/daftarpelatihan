@@ -387,6 +387,176 @@ function muatPustakaXLSX() {
   return window.__muatXLSX;
 }
 
+/* ===== Pembaca jadwal pemateri (Word/Excel/CSV/PDF/foto) =====
+   Pustaka diambil dari CDN hanya saat dibutuhkan. Hasil bacaan selalu
+   ditampilkan dulu sebagai teks yang bisa dikoreksi sebelum disimpan. */
+function muatSkrip(url, cek) {
+  if (cek()) return Promise.resolve(cek());
+  window.__skrip = window.__skrip || {};
+  if (window.__skrip[url]) return window.__skrip[url];
+  window.__skrip[url] = new Promise((ok, gagal) => {
+    const sc = document.createElement("script");
+    sc.src = url;
+    sc.onload = () => cek() ? ok(cek()) : gagal(new Error("Pustaka tidak siap"));
+    sc.onerror = () => { window.__skrip[url] = null; gagal(new Error("Pustaka gagal diunduh")); };
+    document.head.appendChild(sc);
+  });
+  return window.__skrip[url];
+}
+const URL_JSZIP = "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js";
+const URL_PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+const URL_PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const URL_TESSERACT = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+
+async function bacaTabelDocx(buf) {
+  const JSZip = await muatSkrip(URL_JSZIP, () => window.JSZip);
+  const zip = await JSZip.loadAsync(buf);
+  const f = zip.file("word/document.xml");
+  if (!f) throw new Error("Berkas Word tidak terbaca");
+  const xml = new DOMParser().parseFromString(await f.async("string"), "application/xml");
+  const W = "http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+  const teksPar = p => Array.from(p.getElementsByTagNameNS(W, "t")).map(t => t.textContent).join("");
+  const baris = [];
+  Array.from(xml.getElementsByTagNameNS(W, "tbl")).forEach(tbl => {
+    Array.from(tbl.getElementsByTagNameNS(W, "tr")).forEach(tr => {
+      if (tr.parentNode !== tbl) return;
+      const sel = Array.from(tr.getElementsByTagNameNS(W, "tc")).filter(tc => tc.parentNode === tr)
+        .map(tc => Array.from(tc.getElementsByTagNameNS(W, "p")).map(teksPar).filter(Boolean).join("\n").trim());
+      baris.push(sel);
+    });
+    baris.push([]);
+  });
+  if (!baris.some(r => r.length > 1)) {
+    Array.from(xml.getElementsByTagNameNS(W, "p")).forEach(p => { const t = teksPar(p).trim(); if (t) baris.push([t]); });
+  }
+  return baris;
+}
+async function bacaTabelXlsx(buf) {
+  const XLSX = await muatPustakaXLSX();
+  const wb = XLSX.read(buf, { type: "array" });
+  const baris = [];
+  wb.SheetNames.forEach(n => {
+    XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: false, defval: "" })
+      .forEach(r => baris.push(r.map(x => String(x == null ? "" : x).trim())));
+    baris.push([]);
+  });
+  return baris;
+}
+async function bacaTabelPdf(buf) {
+  const pdfjs = await muatSkrip(URL_PDFJS, () => window.pdfjsLib);
+  pdfjs.GlobalWorkerOptions.workerSrc = URL_PDFJS_WORKER;
+  const doc = await pdfjs.getDocument({ data: buf }).promise;
+  const baris = [];
+  for (let i = 1; i <= Math.min(doc.numPages, 30); i++) {
+    const isi = await (await doc.getPage(i)).getTextContent();
+    const grup = [];
+    isi.items.filter(it => String(it.str).trim()).forEach(it => {
+      const y = it.transform[5], x = it.transform[4];
+      let g = grup.find(gr => Math.abs(gr.y - y) < 3);
+      if (!g) { g = { y, it: [] }; grup.push(g); }
+      g.it.push({ x, w: it.width || 0, s: it.str });
+    });
+    grup.sort((a, b) => b.y - a.y).forEach(g => {
+      g.it.sort((a, b) => a.x - b.x);
+      const sel = [];
+      let akhir = -1e9;
+      g.it.forEach(t => {
+        if (sel.length && t.x - akhir < 12) sel[sel.length - 1] += (t.x - akhir > 1.5 ? " " : "") + t.s;
+        else sel.push(t.s);
+        akhir = t.x + t.w;
+      });
+      baris.push(sel.map(s => s.trim()));
+    });
+    baris.push([]);
+  }
+  return baris;
+}
+async function bacaTeksFoto(file, kabar) {
+  const T = await muatSkrip(URL_TESSERACT, () => window.Tesseract);
+  const hasil = await T.recognize(file, "ind+eng", { logger: m => { if (kabar && m && m.status === "recognizing text") kabar("Membaca foto… " + Math.round((m.progress || 0) * 100) + "%"); } });
+  return String(hasil.data.text || "").split(/\n/).map(s => s.trim()).filter(Boolean).map(s => [s]);
+}
+
+const POLA_GELAR = /(\bNs\.|\bS\.?\s?Kep\b|\bNers\b|\bM\.?\s?Kep\b|\bdr\.|\bSp\.|\bS\.?\s?Kes\b|\bM\.?\s?Kes\b|\bS\.?\s?ST\b|\bA\.?\s?Md\b|\bAmd\b|\bS\.?\s?Tr\b|\bM\.?\s?Sc\b|\bMARS\b|\bPh\.?\s?D\b|\bDr\.|\bS\.?\s?Psi\b|\bS\.?\s?Gz\b|\bApt\.)/;
+const BUKAN_MATERI = /^(ishoma|istirahat|coffee\s*break|rehat|registrasi|daftar ulang|pembukaan|penutupan|upacara|pre[\s-]?test|post[\s-]?test|makan|sholat|shalat)\b/i;
+const BUKAN_NAMA = /^(-|—|administrator|panitia|tim|semua|seluruh|mot|pmp|-\s*)$/i;
+
+/* Ubah baris tabel/teks menjadi [{nama, materi[]}], urut sesuai kemunculan. */
+function susunPemateri(baris) {
+  const hasil = [];
+  const kunci = n => String(n).toLowerCase().replace(/[^a-z]/g, "");
+  function tambah(nama, materi) {
+    nama = String(nama || "").replace(/\s+/g, " ").replace(/^[\d.)\-•\s]+/, "").trim();
+    if (!nama || nama.length < 3 || BUKAN_NAMA.test(nama)) return;
+    materi = String(materi || "").replace(/\s+/g, " ").replace(/\s*\(\s*lanjutan\s*\)\s*$/i, "").trim();
+    let t = hasil.find(x => kunci(x.nama) === kunci(nama));
+    if (!t) { t = { nama, materi: [] }; hasil.push(t); }
+    if (materi && !BUKAN_MATERI.test(materi) && !/^skill\s*station/i.test(materi)
+        && !t.materi.some(m => m.toLowerCase() === materi.toLowerCase())) t.materi.push(materi);
+  }
+  const pecahNama = s => String(s || "").split(/\n|;|\s&\s|\s\/\s/).map(x => x.trim()).filter(Boolean);
+  /* 1) Tabel berkepala: cari kolom materi & kolom narasumber. */
+  let iM = -1, iN = -1;
+  for (const r of baris) {
+    if (r.length < 2) { if (!r.length) { iM = -1; iN = -1; } continue; }
+    const kecil = r.map(c => String(c).toLowerCase());
+    const m = kecil.findIndex(c => /^(materi|materi pembelajaran|material|topik|judul materi|mata pelatihan|pokok bahasan)\b/.test(c) || /\bmateri\b/.test(c) && c.length < 30);
+    const n = kecil.findIndex(c => /(fasilitator|narasumber|pemateri|trainer|pelatih|instruktur|pengajar|nama)/.test(c) && c.length < 60);
+    if (m > -1 && n > -1 && m !== n) { iM = m; iN = n; continue; }
+    if (iM > -1 && iN > -1) {
+      const materi = r[iM] || "";
+      pecahNama(r[iN]).forEach(nm => {
+        const daftar = String(materi).split(/\n/).map(x => x.trim()).filter(Boolean);
+        (daftar.length > 1 && !/\n/.test(r[iN]) ? daftar : [String(materi).replace(/\n/g, " ")]).forEach(mt => tambah(nm, mt));
+      });
+    }
+  }
+  if (hasil.length) return hasil;
+  /* 2) Tanpa kepala tabel (PDF/foto): baris bergelar = nama, sisanya materi. */
+  let materiTerakhir = "";
+  baris.forEach(r => {
+    const s = r.join("  ").replace(/\s+/g, " ").trim();
+    if (!s) return;
+    const g = s.search(POLA_GELAR);
+    if (g > -1) {
+      const kata = s.slice(0, g).trim().split(" ");
+      let mulai = kata.length;
+      while (mulai > 0 && kata.length - mulai < 4 && /^[A-Z][A-Za-z'.,-]*$/.test(kata[mulai - 1]) && !/^\d/.test(kata[mulai - 1])) mulai--;
+      const nama = kata.slice(mulai).join(" ") + " " + s.slice(g);
+      let materi = kata.slice(0, mulai).join(" ").replace(/^[\d.:\-–\s]+(wib)?/i, "").replace(/\s\d+(\s|$)/g, " ").trim();
+      tambah(nama.trim(), materi || materiTerakhir);
+      materiTerakhir = "";
+    } else if (!/^[\d.:\-–\s]+$/.test(s)) {
+      materiTerakhir = s.replace(/^[\d.:\-–\s]+(wib)?/i, "").trim();
+    }
+  });
+  return hasil;
+}
+function teksDariPemateri(daftar) {
+  return (daftar || []).map(t => [t.nama].concat((t.materi || []).map(m => "- " + m)).join("\n")).join("\n\n");
+}
+function pemateriDariTeks(teks) {
+  const hasil = [];
+  String(teks || "").split(/\n/).forEach(b => {
+    const s = b.trim();
+    if (!s) return;
+    if (/^[-•*]/.test(s)) { if (hasil.length) hasil[hasil.length - 1].materi.push(s.replace(/^[-•*]\s*/, "").trim()); }
+    else hasil.push({ nama: s, materi: [] });
+  });
+  return hasil.filter(t => t.nama);
+}
+async function bacaJadwalPemateri(file, kabar) {
+  const n = String(file.name || "").toLowerCase();
+  let baris;
+  if (/\.docx$/.test(n)) baris = await bacaTabelDocx(await file.arrayBuffer());
+  else if (/\.(xlsx|xls|csv)$/.test(n)) baris = await bacaTabelXlsx(await file.arrayBuffer());
+  else if (/\.pdf$/.test(n) || file.type === "application/pdf") baris = await bacaTabelPdf(await file.arrayBuffer());
+  else if (/^image\//.test(file.type) || /\.(jpe?g|png|webp|heic)$/.test(n)) baris = await bacaTeksFoto(file, kabar);
+  else if (/\.doc$/.test(n)) throw new Error("Format .doc lama belum didukung. Simpan ulang sebagai .docx atau PDF.");
+  else throw new Error("Format berkas belum didukung. Pakai Word (.docx), Excel, CSV, PDF, atau foto.");
+  return susunPemateri(baris);
+}
+
 /* Lencana jenis pembayaran di tabel Pendaftar. */
 function LencanaBayar({ r, ganda }) {
   const booking = r.tipe_bayar === "booking";
@@ -7200,6 +7370,9 @@ function TabLinkKelas({ beriTahu }) {
   const [flyerDesain, setFlyerDesain] = useState({});
   /* Trainer & materi dari KAK DCC (dikirim otomatis per jam ke tabel pemateri_dcc). */
   const [pemateri, setPemateri] = useState([]);
+  /* Jadwal pemateri yang diupload per kelas (mengalahkan data KAK DCC). */
+  const [pemUpload, setPemUpload] = useState({});
+  const [editPem, setEditPem] = useState(null);
   /* Panel per bulan: link dikelompokkan menurut bulan kelasnya. */
   const [bulanLink, setBulanLink] = useState(null);
   const NAMA_BULAN_LINK = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -7258,6 +7431,55 @@ function TabLinkKelas({ beriTahu }) {
       const d = await SB.from("pemateri_dcc").select("dcc_event_id,jenis,mulai,kota,judul,trainer,diperbarui");
       setPemateri(d && !d.error && Array.isArray(d.data) ? d.data : []);
     } catch (e) { setPemateri([]); }
+    try {
+      const u = await SB.from("jadwal_pemateri").select("pelatihan_id,trainer,nama_file,jalur_file,diperbarui");
+      const m = {};
+      (u && !u.error && Array.isArray(u.data) ? u.data : []).forEach(x => { m[x.pelatihan_id] = x; });
+      setPemUpload(m);
+    } catch (e) { setPemUpload({}); }
+  }
+
+  async function simpanPemateri(k) {
+    const daftar = pemateriDariTeks(editPem && editPem.teks);
+    if (!daftar.length) return beriTahu("Belum ada nama trainer. Tulis nama, lalu materi di baris berikutnya diawali tanda -");
+    setEditPem(e => ({ ...e, sibuk: true, pesan: "Menyimpan\u2026" }));
+    let jalur = editPem.jalur_file || null;
+    if (editPem.file) {
+      const aman = String(editPem.file.name || "jadwal").replace(/[^A-Za-z0-9._-]+/g, "-").slice(-80);
+      const j = k.id + "/" + Date.now() + "-" + aman;
+      const up = await SB.storage.from("pemateri").upload(j, editPem.file, { upsert: false, contentType: editPem.file.type || undefined });
+      if (!up.error) jalur = j;
+    }
+    const isi = { pelatihan_id: k.id, trainer: daftar, nama_file: editPem.nama_file || null, jalur_file: jalur, diperbarui: new Date().toISOString() };
+    const { error } = await SB.from("jadwal_pemateri").upsert(isi, { onConflict: "pelatihan_id" });
+    if (error) { setEditPem(e => ({ ...e, sibuk: false, pesan: "" })); return beriTahu("Gagal menyimpan: " + error.message); }
+    setPemUpload(m => ({ ...m, [k.id]: isi }));
+    setEditPem(null);
+    beriTahu("Jadwal pemateri disimpan. Prompt flyer sudah memakai nama trainer ini.");
+  }
+  async function hapusPemateri(k) {
+    const { error } = await SB.from("jadwal_pemateri").delete().eq("pelatihan_id", k.id);
+    if (error) return beriTahu("Gagal menghapus: " + error.message);
+    setPemUpload(m => { const n = { ...m }; delete n[k.id]; return n; });
+    beriTahu("Jadwal upload dihapus. Prompt kembali memakai data KAK DCC.");
+  }
+  async function bukaBerkasPemateri(jalur) {
+    const { data, error } = await SB.storage.from("pemateri").createSignedUrl(jalur, 600);
+    if (error || !data) return beriTahu("Berkas tidak bisa dibuka.");
+    window.open(data.signedUrl, "_blank", "noopener");
+  }
+  async function pilihBerkasPemateri(k, file) {
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) return beriTahu("Berkas terlalu besar (maks. 10 MB).");
+    setEditPem({ kid: k.id, teks: "", file, nama_file: file.name, sibuk: true, pesan: "Membaca berkas\u2026" });
+    try {
+      const daftar = await bacaJadwalPemateri(file, p => setEditPem(e => e && e.kid === k.id ? { ...e, pesan: p } : e));
+      setEditPem(e => ({ ...e, teks: teksDariPemateri(daftar), sibuk: false,
+        pesan: daftar.length ? "Terbaca " + daftar.length + " trainer. Periksa dan koreksi bila perlu, lalu Simpan."
+                             : "Nama trainer tidak terbaca otomatis. Ketik manual di kotak ini, lalu Simpan." }));
+    } catch (err) {
+      setEditPem(e => ({ ...e, sibuk: false, pesan: (err && err.message) || "Berkas tidak terbaca. Ketik manual di kotak ini." }));
+    }
   }
   useEffect(() => { muat(); }, []);
 
@@ -7265,6 +7487,11 @@ function TabLinkKelas({ beriTahu }) {
      dan tanggal mulai sama. Hanya dipakai bila trainer-nya sudah terisi. */
   function normJenis(t) { return String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
   function pemateriKelas(k) {
+    const up = k && pemUpload[k.id];
+    if (up && Array.isArray(up.trainer) && up.trainer.length) return { ...up, sumber: "upload" };
+    return pemateriDcc(k);
+  }
+  function pemateriDcc(k) {
     if (!k || !k.tanggal_mulai) return null;
     const j = normJenis(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
     const cocok = pemateri.filter(p => String(p.mulai).slice(0, 10) === t && normJenis(p.jenis) === j
@@ -8156,9 +8383,45 @@ function TabLinkKelas({ beriTahu }) {
             }),
             (() => {
               const pm = pemateriKelas(k);
+              const wkt = pm && pm.diperbarui ? " (diperbarui " + new Date(pm.diperbarui).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "";
               return React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
-                pm ? "\u2705 Trainer & materi diambil otomatis dari KAK DCC" + (pm.diperbarui ? " (diperbarui " + new Date(pm.diperbarui).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "") + ". Ganti trainer di DCC, flyer ikut berubah."
-                   : "\u{1F7E8} Trainer & materi belum ada di KAK DCC untuk kelas ini \u2014 susun KAK-nya di DCC, nanti terisi sendiri.");
+                !pm ? "\u{1F7E8} Trainer & materi belum ada \u2014 upload jadwal pemateri di bawah, atau susun KAK-nya di DCC."
+                  : pm.sumber === "upload" ? "\u2705 Trainer & materi dari jadwal yang diupload" + (pm.nama_file ? ": " + pm.nama_file : "") + wkt + "."
+                  : "\u2705 Trainer & materi diambil otomatis dari KAK DCC" + wkt + ". Ganti trainer di DCC, flyer ikut berubah.");
+            })(),
+            (() => {
+              const up = pemUpload[k.id];
+              const ed = editPem && editPem.kid === k.id ? editPem : null;
+              const idInput = "pem-" + r.id + "-" + k.id;
+              return React.createElement("div", { style: { marginTop: 10, padding: "10px 12px", border: "1px dashed #C9D6D2", borderRadius: 10, background: "#FAFCFB" } },
+                React.createElement("div", { style: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+                  React.createElement("b", { style: { fontSize: 13 } }, "\u{1F4CE} Jadwal pemateri kelas ini"),
+                  React.createElement("label", { htmlFor: idInput, className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13, cursor: "pointer" } }, up ? "Ganti berkas" : "Upload jadwal"),
+                  React.createElement("input", {
+                    id: idInput, type: "file", style: { display: "none" },
+                    accept: ".docx,.xlsx,.xls,.csv,.pdf,image/*",
+                    onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; pilihBerkasPemateri(k, f); }
+                  }),
+                  !ed ? React.createElement("button", { type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 },
+                    onClick: () => setEditPem({ kid: k.id, teks: up ? teksDariPemateri(up.trainer) : teksDariPemateri((pemateriDcc(k) || {}).trainer || []), nama_file: up ? up.nama_file : null, jalur_file: up ? up.jalur_file : null, pesan: "Tulis nama trainer, lalu materinya di baris berikutnya diawali tanda -" })
+                  }, up ? "Ubah isi" : "Ketik manual") : null,
+                  up && up.jalur_file ? React.createElement("button", { type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 }, onClick: () => bukaBerkasPemateri(up.jalur_file) }, "Lihat berkas") : null,
+                  up && !ed ? React.createElement("button", { type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 }, onClick: () => hapusPemateri(k) }, "Hapus") : null),
+                React.createElement("p", { className: "dm-hint", style: { margin: "6px 0 0" } },
+                  up ? "Dipakai untuk prompt flyer: " + (up.nama_file || "diketik manual") + "."
+                     : "Opsional. Upload \u201cJadwal Kegiatan\u201d atau \u201cRekap Materi dan Narasumber\u201d dari DCC, Excel, PDF, atau foto jadwal. Bila ada, ini yang dipakai (mengalahkan data KAK DCC)."),
+                ed ? React.createElement("div", { style: { marginTop: 8 } },
+                  React.createElement("p", { className: "dm-hint", style: { margin: "0 0 4px", fontWeight: 600 } }, ed.pesan || ""),
+                  React.createElement("textarea", {
+                    className: "dm-textarea dm-input", rows: 9, disabled: !!ed.sibuk,
+                    style: { width: "100%", fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" },
+                    placeholder: "Hafid, S.Kep., Ners\n- Membangun Komitmen Belajar (BLC)\n- Anti Korupsi\n\nNs. Reza Ulfajri, S.Kep\n- Triage",
+                    value: ed.teks,
+                    onChange: e => { const v = e.target.value; setEditPem(x => ({ ...x, teks: v })); }
+                  }),
+                  React.createElement("div", { className: "dm-row", style: { gap: 8, marginTop: 6 } },
+                    React.createElement("button", { type: "button", className: "dm-btn", disabled: !!ed.sibuk, onClick: () => simpanPemateri(k) }, ed.sibuk ? "Tunggu\u2026" : "Simpan"),
+                    React.createElement("button", { type: "button", className: "dm-btn-line", disabled: !!ed.sibuk, onClick: () => setEditPem(null) }, "Batal"))) : null);
             })(),
             React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Isi semua bagian bertanda \u{1F7E8} (angkatan, jam, tanggal daring/luring) sebelum disalin. QR Validasi SKP ditempel saat finishing dari Surat Keterangan Registrasi."),
             React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },

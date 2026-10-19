@@ -7879,7 +7879,7 @@ function TabLinkKelas({ beriTahu }) {
       ? [jenis + " bukan sekadar naik level.", "Ini tentang siap melahirkan penolong-penolong berikutnya."]
       : acls
         ? ["ACLS bukan sekadar sertifikat.", "Ini tentang tenang dan tepat di detik paling kritis."]
-        : [(jenis || "Pelatihan ini") + " bukan sekadar ikut pelatihan.", "Ini tentang siap ketika dibutuhkan."];
+        : [(jenis || "Pelatihan ini") + " bukan sekadar sertifikat.", "Ini tentang tenang dan tepat di detik paling kritis."];
     const fas = [
       "\u2705 Sertifikat Resmi ber-SKP Kemenkes RI",
       "\u2705 Materi Terkini",
@@ -7987,7 +7987,8 @@ function TabLinkKelas({ beriTahu }) {
     { id: "klasik", nama: "Desain 1 — Klasik (naskah lengkap)" },
     { id: "master", nama: "Desain 2 — Master Canva (navy–merah)" },
     { id: "terang", nama: "Desain 3 — Master Canva (terang)" },
-    { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)" }
+    { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)" },
+    { id: "putih", nama: "Desain 5 — Putih Editorial (referensi)" }
   ];
   function desainBawaan(k) {
     const s = String((k && k.id) || "");
@@ -7997,7 +7998,169 @@ function TabLinkKelas({ beriTahu }) {
   }
   function buatPromptDesain(r, k, desain) {
     if (desain === "infografis") return buatPromptInfografis(r, k);
+    if (desain === "putih") return buatPromptPutih(r, k);
     return desain === "master" || desain === "terang" ? buatPromptMaster(r, k, desain === "terang") : buatPromptFlyer(r, k);
+  }
+
+  /* Desain 5 — Putih Editorial sesuai referensi (template Pak Ryan, Okt 2026), diisi otomatis per kelas. */
+  function buatPromptPutih(r, k) {
+    const jenis = String(k.jenis || "").trim().toUpperCase();
+    const namaResmi = namaResmiJenis(jenis);
+    const tot = /^TOT/.test(jenis);
+    const inti = tot ? jenis.replace(/^TOT\s*/, "") : jenis;
+    const kota = kotaKelas(k);
+    const f = String(k.format || "").trim();
+    const blended = /daring/i.test(f) && /luring/i.test(f);
+    const daring = !blended && /daring|online/i.test(f);
+    const Y = "\u{1F7E8}";
+    const J = jenis || Y + "[jenis pelatihan]";
+    const untukPerawat = /\bFN\b|for nurse|\bperawat\b/i.test(String(k.judul || "") + " " + String((r && r.judul) || ""));
+    const pm = pemateriKelas(k);
+    const bank = setelan.rek_bank || "Bank BRI";
+    const BLN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    const d1 = k.tanggal_mulai ? new Date(String(k.tanggal_mulai).slice(0, 10) + "T00:00:00") : null;
+    const d2 = k.tanggal_selesai ? new Date(String(k.tanggal_selesai).slice(0, 10) + "T00:00:00") : d1;
+    let tglBesar, blnBesar;
+    if (d1 && d2 && d1.getMonth() === d2.getMonth() && d1.getFullYear() === d2.getFullYear()) {
+      tglBesar = d1.getDate() === d2.getDate() ? String(d1.getDate()) : d1.getDate() + "–" + d2.getDate();
+      blnBesar = BLN[d1.getMonth()] + " " + d1.getFullYear();
+    } else if (d1 && d2) {
+      tglBesar = d1.getDate() + " " + BLN[d1.getMonth()].slice(0, 3) + " – " + d2.getDate() + " " + BLN[d2.getMonth()].slice(0, 3);
+      blnBesar = String(d2.getFullYear());
+    } else { tglBesar = Y + "[tanggal]"; blnBesar = Y + "[bulan tahun]"; }
+    const fas = [
+      "Sertifikat Resmi ber-SKP Kemenkes RI",
+      "Materi Terkini",
+      "Training Kit Eksklusif",
+      "1x makan siang & 2x coffee break",
+      "Akses Baladewa: eksklusif dan berkelanjutan",
+      "Quickcards: ilmu tetap tajam, ulang materi kapan saja",
+      /ACLS/.test(jenis) && !tot ? "Akses Pro 3 Bulan DEWA Clinical Tools" : "DEWA Clinical Tools: asisten klinis di genggaman"
+    ];
+    const hook = tot
+      ? [jenis + " bukan sekadar naik level.", "Ini tentang siap melahirkan penolong-penolong berikutnya."]
+      : [J + " bukan sekadar sertifikat.", "Ini tentang tenang dan tepat di detik paling kritis."];
+    let foto;
+    if (tot) foto = "Photorealistic senior Indonesian healthcare instructor in navy medical scrubs coaching a small group of trainers during a " + inti + " emergency simulation, demonstrating on a training manikin while participants observe and take notes, in a modern simulation room.";
+    else if (/ACLS/.test(jenis)) foto = "Photorealistic Indonesian healthcare professionals wearing navy medical scrubs, practicing CPR and bag-valve-mask ventilation on a medical training manikin in a modern emergency simulation room.\n\nComposition:\n- Male healthcare worker performing chest compressions in the foreground.\n- Female healthcare worker in a navy hijab assisting with ventilation.\n- Realistic emergency medical equipment in the background.";
+    else if (/BTCLS/.test(jenis)) foto = "Photorealistic Indonesian healthcare professionals wearing navy medical scrubs, practicing trauma and cardiac emergency care on a training manikin in a modern emergency simulation room.\n\nComposition:\n- Male healthcare worker performing chest compressions in the foreground.\n- Female healthcare worker in a navy hijab stabilizing the cervical spine with a cervical collar.\n- Realistic emergency medical equipment in the background.";
+    else if (/PKID/.test(jenis)) foto = "Photorealistic Indonesian intensive care nurses wearing navy medical scrubs in a modern ICU simulation room.\n\nComposition:\n- Male nurse adjusting a mechanical ventilator in the foreground.\n- Female nurse in a navy hijab checking the bedside patient monitor.\n- Realistic ICU equipment in the background.";
+    else if (/EKG/.test(jenis)) foto = "Photorealistic Indonesian nurses wearing navy medical scrubs analysing a 12-lead ECG strip and a cardiac monitor together in a modern training room; one female nurse wears a navy hijab.";
+    else foto = "Photorealistic Indonesian healthcare professionals wearing navy medical scrubs practising emergency nursing skills on a training manikin in a modern simulation room; one female nurse wears a navy hijab.";
+    const b = [];
+    const p = (...x) => x.forEach(y => b.push(y));
+    p("# MASTER PROMPT — " + J + (untukPerawat ? " FOR NURSE" : "") + " DEWA MEDIK NUSANTARA", "## EXACT REFERENCE DESIGN | CANVA INSTAGRAM FEED 4:5", "");
+    p("**TASK:** Recreate the supplied flyer reference as faithfully as possible (if a reference image is attached). Preserve its visual composition, typography hierarchy, proportions, photography style, colors, information panels, and overall appearance.", "");
+    p("Do not redesign or reinterpret the reference. Improve only alignment, legibility, and spacing.", "");
+    p("### 1. CRITICAL CANVAS SIZE — READ FIRST", "");
+    p("**FINAL CANVA SIZE: 1080 × 1350 px, portrait 4:5.**", "");
+    p("If the image generator cannot output exactly 1080 × 1350 px, generate at 1024 × 1536 px using this mandatory crop-safe method:", "");
+    p("- Full generated image: 1024 × 1536 px.",
+      "- Actual flyer content: X = 0–1024, Y = 128–1408.",
+      "- The central 1024 × 1280 px area is the complete final 4:5 flyer.",
+      "- Top 128 px and bottom 128 px must contain ONLY seamless background continuation.",
+      "- Absolutely NO text, logos, photographs, panels, QR codes, contact details, or footer in the top and bottom crop bands.",
+      "- Maintain 25–35 px internal margins inside the central area.",
+      "- Every section must fit inside the central flyer.",
+      "- After cropping, resize proportionally to 1080 × 1350 px.", "");
+    p("**The complete design must fit Canva Instagram Post (Portrait) without stretching, clipping, or losing any content.**", "");
+    p("### 2. VISUAL STYLE — MATCH REFERENCE EXACTLY", "");
+    p("Professional, premium, highly detailed medical training infographic.", "");
+    p("Color scheme:", "- Dominant white background: #FFFFFF", "- Deep navy: #0B1E3F", "- Bright medical red: #E91C25", "- Light blue-gray: #F2F5FA", "");
+    p("Match the reference:", "- White background with subtle geometric patterns.", "- Large navy typography.", "- Red ECG waveform running through the title.", "- Diagonal red accents.", "- Realistic clinical training photography.", "- Navy and red rounded information panels.", "- White cards with subtle borders.", "- Small medical icons.", "- Dark navy footer.", "");
+    p("Do not introduce a different layout or color palette.", "");
+    p("### 3. HEADER — TOP 7%", "");
+    p("Create a clean horizontal white header.", "");
+    p("**Upper-left:**", "Place the original Kemenkes logo first, followed immediately by the original Dewa Medik Nusantara logo.", "");
+    p("Use the original uploaded logo assets exactly as provided. Do not redraw, distort, recolor, or alter their lettering.", "");
+    p("**Upper-right:**", "Display accreditation as plain navy text:", "", "Terakreditasi B", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge or stamp.", "");
+    p("### 4. HERO — NEXT 30%", "");
+    p("**LEFT SIDE:**", "", "Very large, bold, condensed navy headline:", "", "# " + J, "");
+    if (untukPerawat) p("Directly underneath, exactly:", "", "**for Nurse**", "");
+    if (namaResmi) {
+      p((untukPerawat ? "Then" : "Directly underneath") + ", exactly:", "", "**" + namaResmi + "**", "");
+      p("Write \"" + namaResmi + "\" EXACTLY as given. Do not translate, shorten, or rephrase it.", "");
+    } else {
+      p("Write " + J + " as the abbreviation ONLY. Do NOT add any expansion or meaning of the abbreviation, because the official name is not provided here.", "");
+    }
+    p("Add a thin red ECG waveform crossing horizontally near the headline, matching the reference.", "");
+    p("Below the title, include this introduction in smaller navy text:", "");
+    p(hook[0], hook[1], "Di Dewa Medik Nusantara, kami terus berevolusi menghadirkan pengalaman belajar yang lebih baik—cara kita belajar, terhubung, dan berkembang.", "Standarnya tetap sama: Excellence.", "Pengalamannya yang terus kami tingkatkan.", "");
+    p("**RIGHT SIDE:**", "", foto, "- Professional, natural clinical photography.", "- Smooth white-to-photo transition.", "- Red diagonal geometric overlay at the lower-right.", "");
+    p("Inside the red diagonal accent, display:", "", "Come experience what’s next.", "", "Every Second Counts.", "Be Ready to Save Lives.", "");
+    p("### 5. EVENT TITLE & INFORMATION — NEXT 13%", "");
+    p("Full-width navy headline strip:", "");
+    p("**" + J + (untukPerawat ? " FOR NURSE" : "") + " ANGKATAN " + Y + "[ISI ANGKATAN] — " + (kota ? kota.toUpperCase() : Y + "[KOTA]") + "**", "");
+    p("Below it, a single white horizontal information card divided into four sections:", "");
+    p("**SECTION A — DATE**", "", "Red calendar icon.", "", "TANGGAL PELAKSANAAN", "", "**" + tglBesar + "**", "", "**" + blnBesar + "**", "", "The date must be large and red.", "");
+    p("**SECTION B — TIME & SCHEDULE**", "", "Clock icon.", "", "Pukul " + Y + "[JAM MULAI–SELESAI] WIB", "");
+    if (blended) p("Daring: " + Y + "[TANGGAL DARING]", "(Zoom/LMS Plataran Sehat)", "", "Luring: " + Y + "[TANGGAL LURING]", "di " + (k.lokasi || Y + "[venue]"), "");
+    else if (daring) p("Daring via Zoom/LMS Plataran Sehat", "");
+    p("**SECTION C — " + (daring ? "PLATFORM" : "LOCATION") + "**", "", daring ? "Laptop icon." : "Red location pin.", "");
+    if (daring) p("PLATFORM", "", "Zoom/LMS Plataran Sehat", "");
+    else p("LOKASI LURING", "", (k.lokasi || Y + "[venue]") + (kota && !new RegExp(kota, "i").test(String(k.lokasi || "")) ? ", " + kota : ""), "", Y + "[alamat lengkap venue — hapus baris ini bila tidak perlu]", "");
+    p("**SECTION D — METHOD**", "", "Navy laptop icon.", "", "METODE", "", blended ? "Blended Training" : daring ? "Daring" : "Luring", "");
+    if (f) p(f, "");
+    p("Use clear vertical dividers between the four sections.", "");
+    p("### 6. FACILITIES & TRAINERS — NEXT 28%", "");
+    p("Create two large adjacent panels.", "");
+    p("**LEFT PANEL — 48% WIDTH**", "", "Dark navy title bar with gift icon:", "", "**FASILITAS PESERTA**", "");
+    p("White background with individual horizontal rows and navy icons.", "", "Include exactly:", "");
+    fas.forEach((x, i) => p((i + 1) + ". " + x));
+    p("", "At the bottom, a light red warning strip with red exclamation icon:", "", "**Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK**", "");
+    p("**RIGHT PANEL — 52% WIDTH**", "", "Bright red title bar with trainer icon:", "", "**TRAINER & MATERI**", "");
+    p("Use a compact vertical timeline layout with red circular markers and fine gray dividers.", "");
+    const tr = pm ? pm.trainer.filter(t => t && t.nama) : [];
+    p((tr.length ? (tr.length === 1 ? "One trainer row" : tr.length + " trainer rows") : "Trainer rows") + ", names bold navy on the left and material titles in smaller text on the right.", "", "Trainer names:", "");
+    if (tr.length) {
+      tr.forEach(t => {
+        p("**" + String(t.nama).trim() + "**");
+        (Array.isArray(t.materi) ? t.materi : []).forEach(m => p("- " + String(m).trim()));
+        p("");
+      });
+    } else {
+      p("**" + Y + "[Nama trainer 1, gelar]**", "- " + Y + "[judul materi]", "");
+      p("**" + Y + "[Nama trainer 2, gelar]**", "- " + Y + "[judul materi]", "");
+    }
+    p("Do not add trainer portraits.", "");
+    p("### 7. BOTTOM INFORMATION — NEXT 17%", "");
+    p("Three-column layout matching the reference.", "");
+    p("**LEFT COLUMN — REGISTRATION QR**", "", "Bright red title bar with link icon.", "", "**SCAN PENDAFTARAN**", "");
+    p("Large empty white QR placeholder with four red corner brackets.", "", "Below:", "", alamat(r.slug), "");
+    p("Leave QR space empty for inserting a real scannable QR code in Canva.", "");
+    p("**CENTER COLUMN — SKP VALIDATION QR**", "", "Navy title bar with document icon.", "", "**SCAN VALIDASI SKP & KRITERIA PESERTA**", "");
+    p("Large empty white QR placeholder with four navy corner brackets.", "", "Below:", "", "Scan QR dari Surat Keterangan Registrasi Kemenkes", "");
+    p("Do not invent a validation QR code.", "");
+    p("**RIGHT COLUMN — PAYMENT & CONTACTS**", "");
+    if (Number(k.harga) > 0) p("At the top, bright red and white fee panel:", "", "**BIAYA PELATIHAN**", "", "**" + rp(Number(k.harga)).replace(/\s+/g, "") + "**", "");
+    p("Below, white payment panel:", "", "PEMBAYARAN", "", bank, "", "No. Rekening:", setelan.rek_nomor || "201001000824562", "", "a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"), "");
+    p("Below, navy contacts panel:", "", "**INFORMASI & NARAHUBUNG**", "", "Arrange four contacts in a compact two-column grid:", "");
+    p("Arka — 0821-2348-6576", "", "Eza — 0851-6145-9345", "", "Tama — 0856-5556-4911", "", "Hawa — 0851-1745-4911", "");
+    p("Use small green WhatsApp icons.", "");
+    p("### 8. FOOTER — FINAL 5%", "");
+    p("Full-width dark navy footer.", "");
+    p("Left:", "", "Instagram, TikTok, and YouTube icons.", "", "@dewamedik_hc", "");
+    p("Center:", "", "www.dewamedik911.com", "", "daftarpelatihan.dewamedik911.com", "");
+    p("Right:", "", "Diselenggarakan oleh", "PT Dewa Medik Nusantara", "", "Excellence Is The Way.", "Excellence Evolved.", "");
+    p("Keep the footer fully visible inside the 4:5 safe area.", "");
+    p("### 9. STRICT DESIGN RULES", "");
+    p("- Reproduce the reference composition as closely as possible (if a reference image is attached).",
+      "- White must remain the dominant background color.",
+      "- The title " + J + " must be significantly larger than the fee.",
+      "- All text must be correctly spelled.",
+      "- Preserve every supplied number and contact.",
+      "- Do not invent missing batch numbers or training hours.",
+      "- Never invent or translate the expansion of any abbreviation (training names, SKP, LMS, etc.). Only use expansions written in this prompt.",
+      "- Do not fabricate QR codes.",
+      "- Do not fabricate numerical SKP values.",
+      "- Do not use promotional discount language: promo, diskon, voucher, early bird, cashback, doorprize, gratis, \"paling murah\", \"SKP on process\", and no claim of Kemenkes recommendation (SE Kemenkes HK.02.03/F.V/2692/2026).",
+      "- Do not distort the official logos.",
+      "- Do not crop the footer.",
+      "- No text outside the 4:5 safe area.",
+      "- Use consistent padding and professional alignment.",
+      "- Keep all panels readable at Instagram mobile viewing size.", "");
+    p("**FINAL RESULT: An accurate, premium, reference-matched " + J + (untukPerawat ? " for Nurse" : "") + " training flyer, perfectly cropped to 4:5 for Canva Instagram Feed, with a predominantly white medical editorial aesthetic.**");
+    return b.join("\n");
   }
 
   /* Desain 4 — Infografis navy–biru–merah (template Pak Ryan, Okt 2026), diisi otomatis per kelas. */

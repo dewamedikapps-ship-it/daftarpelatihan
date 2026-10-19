@@ -8196,8 +8196,10 @@ function TabLinkKelas({ beriTahu }) {
       "Create a premium, photorealistic, professional Instagram training flyer for **Akademia DEWAMEDIK — PT Dewa Medik Nusantara**.", "",
       "**CRITICAL: CANVAS SIZE**",
       L(["Exactly 1080 × 1350 px, 4:5 portrait (width ÷ height = 0.8).", "Full-bleed, edge to edge. No white borders, no mockup, no frame, no letterboxing.", "Do not make a 3:4, 2:3, 9:16 or A4 poster. Do not stretch the design.", "All text inside the safe area X = 32–1048 px."]));
-    H("STYLE");
-    p("White and light-gray medical editorial background, deep navy #0B1E3F, bright medical red #E91C25. Rounded navy title bars, white cards with soft shadows, small clean icons, dark navy footer. Bold condensed headline font, clean sans-serif for details.");
+    H("STYLE — CREATIVE FREEDOM");
+    p("Make the flyer eye-catching, energetic and premium, so healthcare workers want to register right away. You are free to be creative with composition, photo treatment, shapes, lighting and typography; the zones below are a guide, not a cage.",
+      "Palette: deep navy #0B1E3F, bright medical red #E91C25, white and light gray. Bold condensed headline font, clean sans-serif for details.",
+      "Creative freedom never overrides the KEMENKES CHECKLIST at the end: every item there must appear, correctly spelled and readable.");
     H("HEADER — Y 0–110 px");
     p("Upper-left: the ORIGINAL attached Kemenkes logo, a thin divider, then the ORIGINAL attached Dewa Medik Nusantara logo. Use the supplied images exactly; do not redraw, recolor or distort.", "",
       "Upper-right, three lines of navy text, right-aligned:",
@@ -8254,8 +8256,20 @@ function TabLinkKelas({ beriTahu }) {
       "No SKP numbers, no discount or promo words (promo, diskon, voucher, early bird, cashback, gratis, \"paling murah\"), no claim of Kemenkes recommendation (SE Kemenkes HK.02.03/F.V/2692/2026).",
       "No photos of Ministry of Health officials, no \"Official Partner\" or recommendation badges.",
       "No extra text, social media accounts, contacts or logos that are not listed here."]));
+    H("KEMENKES CHECKLIST (SE HK.02.03/F.V/2692/2026) — ALL MANDATORY");
+    p(L(["Kemenkes logo at the far upper-left, then the Dewa Medik Nusantara logo right after it.",
+      "Upper-right as TEXT (not a badge): Institusi penyelenggara pelatihan terakreditasi Kemenkes RI · Terakreditasi B · No. HK.02.02/F/4052/2024.",
+      "Title \"PELATIHAN " + J + (untukPerawat ? " for Nurse" : "") + "\" clearly written; the fee text is smaller than the title.",
+      "Method written explicitly (" + (blended ? "Blended: daring + luring with their dates" : daring ? "Daring" : "Luring") + ").",
+      "Day, date, time and location complete.",
+      (tr.length ? "Every trainer name with title, and each material directly under the trainer who teaches it." : "Materials list (trainer names must be added before publishing)."),
+      "SKP and participant criteria ONLY as the QR area \"SCAN VALIDASI SKP & KRITERIA PESERTA\" — never write SKP numbers.",
+      "\"Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK\".",
+      "\"Diselenggarakan oleh PT Dewa Medik Nusantara\".",
+      "Contact names and phone numbers; fee" + (harga ? " " + harga : "") + "; bank account " + (setelan.rek_nomor || "201001000824562") + " a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara") + ".",
+      "NOT allowed: promo/discount/early bird/cashback/voucher/doorprize/free-gift words, \"paling murah\", \"SKP on process\", recommended-by-Kemenkes claims, photos of Kemenkes officials."]));
     H("FINAL CHECK BEFORE OUTPUT");
-    p(L(["1080 × 1350, full-bleed, nothing cut off.", "\"PELATIHAN\" appears above \"" + J + "\".", "\"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" appears above \"Terakreditasi B\".", "SCAN PENDAFTARAN box is large and the link below it is readable.", "Dates, location, fee, account number and all four contacts are correct."]));
+    p(L(["1080 × 1350, full-bleed, nothing cut off.", "Every item of the KEMENKES CHECKLIST is visible.", "SCAN PENDAFTARAN box is large and the link below it is readable.", "Dates, location, fee, account number and all four contacts are correct."]));
     return b.join("\n");
   }
   /* Dua elemen wajib yang sering hilang bila GPT meniru gambar referensi lama:

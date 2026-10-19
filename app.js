@@ -7977,7 +7977,8 @@ function TabLinkKelas({ beriTahu }) {
   const DESAIN_FLYER = [
     { id: "klasik", nama: "Desain 1 — Klasik (naskah lengkap)" },
     { id: "master", nama: "Desain 2 — Master Canva (navy–merah)" },
-    { id: "terang", nama: "Desain 3 — Master Canva (terang)" }
+    { id: "terang", nama: "Desain 3 — Master Canva (terang)" },
+    { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)" }
   ];
   function desainBawaan(k) {
     const s = String((k && k.id) || "");
@@ -7986,7 +7987,165 @@ function TabLinkKelas({ beriTahu }) {
     return DESAIN_FLYER[h % DESAIN_FLYER.length].id;
   }
   function buatPromptDesain(r, k, desain) {
+    if (desain === "infografis") return buatPromptInfografis(r, k);
     return desain === "master" || desain === "terang" ? buatPromptMaster(r, k, desain === "terang") : buatPromptFlyer(r, k);
+  }
+
+  /* Desain 4 — Infografis navy–biru–merah (template Pak Ryan, Okt 2026), diisi otomatis per kelas. */
+  function buatPromptInfografis(r, k) {
+    const jenis = String(k.jenis || "").trim().toUpperCase();
+    const namaResmi = namaResmiJenis(jenis);
+    const tot = /^TOT/.test(jenis);
+    const inti = tot ? jenis.replace(/^TOT\s*/, "") : jenis;
+    const kota = kotaKelas(k);
+    const f = String(k.format || "").trim();
+    const blended = /daring/i.test(f) && /luring/i.test(f);
+    const daring = !blended && /daring|online/i.test(f);
+    const Y = "\u{1F7E8}";
+    const untukPerawat = /\bFN\b|for nurse|\bperawat\b/i.test(String(k.judul || "") + " " + String((r && r.judul) || ""));
+    const tgl = tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || Y + "[tanggal]";
+    const pm = pemateriKelas(k);
+    const bank = setelan.rek_bank || "Bank BRI";
+    const fas = [
+      "Sertifikat Resmi ber-SKP Kemenkes RI",
+      "Materi Terkini",
+      "Training Kit Eksklusif",
+      "1x makan siang & 2x coffee break",
+      "Akses Baladewa: eksklusif dan berkelanjutan",
+      "Quickcards: ilmu tetap tajam, ulang materi kapan saja",
+      /ACLS/.test(jenis) && !tot ? "Akses Pro 3 Bulan DEWA Clinical Tools" : "DEWA Clinical Tools: asisten klinis di genggaman"
+    ];
+    let hero;
+    if (tot) hero = "Use realistic cinematic photography showing a senior Indonesian healthcare instructor coaching a small group of trainers during a " + inti + " emergency simulation, demonstrating on a training manikin while participants observe.";
+    else if (/ACLS/.test(jenis)) hero = "Use realistic cinematic photography showing Indonesian healthcare professionals conducting an ACLS cardiac emergency simulation.\n\nOne healthcare professional performs CPR on a training manikin, another assists with a bag-valve-mask.";
+    else if (/BTCLS/.test(jenis)) hero = "Use realistic cinematic photography showing Indonesian healthcare professionals conducting a trauma and cardiac emergency simulation.\n\nOne healthcare professional performs CPR on a training manikin, another stabilizes the cervical spine with a cervical collar.";
+    else if (/PKID/.test(jenis)) hero = "Use realistic cinematic photography showing Indonesian intensive care nurses in a modern ICU simulation: one nurse adjusts a mechanical ventilator while another checks the bedside patient monitor.";
+    else if (/EKG/.test(jenis)) hero = "Use realistic cinematic photography showing Indonesian nurses analysing a 12-lead ECG strip and a cardiac monitor in a modern training room.";
+    else hero = "Use realistic cinematic photography showing Indonesian healthcare professionals practising emergency nursing skills on a training manikin in a modern medical simulation environment.";
+    const judul = (jenis || Y + "[jenis pelatihan]") + (untukPerawat ? " FOR NURSE" : "");
+    const b = [];
+    const p = (...x) => x.forEach(y => b.push(y));
+    p("# MASTER PROMPT — " + judul, "## CANVA INSTAGRAM FEED 4:5 — DEWA MEDIK NUSANTARA", "");
+    p("Create a premium, professional medical training flyer for **Akademia DEWAMEDIK — PT Dewa Medik Nusantara**, closely following the layout of the supplied reference flyer (if a reference image is attached).", "");
+    p("## 1. CRITICAL CANVAS AND CROPPING RULES", "");
+    p("**TARGET SIZE: 1080 × 1350 px, EXACT 4:5 PORTRAIT.**", "");
+    p("The design must fit perfectly into a Canva Instagram Post (Portrait) canvas without stretching or cropping important content.", "");
+    p("If the image generator supports exact 1080 × 1350 px, generate at that size.", "");
+    p("**IF THE GENERATOR OUTPUTS 1024 × 1536 px:**", "");
+    p("Use the following mandatory crop-safe composition:", "");
+    p("- Full generation canvas: 1024 × 1536 px.",
+      "- Actual flyer area: X = 0–1024, Y = 128–1408.",
+      "- The central 1024 × 1280 px area is the complete 4:5 flyer.",
+      "- Top band Y = 0–128: seamless background only.",
+      "- Bottom band Y = 1408–1536: seamless background only.",
+      "- Absolutely no text, logos, QR frames, icons, contact details, or footer information in either outer band.",
+      "- Keep an additional 30 px internal safe margin inside the central flyer area.",
+      "- All important content must fit within X = 30–994 and Y = 158–1378.",
+      "- The final central area must be ready to crop to 4:5 and resize to 1080 × 1350 px.", "");
+    p("Do not shrink the entire flyer into a tiny poster surrounded by margins.", "");
+    p("## 2. VISUAL DESIGN", "");
+    p("Style: Premium Medical Training Campaign, Modern Healthcare Infographic.", "");
+    p("Colors:", "- Deep navy #0B1E3F", "- Royal blue #074AAC", "- Crimson red #E91C25", "- White #FFFFFF", "- Soft gray #F4F6FA", "");
+    p("Use clean information panels, strong typography, precise alignment, subtle medical graphics, and a premium editorial finish.", "");
+    p("Keep the design professional, modern, and readable on mobile devices.", "");
+    p("## 3. HEADER — TOP 7%", "");
+    p("Place the two ORIGINAL user-provided logos side by side at the upper-left:", "");
+    p("1. Kemenkes logo with the turquoise word **Kemenkes**.", "2. Original Dewa Medik Nusantara logo.", "");
+    p("Do not redraw, recreate, recolor, or distort either logo.", "");
+    p("Upper-right accreditation text, without badges:", "");
+    p("**Terakreditasi B**", "", "**No. HK.02.02/F/4052/2024**", "");
+    p("## 4. HERO SECTION — 24%", "");
+    p(hero, "");
+    p("Modern medical simulation environment, navy uniforms, natural Indonesian faces, realistic equipment, and red-blue cinematic lighting.", "");
+    p("Large headline:", "", "**" + (jenis || Y + "[jenis pelatihan]") + "**", "");
+    if (untukPerawat) p("Immediately below:", "", "**for Nurse**", "");
+    if (namaResmi) {
+      p("Below the title:", "", "**" + namaResmi + "**", "");
+      p("Write \"" + namaResmi + "\" EXACTLY as given. Do not translate, shorten, or rephrase it.", "");
+    } else {
+      p("Write " + (jenis || "the training name") + " as the abbreviation ONLY. Do NOT add any expansion or meaning of the abbreviation, because the official name is not provided here.", "");
+    }
+    p("Use dramatic white and red typography with excellent contrast.", "");
+    p("## 5. TRAINING INFORMATION — 13%", "");
+    p("Create THREE horizontally aligned panels.", "");
+    p("**LEFT PANEL — METODE**", "", blended ? "Blended Training" : daring ? "Daring" : "Luring", "");
+    if (f) p(f, "");
+    p("**CENTER PANEL — TANGGAL PELAKSANAAN**", "", tgl, "");
+    if (blended) p("Daring: " + Y + "[tanggal daring]", "", "Zoom/LMS Plataran Sehat", "", "Luring: " + Y + "[tanggal luring]", "");
+    else p("Pukul " + Y + "[jam mulai–selesai] WIB", "");
+    if (daring) p("**RIGHT PANEL — PLATFORM**", "", "Zoom/LMS Plataran Sehat", "");
+    else {
+      p("**RIGHT PANEL — LOKASI LURING**", "");
+      p((k.lokasi || Y + "[venue]") + (kota && !new RegExp(kota, "i").test(String(k.lokasi || "")) ? ", " + kota : ""), "");
+      p(Y + "[alamat lengkap venue — hapus baris ini bila tidak perlu]", "");
+    }
+    p("Make the date the most visually prominent information after the main " + (jenis || "training") + " headline.", "");
+    p("## 6. FACILITIES AND TRAINERS — 29%", "");
+    p("Use two information panels side by side.", "");
+    p("**LEFT PANEL — 53% WIDTH**", "", "Large heading:", "", "**FASILITAS PESERTA**", "");
+    fas.forEach(x => p("✓ " + x, ""));
+    p("At the bottom, a clearly visible warning strip:", "");
+    p("**Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK**", "");
+    p("**RIGHT PANEL — 47% WIDTH**", "", "Compact heading:", "", "**TRAINER & MATERI**", "");
+    p("Use the following trainer names and topics exactly.", "");
+    if (pm) {
+      pm.trainer.forEach(t => {
+        if (!t || !t.nama) return;
+        p("**" + String(t.nama).trim() + "**");
+        (Array.isArray(t.materi) ? t.materi : []).forEach(m => p("- " + String(m).trim()));
+        p("");
+      });
+    } else {
+      p("**" + Y + "[Nama trainer 1, gelar]**", "- " + Y + "[judul materi]", "");
+      p("**" + Y + "[Nama trainer 2, gelar]**", "- " + Y + "[judul materi]", "");
+    }
+    p("Use smaller, clean typography for trainer details.", "", "No trainer photographs.", "");
+    p("The facilities panel must be visually more prominent than the trainer panel.", "");
+    p("## 7. LOWER INFORMATION AREA — 22%", "");
+    p("Use a structured three-column layout.", "");
+    p("**COLUMN 1 — QR PENDAFTARAN**", "", "Heading:", "", "SCAN PENDAFTARAN", "");
+    p("Large empty white square with red corner markers.", "", "Link:", "", alamat(r.slug), "");
+    p("Reserve the entire QR square for insertion of a genuine QR code in Canva.", "");
+    p("**COLUMN 2 — QR VALIDASI SKP**", "", "Heading:", "", "SCAN VALIDASI SKP & KRITERIA PESERTA", "");
+    p("Large empty white square with navy corner markers.", "", "Supporting text:", "", "Scan QR dari Surat Keterangan Registrasi Kemenkes.", "");
+    p("Do not generate a fake QR code.", "");
+    p("**COLUMN 3 — PAYMENT AND CONTACTS**", "");
+    if (Number(k.harga) > 0) p("Heading:", "", "BIAYA PELATIHAN", "", "**" + rp(Number(k.harga)).replace(/\s+/g, "") + "**", "");
+    p("Heading:", "", "PEMBAYARAN", "");
+    if (/BRI/i.test(bank)) p("Display the original official BRI logo.", "");
+    else p(bank, "");
+    p("No. Rekening: " + (setelan.rek_nomor || "201001000824562"), "", "a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"), "");
+    p("Heading:", "", "INFORMASI & NARAHUBUNG", "");
+    p("**Arka — 0821-2348-6576**", "", "**Eza — 0851-6145-9345**", "", "**Tama — 0856-5556-4911**", "", "**Hawa — 0851-1745-4911**", "");
+    p("Use bold, highly legible telephone numbers.", "");
+    p("## 8. FOOTER — BOTTOM 5%", "");
+    p("Include the following exact information:", "");
+    p("Diselenggarakan oleh PT Dewa Medik Nusantara", "");
+    p("Instagram / TikTok / YouTube:", "", "**@dewamedik_hc**", "");
+    p("Website:", "", "**www.dewamedik911.com**", "");
+    p("Training calendar:", "", "**daftarpelatihan.dewamedik911.com**", "");
+    p("Tagline:", "", "**Excellence Is The Way. Excellence Evolved.**", "");
+    p("Keep the entire footer inside the central 4:5 safe area.", "");
+    p("## 9. STRICT REQUIREMENTS", "");
+    p("- Maintain the reference flyer's visual structure (if a reference image is attached).",
+      "- Exactly 4:5 after cropping.",
+      "- No important content outside the safe area.",
+      "- No cropped logo or footer.",
+      "- No incorrect dates, prices, account numbers, or phone numbers.",
+      "- No invented trainer names or topics.",
+      "- No invented accreditation details.",
+      "- No numerical SKP values.",
+      "- No promotional discount language: promo, diskon, voucher, early bird, cashback, doorprize, gratis, \"paling murah\", \"SKP on process\", and no claim of Kemenkes recommendation (SE Kemenkes HK.02.03/F.V/2692/2026).",
+      "- Never invent or translate the expansion of any abbreviation (training names, SKP, LMS, etc.). Only use expansions written in this prompt.",
+      "- No fake QR codes.",
+      "- No distorted anatomy.",
+      "- Do not recreate the original logos.",
+      "- Ensure the QR registration and SKP validation squares remain large.",
+      "- Keep facilities prominent and trainer details compact.",
+      "- All text must remain readable after resizing to 1080 × 1350 px.", "");
+    p("**FINAL RESULT:**", "");
+    p("A premium, visually balanced, red-navy-white " + (jenis || "training") + (untukPerawat ? " for Nurse" : "") + " training flyer, optimized specifically for Canva Instagram Feed 1080 × 1350 px, with a crop-safe composition and no missing content.");
+    return b.join("\n");
   }
 
   /* Master prompt Canva-ready 4:5 (dari template Pak Ryan), diisi otomatis per kelas. */

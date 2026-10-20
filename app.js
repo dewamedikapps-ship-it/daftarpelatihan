@@ -2360,6 +2360,12 @@ function Pendaftaran({
   /* Benefit dari kartu member/sertifikat alumni TIDAK langsung memotong harga:
      dicek admin dulu, baru dipotong (dikembalikan/mengurangi pelunasan). */
   const tunda = !!(dipakai && dipakai.tertunda);
+  /* Kotak Sertifikat BTCLS & Kartu Member hanya muncul bila peserta membuka
+     "Punya kode member" dan kelasnya ACLS, PKID, atau TOT. */
+  const bolehKartu = !!(bukaKode && training && /ACLS|PKID|TOT/i.test(String(training.jenis || "")));
+  useEffect(() => {
+    if (!bolehKartu && (berkas.alumni || berkas.member)) setBerkas(x => ({ ...x, alumni: null, member: null }));
+  }, [bolehKartu]);
   const potongan = dipakai && !tunda ? Number(dipakai.potongan) : 0;
   const total = training ? Math.max(0, Number(training.harga) - potongan) : 0;
   const dp = Math.min(Number(setelan.dp_nominal || 500000), total);
@@ -3176,45 +3182,7 @@ function Pendaftaran({
     style: {
       marginTop: 26
     }
-  }, "Dokumen Pendukung"), syarat.alumni ? /*#__PURE__*/React.createElement(Unggah, {
-    nada: true,
-    judul: "Sertifikat BTCLS Dewa Medik Nusantara",
-    keterangan: "Sertifikat pelatihan BTCLS bersama Dewa Medik Nusantara. Format JPG, PNG, atau PDF. Lewati bila Anda belum pernah mengikutinya.",
-    nilai: berkas.alumni,
-    onPilih: f => setBerkas({
-      ...berkas,
-      alumni: f
-    }),
-    onHapus: () => setBerkas({
-      ...berkas,
-      alumni: null
-    })
-  }) : null, syarat.member ? /*#__PURE__*/React.createElement(Unggah, {
-    nada: true,
-    judul: "Kartu Member Dewa Medik",
-    keterangan: "Khusus pemegang Kartu Member Dewa Medik. Format JPG, PNG, atau PDF. Lewati bila Anda bukan member. Member Benefit diberikan setelah kartu diverifikasi admin.",
-    nilai: berkas.member,
-    onPilih: f => setBerkas({
-      ...berkas,
-      member: f
-    }),
-    onHapus: () => setBerkas({
-      ...berkas,
-      member: null
-    })
-  }) : null, syarat.member && berkas.member ? /*#__PURE__*/React.createElement(Field, {
-    label: "Nomor ID member",
-    salah: salah.member_id
-  }, /*#__PURE__*/React.createElement("input", {
-    className: "dm-input",
-    value: data.member_id,
-    maxLength: 40,
-    onChange: e => setData({
-      ...data,
-      member_id: e.target.value
-    }),
-    placeholder: "Nomor ID di Kartu Member Dewa Medik"
-  })) : null, /*#__PURE__*/React.createElement(Unggah, {
+  }, "Dokumen Pendukung"), /*#__PURE__*/React.createElement(Unggah, {
     judul: "Pas foto",
     keterangan: "Wajah tampak jelas, latar polos, untuk dicetak di sertifikat. Format JPG, PNG, atau PDF.",
     wajib: true,
@@ -3282,7 +3250,13 @@ function Pendaftaran({
     className: "dm-hint"
   }, "Tim kami akan menghubungi Anda lewat WhatsApp untuk mengurus invoice resmi berkop DEWAMEDIK setelah pendaftaran diverifikasi.")) : null, /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-ghost dm-buka-kode",
-    onClick: () => setBukaKode(!bukaKode)
+    onClick: () => {
+      if (bukaKode) {
+        setBerkas(x => ({ ...x, alumni: null, member: null }));
+        setData(x => ({ ...x, member_id: "" }));
+      }
+      setBukaKode(!bukaKode);
+    }
   }, bukaKode ? "Tutup" : "Punya kode member dari DEWAMEDIK?"), bukaKode ? /*#__PURE__*/React.createElement("div", {
     className: "dm-voucher"
   }, /*#__PURE__*/React.createElement("input", {
@@ -3293,7 +3267,45 @@ function Pendaftaran({
   }), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-line",
     onClick: pakaiKode
-  }, "Pakai")) : null, pesanKode ? /*#__PURE__*/React.createElement("p", {
+  }, "Pakai")) : null, bolehKartu && syarat.alumni ? /*#__PURE__*/React.createElement(Unggah, {
+    nada: true,
+    judul: "Sertifikat BTCLS Dewa Medik Nusantara",
+    keterangan: "Sertifikat pelatihan BTCLS bersama Dewa Medik Nusantara. Format JPG, PNG, atau PDF. Lewati bila Anda belum pernah mengikutinya.",
+    nilai: berkas.alumni,
+    onPilih: f => setBerkas({
+      ...berkas,
+      alumni: f
+    }),
+    onHapus: () => setBerkas({
+      ...berkas,
+      alumni: null
+    })
+  }) : null, bolehKartu && syarat.member ? /*#__PURE__*/React.createElement(Unggah, {
+    nada: true,
+    judul: "Kartu Member Dewa Medik",
+    keterangan: "Khusus pemegang Kartu Member Dewa Medik. Format JPG, PNG, atau PDF. Lewati bila Anda bukan member. Member Benefit diberikan setelah kartu diverifikasi admin.",
+    nilai: berkas.member,
+    onPilih: f => setBerkas({
+      ...berkas,
+      member: f
+    }),
+    onHapus: () => setBerkas({
+      ...berkas,
+      member: null
+    })
+  }) : null, bolehKartu && syarat.member && berkas.member ? /*#__PURE__*/React.createElement(Field, {
+    label: "Nomor ID member",
+    salah: salah.member_id
+  }, /*#__PURE__*/React.createElement("input", {
+    className: "dm-input",
+    value: data.member_id,
+    maxLength: 40,
+    onChange: e => setData({
+      ...data,
+      member_id: e.target.value
+    }),
+    placeholder: "Nomor ID di Kartu Member Dewa Medik"
+  })) : null, pesanKode ? /*#__PURE__*/React.createElement("p", {
     className: kodeManual ? "dm-ok" : "dm-err"
   }, pesanKode) : null), /*#__PURE__*//*#__PURE__*/React.createElement("section", {
     className: "dm-kenapa"

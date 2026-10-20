@@ -41,6 +41,16 @@ window.DM_SLUG = (function () {
   }
 })();
 
+/* "tot-btcls-des" dan "totbtcls-des" dianggap alamat yang sama, supaya
+   link TOT tetap bisa memakai subdomain pendek totbtcls.dewamedik911.com. */
+function varianSlug(s) {
+  s = String(s || "");
+  var v = [s];
+  if (/^tot-btcls-/.test(s)) v.push(s.replace(/^tot-btcls-/, "totbtcls-"));
+  if (/^totbtcls-/.test(s)) v.push(s.replace(/^totbtcls-/, "tot-btcls-"));
+  return v;
+}
+
 /* Dicatat diam-diam; kalau gagal, tidak boleh mengganggu pengunjung. */
 
 /* ============================================================
@@ -1933,7 +1943,12 @@ function App() {
     const [a, b, c, d, f, g] = await Promise.all([SB.from("pengaturan").select("*").eq("id", 1).single(), SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,kota,format,kuota,status,sisa").order("tanggal_mulai").then(function (r) {
       /* Kolom kota mungkin belum ada di tampilan publik: ulangi tanpa kota. */
       return r && r.error && /kota/i.test(r.error.message || "") ? SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,format,kuota,status,sisa").order("tanggal_mulai") : r;
-    }), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12), window.DM_SLUG ? SB.from("kampanye").select("*").eq("slug", window.DM_SLUG).eq("aktif", true).maybeSingle() : Promise.resolve({ data: null })]);
+    }), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12), window.DM_SLUG ? SB.from("kampanye").select("*").in("slug", varianSlug(window.DM_SLUG)).eq("aktif", true).then(function (res) {
+      /* Slug persis didahulukan; varian tot-btcls-/totbtcls- sebagai cadangan. */
+      var d = res && res.data ? res.data : [];
+      var pas = d.filter(function (x) { return x.slug === window.DM_SLUG; })[0] || d[0] || null;
+      return { data: pas, error: res ? res.error : null };
+    }) : Promise.resolve({ data: null })]);
     if (a.error) throw new Error("Pengaturan gagal dimuat: " + a.error.message);
     if (b.error) throw new Error("Jadwal gagal dimuat: " + b.error.message);
     setSetelan(a.data);
@@ -7695,6 +7710,7 @@ function TabLinkKelas({ beriTahu }) {
     return String(t || "").toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/^-+|-+$/g, "")
+      .replace(/^tot-btcls-/, "totbtcls-")
       .slice(0, 60);
   }
 
@@ -7703,7 +7719,7 @@ function TabLinkKelas({ beriTahu }) {
      Awalan yang lebih panjang dicek dulu (totbtcls sebelum btcls). */
   const SUB_JENIS = ["totbtcls", "workshop", "webinar", "bonels", "btcls", "acls", "kkmn", "pkid", "ekg"];
   function alamatPendek(slug) {
-    slug = String(slug || "");
+    slug = String(slug || "").replace(/^tot-btcls-/, "totbtcls-");
     for (const j of SUB_JENIS) {
       if (slug.indexOf(j + "-") === 0 && slug.length > j.length + 1) {
         return { host: j + ".dewamedik911.com", jalur: slug.slice(j.length + 1) };

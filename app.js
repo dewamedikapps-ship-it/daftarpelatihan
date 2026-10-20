@@ -8215,7 +8215,8 @@ function TabLinkKelas({ beriTahu }) {
     { id: "terang", nama: "Desain 3 — Master Canva (terang)" },
     { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)" },
     { id: "putih", nama: "Desain 5 — Putih Editorial (referensi)" },
-    { id: "grid", nama: "Desain 6 — Grid Padat (materi + fasilitas)" }
+    { id: "grid", nama: "Desain 6 — Grid Padat (materi + fasilitas)" },
+    { id: "merah", nama: "Desain 7 — Merah Dominan (berani, mencolok)" }
   ];
   function desainBawaan(k) {
     return "utama";
@@ -8226,6 +8227,7 @@ function TabLinkKelas({ beriTahu }) {
     else if (desain === "putih") t = buatPromptPutih(r, k);
     else if (desain === "grid") t = buatPromptGrid(r, k);
     else if (desain === "utama") return buatPromptUtama(r, k);
+    else if (desain === "merah") return buatPromptMerah(r, k);
     else t = desain === "master" || desain === "terang" ? buatPromptMaster(r, k, desain === "terang") : buatPromptFlyer(r, k);
     return tambahWajibFlyer(t, k);
   }
@@ -8359,6 +8361,28 @@ function TabLinkKelas({ beriTahu }) {
     H("FINAL CHECK BEFORE OUTPUT");
     p(L(["1080 × 1350, full-bleed, nothing cut off.", "Every item of the KEMENKES CHECKLIST is visible.", "SCAN PENDAFTARAN box is large and the link below it is readable.", "Dates, location, fee, account number and all four contacts are correct."]));
     return b.join("\n");
+  }
+  /* DESAIN 7 — MERAH DOMINAN: isi & ceklis Kemenkes sama persis dengan Desain Utama,
+     hanya warna yang dibalik (latar merah brand, teks putih, panel putih/navy). */
+  const GANTI_MERAH = [
+    ["## STRICT 1080 × 1350 INSTAGRAM / CANVA DESIGN", "## STRICT 1080 × 1350 INSTAGRAM / CANVA DESIGN — RED-DOMINANT EDITION"],
+    ["Palette: deep navy #0B1E3F, bright medical red #E91C25, white and light gray. Bold condensed headline font, clean sans-serif for details.",
+     "RED-DOMINANT PALETTE (most important visual rule): the whole background is bold medical red #E91C25, with a deeper red #B5121B gradient, subtle diagonal light streaks and a faint white ECG waveform pattern. Red must cover at least 60% of the canvas. Main text on the red background is WHITE. Information cards stay WHITE with navy #0B1E3F title bars so every detail stays easy to read. Navy is the secondary color; no other colors except the green WhatsApp icons. Bold condensed headline font, clean sans-serif for details."],
+    ["Upper-right, three lines of navy text, right-aligned:", "Place both logos together on one white rounded plate so their original colors stay intact on the red background.\nUpper-right, three lines of WHITE text, right-aligned:"],
+    ["**PELATIHAN** — white bold capitals inside a red rounded banner", "**PELATIHAN** — red bold capitals inside a white rounded banner"],
+    ["huge bold navy letters, the largest text on the flyer, with a thin red ECG line beside it", "huge bold WHITE letters with a soft dark shadow, the largest text on the flyer, with a thin white ECG line beside it"],
+    ["**for Nurse** — large bold navy, directly below", "**for Nurse** — large bold white, directly below"],
+    ["** — white text inside a red rounded banner (write exactly;", "** — white text inside a navy rounded banner (write exactly;"],
+    ["three small round icons with short navy labels:", "three small white round icons with short white labels:"],
+    ["natural Indonesian faces, soft white fade into the left side.", "natural Indonesian faces, smooth red gradient fade into the left side."],
+    ["Three white cards side by side,", "Three white cards side by side with soft shadows (they float on the red background),"],
+    ["Three columns:", "Three WHITE rounded cards side by side with soft shadows, floating on the red background (never put this text directly on red):"]
+  ];
+  function buatPromptMerah(r, k) {
+    let t = buatPromptUtama(r, k);
+    GANTI_MERAH.forEach(g => { t = t.split(g[0]).join(g[1]); });
+    t = t.split("- 1080 × 1350, full-bleed, nothing cut off.").join("- 1080 × 1350, full-bleed, nothing cut off.\n- Red #E91C25 is clearly the dominant color (at least 60% of the canvas); all text stays readable.");
+    return t.replace("# MASTER PROMPT —", "# MASTER PROMPT (DESAIN MERAH) —");
   }
   /* Dua elemen wajib yang sering hilang bila GPT meniru gambar referensi lama:
      label "PELATIHAN" di atas judul dan teks institusi terakreditasi di atas "Terakreditasi B". */

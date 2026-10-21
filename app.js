@@ -6389,7 +6389,7 @@ async function unduhPdfKuitansi(kw) {
     ["Untuk pembayaran", kw.untuk_pembayaran, {}],
   ];
   if (kw.cara_bayar) baris.push(["Cara pembayaran", kw.cara_bayar, {}]);
-  if (kw.pendaftaran_nomor) baris.push(["No. registrasi", kw.pendaftaran_nomor, { mono: true, ukuran: 9.5 }]);
+  if (kw.pendaftaran_nomor) baris.push([/,/.test(kw.pendaftaran_nomor) ? "No. registrasi peserta" : "No. registrasi", kw.pendaftaran_nomor, { mono: true, ukuran: 9.5 }]);
 
   let y = 70;
   baris.forEach(b => {
@@ -6697,7 +6697,7 @@ function LembarKuitansi({ kw }) {
           React.createElement("td", { className: "dm-inv-titik" }, ":"),
           React.createElement("td", null, kw.cara_bayar)) : null,
         kw.pendaftaran_nomor ? React.createElement("tr", null,
-          React.createElement("td", { className: "dm-kw-label" }, "No. registrasi"),
+          React.createElement("td", { className: "dm-kw-label" }, /,/.test(kw.pendaftaran_nomor) ? "No. registrasi peserta" : "No. registrasi"),
           React.createElement("td", { className: "dm-inv-titik" }, ":"),
           React.createElement("td", { className: "dm-mono" }, kw.pendaftaran_nomor)) : null)),
 
@@ -6726,6 +6726,7 @@ function TabKuitansi({ beriTahu }) {
   const [edit, setEdit] = useState(null);
   const [pratinjau, setPratinjau] = useState(null);
   const [ambil, setAmbil] = useState(null);   /* daftar pendaftar untuk diambil */
+  const [pilih, setPilih] = useState([]);     /* nomor registrasi yang dicentang (bayar berkelompok) */
   const [sibukPdf, setSibukPdf] = useState(false);
   const [cari, setCari] = useState("");
 
@@ -6766,32 +6767,63 @@ function TabKuitansi({ beriTahu }) {
       .limit(300);
     if (error) return beriTahu("Gagal memuat pendaftar: " + error.message);
     setCari("");
+    setPilih([]);
     setAmbil(data || []);
   }
 
-  async function pakaiPendaftar(r) {
-    const judul = r.pelatihan ? r.pelatihan.judul : "pelatihan DEWAMEDIK";
-    const jadwal = r.pelatihan && r.pelatihan.tanggal_mulai
-      ? rentangPanjang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "";
-    const dibayar = r.jumlah_bayar != null ? Number(r.jumlah_bayar) : Number(r.total) || 0;
-    const muka = r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0;
+  function ubahPilih(nomor) {
+    setPilih(x => x.indexOf(nomor) > -1 ? x.filter(n => n !== nomor) : x.concat([nomor]));
+  }
+
+  /* Satu orang atau beberapa orang yang dibayar sekaligus (rombongan / instansi):
+     nominal dijumlah, nama dan nomor registrasi semua peserta ikut tertulis. */
+  async function pakaiPendaftar(daftar) {
+    daftar = (Array.isArray(daftar) ? daftar : [daftar]).filter(Boolean);
+    if (!daftar.length) return;
+    const r = daftar[0];
+    const banyak = daftar.length > 1;
+    const unik = arr => arr.filter((x, i) => x && arr.indexOf(x) === i);
+    const judulList = unik(daftar.map(x => x.pelatihan ? x.pelatihan.judul : "pelatihan DEWAMEDIK"));
+    const judul = judulList.join(", ");
+    const jadwalList = unik(daftar.map(x => x.pelatihan && x.pelatihan.tanggal_mulai
+      ? rentangPanjang(x.pelatihan.tanggal_mulai, x.pelatihan.tanggal_selesai) : ""));
+    const jadwal = jadwalList.length === 1 ? jadwalList[0] : "";
+    const dibayarSatu = x => x.jumlah_bayar != null ? Number(x.jumlah_bayar) : Number(x.total) || 0;
+    const dibayar = daftar.reduce((a, x) => a + dibayarSatu(x), 0);
+    const sisa = daftar.reduce((a, x) => a + (x.tipe_bayar === "booking" ? Number(x.sisa_bayar) || 0 : 0), 0);
+    const muka = sisa > 0;
+    const instansiList = unik(daftar.map(x => String(x.instansi || "").trim()));
     let nomor = edit && edit.nomor;
     if (!nomor) {
       const { data } = await SB.rpc("nomor_kuitansi_berikut");
       nomor = data || "";
     }
+    let dari, untuk;
+    if (!banyak) {
+      dari = r.nama + (r.instansi ? " — " + r.instansi : "");
+      untuk = (muka ? "Uang muka biaya pelatihan " : "Biaya pelatihan ") + judul +
+        (jadwal ? " yang dilaksanakan pada " + jadwal : "");
+    } else {
+      const nama = daftar.map(x => String(x.nama || "").trim());
+      const sebut = nama.length === 2 ? nama.join(" dan ") : nama.slice(0, -1).join(", ") + ", dan " + nama[nama.length - 1];
+      /* Satu instansi untuk semua → instansi yang membayar; bila beda-beda, admin isi sendiri. */
+      dari = instansiList.length === 1 ? instansiList[0] : "";
+      untuk = (muka ? "Uang muka biaya pelatihan " : "Biaya pelatihan ") + judul +
+        (jadwal ? " yang dilaksanakan pada " + jadwal : "") +
+        " untuk " + daftar.length + " (" + terbilang(daftar.length).replace(/\s*rupiah\s*$/i, "").trim().toLowerCase() + ") peserta atas nama " + sebut;
+    }
     setEdit({
       ...kosong,
       ...(edit || {}),
       nomor: nomor,
-      diterima_dari: r.nama + (r.instansi ? " — " + r.instansi : ""),
-      untuk_pembayaran: (muka ? "Uang muka biaya pelatihan " : "Biaya pelatihan ") + judul +
-        (jadwal ? " yang dilaksanakan pada " + jadwal : ""),
+      diterima_dari: dari,
+      untuk_pembayaran: untuk,
       jumlah: dibayar,
       kegiatan: judul,
-      pendaftaran_nomor: r.nomor,
-      catatan: muka ? "Sisa pelunasan " + rp(r.sisa_bayar) + " dibayarkan sebelum pelatihan dimulai." : ""
+      pendaftaran_nomor: daftar.map(x => x.nomor).join(", "),
+      catatan: muka ? "Sisa pelunasan " + rp(sisa) + " dibayarkan sebelum pelatihan dimulai." : ""
     });
+    setPilih([]);
     setAmbil(null);
   }
 
@@ -6918,7 +6950,7 @@ function TabKuitansi({ beriTahu }) {
 
       React.createElement(Field, {
         label: "Sudah terima dari",
-        hint: "Nama orang atau institusi yang membayar."
+        hint: "Nama orang atau institusi yang membayar. Untuk pembayaran berkelompok, isi nama pembayarnya (misal RSUD … atau nama koordinator)."
       }, React.createElement("input", {
         className: "dm-input",
         value: edit.diterima_dari,
@@ -6954,7 +6986,7 @@ function TabKuitansi({ beriTahu }) {
       React.createElement("div", { className: "dm-grid2" },
         React.createElement(Field, {
           label: "No. registrasi peserta",
-          hint: "Boleh dikosongkan bila bukan dari pendaftaran portal."
+          hint: "Beberapa peserta dipisah koma. Boleh dikosongkan bila bukan dari pendaftaran portal."
         }, React.createElement("input", {
           className: "dm-input dm-mono",
           value: edit.pendaftaran_nomor || "",
@@ -6993,8 +7025,10 @@ function TabKuitansi({ beriTahu }) {
     /* ---------- kotak ambil dari pendaftar ---------- */
     ambil ? React.createElement(Modal, {
       judul: "Ambil dari pendaftar terverifikasi",
-      onTutup: () => setAmbil(null)
+      onTutup: () => { setPilih([]); setAmbil(null); }
     },
+      React.createElement("p", { className: "dm-hint", style: { margin: "0 0 10px" } },
+        "Satu orang: klik Pakai. Bayar berkelompok (satu transfer untuk beberapa peserta): centang semua pesertanya, lalu klik tombol Pakai yang dicentang — nominalnya dijumlah otomatis dan semua nama ikut tertulis di kuitansi."),
       React.createElement("input", {
         className: "dm-input",
         style: { marginBottom: 12 },
@@ -7009,7 +7043,15 @@ function TabKuitansi({ beriTahu }) {
         : React.createElement("div", { className: "dm-tabel-bungkus", style: { maxHeight: 380, overflowY: "auto" } },
             React.createElement("table", { className: "dm-tabel" },
               React.createElement("tbody", null, tersaring.map(r =>
-                React.createElement("tr", { key: r.nomor },
+                React.createElement("tr", { key: r.nomor, style: pilih.indexOf(r.nomor) > -1 ? { background: "#EEF6F5" } : null },
+                  React.createElement("td", { style: { width: 34, verticalAlign: "top" } },
+                    React.createElement("input", {
+                      type: "checkbox",
+                      "aria-label": "Pilih " + r.nama,
+                      checked: pilih.indexOf(r.nomor) > -1,
+                      onChange: () => ubahPilih(r.nomor),
+                      style: { width: 18, height: 18, marginTop: 2 }
+                    })),
                   React.createElement("td", null,
                     React.createElement("b", null, r.nama),
                     React.createElement("p", { className: "dm-hint" },
@@ -7027,8 +7069,22 @@ function TabKuitansi({ beriTahu }) {
                   React.createElement("td", { className: "dm-aksi" },
                     React.createElement("button", {
                       className: "dm-btn-ghost",
-                      onClick: () => pakaiPendaftar(r)
-                    }, "Pakai")))))))
+                      onClick: () => pakaiPendaftar([r])
+                    }, "Pakai"))))))),
+      pilih.length ? React.createElement("div", {
+        className: "dm-row",
+        style: { gap: 10, marginTop: 12, alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" }
+      },
+        React.createElement("span", { className: "dm-hint" },
+          pilih.length + " peserta dicentang · total " +
+          rp(ambil.filter(x => pilih.indexOf(x.nomor) > -1)
+            .reduce((a, x) => a + (x.jumlah_bayar != null ? Number(x.jumlah_bayar) : Number(x.total) || 0), 0))),
+        React.createElement("div", { className: "dm-row", style: { gap: 8 } },
+          React.createElement("button", { className: "dm-btn-line", type: "button", onClick: () => setPilih([]) }, "Kosongkan"),
+          React.createElement("button", {
+            className: "dm-btn", type: "button",
+            onClick: () => pakaiPendaftar(pilih.map(n => ambil.find(x => x.nomor === n)).filter(Boolean))
+          }, "Pakai " + pilih.length + " peserta yang dicentang"))) : null
     ) : null,
 
     /* ---------- lembar cetak ---------- */

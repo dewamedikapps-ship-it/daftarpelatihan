@@ -2811,6 +2811,9 @@ function Pendaftaran({
       rel: "noreferrer"
     }, "Gabung grup WhatsApp kelas") : null, /*#__PURE__*/React.createElement("button", {
       className: "dm-btn-line",
+      onClick: () => { unduhPdfBuktiDaftar(hasil, setelan, data).catch(e => alert("Gagal membuat PDF: " + e.message)); }
+    }, "Unduh bukti pendaftaran (PDF)"), /*#__PURE__*/React.createElement("button", {
+      className: "dm-btn-line",
       onClick: daftarLagi
     }, "Daftar kelas lain")), hasil.minta_invoice ? /*#__PURE__*/React.createElement("p", {
       className: "dm-ok",
@@ -2827,10 +2830,7 @@ function Pendaftaran({
       target: "_blank",
       rel: "noopener",
       style: { display: "inline-block", marginTop: 10, textDecoration: "none" }
-    }, "Unggah bukti cicilan berikutnya"), /*#__PURE__*/React.createElement("span", {
-      className: "dm-hint",
-      style: { display: "block", marginTop: 6 }
-    }, "Simpan tautan ini: daftarpelatihan.dewamedik911.com/?lunas \u2014 atau buka menu Pelunasan di portal saat membayar cicilan.")) : hasil.tipe_bayar === "booking" ? /*#__PURE__*/React.createElement("p", {
+    }, "Unggah bukti cicilan berikutnya")) : hasil.tipe_bayar === "booking" ? /*#__PURE__*/React.createElement("p", {
       className: "dm-catatan dm-catatan-tengah"
     }, "Sisa pembayaran ", rp(hasil.sisa_bayar), " dilunasi sebelum pelatihan dimulai. Uang muka tidak dapat dikembalikan apabila peserta mengundurkan diri.", /*#__PURE__*/React.createElement("br", null), /*#__PURE__*/React.createElement("a", {
       className: "dm-btn-line",
@@ -2838,10 +2838,7 @@ function Pendaftaran({
       target: "_blank",
       rel: "noopener",
       style: { display: "inline-block", marginTop: 10, textDecoration: "none" }
-    }, "Unggah bukti pelunasan"), /*#__PURE__*/React.createElement("span", {
-      className: "dm-hint",
-      style: { display: "block", marginTop: 6 }
-    }, "Simpan tautan ini: daftarpelatihan.dewamedik911.com/?lunas \u2014 atau buka menu Pelunasan di portal saat akan melunasi.")) : null, /*#__PURE__*/React.createElement("p", {
+    }, "Unggah bukti pelunasan")) : null, /*#__PURE__*/React.createElement("p", {
       className: "dm-hint"
     }, grupBaru
       ? "Kirim konfirmasinya dulu, lalu ajukan gabung ke grup kelas. Permintaan Anda kami setujui di grup setelah pembayaran terverifikasi."
@@ -6784,6 +6781,110 @@ async function unduhPdfKuitansi(kw) {
 
   const blob = await k.bangun();
   const nama = "Kuitansi " + String(kw.nomor || "").replace(/[\/\\:*?"<>|]/g, "-") + ".pdf";
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = nama;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
+  return nama;
+}
+
+/* Bukti pendaftaran untuk peserta: dicetak dari halaman selesai,
+   berisi nomor registrasi, rincian biaya, dan sisa yang belum dibayar. */
+async function unduhPdfBuktiDaftar(hs, st, dt) {
+  const k = Kertas();
+  const NAVY = [0.086, 0.208, 0.494];
+  const ABU = [0.35, 0.35, 0.35];
+  const MERAH = [0.72, 0.11, 0.11];
+  let logo = null;
+  try { logo = await ambilJpeg(LOGO_PDF); } catch (e) {}
+
+  if (logo) k.gambar("Im1", logo, 268, 300, 18, 14, 19);
+  k.teks(107, 21, KOP.nama, { ukuran: 15, tebal: true, rata: "tengah" });
+  k.teks(107, 26, KOP.alamat1, { ukuran: 8, rata: "tengah" });
+  k.teks(107, 30, KOP.alamat2, { ukuran: 8, rata: "tengah" });
+  k.teks(107, 34, "website: " + KOP.situs + "   Email: " + KOP.email, { ukuran: 8, rata: "tengah" });
+  k.teks(192, 19, KOP.akreditasi1, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
+  k.teks(192, 22.5, KOP.akreditasi2, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
+  k.teks(192, 26, KOP.akreditasi3, { ukuran: 6.5, tebal: true, rata: "kanan", warna: NAVY });
+  k.garis(18, 39, 192, 39, 1.1);
+
+  k.teks(107, 50, "BUKTI PENDAFTARAN", { ukuran: 16, tebal: true, rata: "tengah", renggang: 2.4, warna: NAVY });
+  k.teks(107, 56, "No. Registrasi " + hs.nomor, { ukuran: 10.5, tebal: true, rata: "tengah", mono: true });
+
+  const hari = new Date();
+  const tglHariIni = hari.getFullYear() + "-" + String(hari.getMonth() + 1).padStart(2, "0") + "-" + String(hari.getDate()).padStart(2, "0");
+  const baris = [
+    ["Nama peserta", hs.nama || (dt && dt.nama) || "-", { tebal: true }],
+    ["Instansi", (dt && dt.instansi) || "-", {}],
+    ["Pelatihan", hs.judul || "-", { tebal: true }],
+    ["Jadwal", rentang(hs.tanggal_mulai, hs.tanggal_selesai), {}],
+    ["Tanggal mendaftar", tglPanjang(tglHariIni), {}],
+    ["Cara pembayaran", labelTipeBayar(hs.tipe_bayar, hs.cicilan_kali), {}],
+  ];
+  let y = 68;
+  baris.forEach(b => {
+    k.teks(20, y, b[0], { ukuran: 10, warna: ABU });
+    k.teks(63, y, ":", { ukuran: 10 });
+    const akhir = k.paragraf(67, y, 125, b[1], Object.assign({ ukuran: 10 }, b[2]));
+    y = Math.max(y + 7.5, akhir + 4);
+  });
+
+  /* --- rincian biaya --- */
+  y += 3;
+  k.teks(20, y, "RINCIAN BIAYA", { ukuran: 9.5, tebal: true, renggang: 1, warna: NAVY });
+  y += 3;
+  const yAwal = y;
+  const rinci = [["Biaya pelatihan", rp(hs.harga_awal != null ? hs.harga_awal : hs.total), {}]];
+  if (Number(hs.diskon) > 0) rinci.push(["Member Benefit " + (hs.persen || "") + "%", "- " + rp(hs.diskon), {}]);
+  if (hs.benefit_status === "menunggu") rinci.push(["Member Benefit " + (hs.benefit_persen || "") + "%", "menunggu verifikasi kartu", { miring: true }]);
+  rinci.push(["Total biaya", rp(hs.total), { tebal: true }]);
+  const dibayar = hs.jumlah_bayar != null ? hs.jumlah_bayar : hs.total;
+  rinci.push([hs.tipe_bayar === "booking" ? "Uang muka dibayar" : hs.tipe_bayar === "cicilan" ? "Cicilan ke-1 dibayar" : "Dibayar", rp(dibayar), {}]);
+  const sisa = Number(hs.sisa_bayar) || 0;
+  rinci.push(["Sisa yang harus dibayar", sisa > 0 ? rp(sisa) : "Rp0 (lunas)", { tebal: true, warna: sisa > 0 ? MERAH : NAVY }]);
+  y += 7;
+  rinci.forEach((r, i) => {
+    if (r[0] === "Total biaya" || r[0] === "Sisa yang harus dibayar") k.garis(20, y - 5, 192, y - 5, 0.2, [0.75, 0.75, 0.75]);
+    k.teks(24, y, r[0], Object.assign({ ukuran: 10 }, r[2]));
+    k.teks(188, y, r[1], Object.assign({ ukuran: 10, rata: "kanan" }, r[2]));
+    y += 7.5;
+  });
+  k.kotak(20, yAwal, 172, y - yAwal - 3, 0.5, NAVY, null);
+  y += 4;
+
+  /* --- jadwal pelunasan --- */
+  if (hs.tipe_bayar === "cicilan" && (hs.cicilan_rincian || []).length) {
+    k.teks(20, y, "JADWAL CICILAN", { ukuran: 9.5, tebal: true, renggang: 1, warna: NAVY });
+    y += 7;
+    hs.cicilan_rincian.forEach(c => {
+      const ket = c.ke === 1 ? "sudah ditransfer" : c.tenggat ? "paling lambat " + tglPanjang(c.tenggat) : "sebelum pelatihan dimulai";
+      k.teks(24, y, "Cicilan " + c.ke, { ukuran: 10 });
+      k.teks(60, y, rp(c.nominal), { ukuran: 10, tebal: true });
+      k.teks(105, y, ket, { ukuran: 10, warna: c.ke === 1 ? ABU : [0, 0, 0] });
+      y += 6.5;
+    });
+    y += 3;
+  } else if (hs.tipe_bayar === "booking" && sisa > 0) {
+    y = k.paragraf(20, y, 172, "Sisa pembayaran " + rp(sisa) + " dilunasi sebelum pelatihan dimulai. Uang muka tidak dapat dikembalikan apabila peserta mengundurkan diri.", { ukuran: 9.5 }) + 5;
+  }
+
+  if (sisa > 0 && st && st.rek_nomor) {
+    y = k.paragraf(20, y, 172, "Pembayaran berikutnya ditransfer ke rekening resmi " + (st.rek_bank || "") + " " + st.rek_nomor + " a.n. " + (st.rek_atas_nama || KOP.atasNama) + ", lalu bukti transfernya diunggah lewat menu Pelunasan di portal pendaftaran.", { ukuran: 9.5 }) + 5;
+  }
+
+  /* --- kaki --- */
+  const yKaki = Math.max(y + 4, 200);
+  k.garis(18, yKaki, 192, yKaki, 0.2, [0.78, 0.78, 0.78]);
+  k.paragraf(18, yKaki + 5, 174,
+    "Dokumen ini adalah bukti bahwa pendaftaran telah diterima sistem, bukan kuitansi pembayaran. " +
+    "Status pendaftaran menunggu verifikasi pembayaran oleh admin " + KOP.nama + ". " +
+    "Kuitansi resmi diterbitkan setelah pembayaran terverifikasi.",
+    { ukuran: 8, warna: ABU, jarak: 3.8 });
+
+  const blob = await k.bangun();
+  const nama = "Bukti Pendaftaran " + String(hs.nomor || "").replace(/[\/\\:*?"<>|]/g, "-") + ".pdf";
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob);
   a.download = nama;

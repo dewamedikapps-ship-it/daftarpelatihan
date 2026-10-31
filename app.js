@@ -8666,8 +8666,9 @@ function TabLinkKelas({ beriTahu }) {
     b.push("Buatkan desain flyer pelatihan resmi Akademia DEWAMEDIK (PT Dewa Medik Nusantara), rasio 4:5 (1080x1350) untuk feed Instagram, sesuai SE Kemenkes HK.02.03/F.V/2692/2026.");
     b.push("");
     b.push("TATA LETAK WAJIB:");
-    b.push("1. Pojok KIRI ATAS: logo Kementerian Kesehatan RI paling kiri, lalu logo Dewa Medik Nusantara tepat di sampingnya (berjajar sejajar). Proporsi dan warna logo tidak diubah.");
-    b.push("2. Pojok KANAN ATAS: status dan nomor akreditasi ditulis sebagai TEKS biasa (bukan badge, stempel, atau gambar), 3 baris berurutan:");
+    b.push("1. ATURAN LOGO — MUTLAK: JANGAN menggambar, meniru, atau membuat ulang logo, lambang, perisai, emblem, monogram, stempel, badge, atau watermark APA PUN. JANGAN menulis kata Kemenkes, Kementerian Kesehatan, Dewa Medik, atau DEWAMEDIK di dalam gambar. Logo asli ditempel sendiri setelah gambar jadi.");
+    b.push("   Sebagai gantinya, sisakan PITA LOGO yang benar-benar kosong: selebar kanvas, dari tepi paling atas sampai y=150 px. Warna rata satu nada, tanpa tekstur, tanpa gradasi, tanpa bayangan, tanpa foto, tanpa bentuk, dan tanpa teks apa pun yang masuk atau menyentuh pita itu.");
+    b.push("2. Pojok KANAN ATAS, DI BAWAH pita logo (mulai y=160 px): status dan nomor akreditasi ditulis sebagai TEKS biasa (bukan badge, stempel, atau gambar), 3 baris berurutan:");
     b.push("   \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" (huruf kecil di atas)");
     b.push("   \"Terakreditasi B\"");
     b.push("   \"No. HK.02.02/F/4052/2024\"");
@@ -8848,7 +8849,8 @@ function TabLinkKelas({ beriTahu }) {
       "Palette: deep navy #0B1E3F, bright medical red #E91C25, white and light gray. Bold condensed headline font, clean sans-serif for details.",
       "Creative freedom never overrides the KEMENKES CHECKLIST at the end: every item there must appear, correctly spelled and readable.");
     H("HEADER — Y 0–110 px");
-    p("Upper-left: the ORIGINAL attached Kemenkes logo, a thin divider, then the ORIGINAL attached Dewa Medik Nusantara logo. Use the supplied images exactly; do not redraw, recolor or distort.", "",
+    p("LOGO RULE — ABSOLUTE: do NOT draw, imitate or recreate any logo, emblem, shield, crest, monogram, seal, badge or watermark, and do NOT write the words Kemenkes, Kementerian Kesehatan, Dewa Medik or DEWAMEDIK anywhere in the image. The real logos are pasted on afterwards.", "",
+      "Leave the LOGO BAND completely empty instead: full canvas width, from the very top edge down to y=150 px. Flat single colour, no texture, no gradient, no shadow, no photo, no shape and no text may enter or touch that band.", "",
       "Upper-right, three lines of navy text, right-aligned:",
       L(["Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (small)", "**Terakreditasi B** (large, bold)", "No. HK.02.02/F/4052/2024"]),
       "No badge, stamp or seal.");
@@ -8889,7 +8891,7 @@ function TabLinkKelas({ beriTahu }) {
       "A square QR area of the same size framed by four navy corner brackets, for the official Kemenkes QR (placed in Canva). Below it, small text: Scan QR dari Surat Keterangan Registrasi Kemenkes.", "",
       "**COLUMN 3 — BIAYA, PEMBAYARAN & NARAHUBUNG**");
     if (harga) p("Red coin icon, **BIAYA PELATIHAN**, then **" + harga + "** in large bold red (smaller than the " + J + " title).");
-    p("**PEMBAYARAN** — original " + bank + " logo, No. Rekening: **" + (setelan.rek_nomor || "201001000824562") + "**, a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"),
+    p("**PEMBAYARAN** — the words \"" + bank + "\" as plain text (do NOT draw the bank logo), No. Rekening: **" + (setelan.rek_nomor || "201001000824562") + "**, a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"),
       "**INFORMASI & NARAHUBUNG** (navy bar), 2 × 2 grid with green WhatsApp icons:",
       L(["Arka — 0821-2348-6576", "Eza — 0851-6145-9345", "Tama — 0856-5556-4911", "Hawa — 0851-1745-4911"]));
     H("FOOTER — Y 1250–1350 px");
@@ -8904,7 +8906,7 @@ function TabLinkKelas({ beriTahu }) {
       "No photos of Ministry of Health officials, no \"Official Partner\" or recommendation badges.",
       "No extra text, social media accounts, contacts or logos that are not listed here."]));
     H("KEMENKES CHECKLIST (SE HK.02.03/F.V/2692/2026) — ALL MANDATORY");
-    p(L(["Kemenkes logo at the far upper-left, then the Dewa Medik Nusantara logo right after it.",
+    p(L(["Logo band at the top left completely empty — no logo drawn; the real Kemenkes and Dewa Medik Nusantara logos are pasted on afterwards.",
       "Upper-right as TEXT (not a badge): Institusi penyelenggara pelatihan terakreditasi Kemenkes RI · Terakreditasi B · No. HK.02.02/F/4052/2024.",
       "Title \"PELATIHAN " + J + (untukPerawat ? " for Nurse" : "") + "\" clearly written; the fee text is smaller than the title.",
       "Method written explicitly (" + (blended ? "Blended: daring + luring with their dates" : daring ? "Daring" : "Luring") + ").",
@@ -8925,8 +8927,9 @@ function TabLinkKelas({ beriTahu }) {
     ["## STRICT 1080 × 1350 INSTAGRAM / CANVA DESIGN", "## STRICT 1080 × 1350 INSTAGRAM / CANVA DESIGN — RED-DOMINANT EDITION"],
     ["Palette: deep navy #0B1E3F, bright medical red #E91C25, white and light gray. Bold condensed headline font, clean sans-serif for details.",
      "RED-DOMINANT PALETTE (most important visual rule): the whole background is bold medical red #E91C25, with a deeper red #B5121B gradient, subtle diagonal light streaks and a faint white ECG waveform pattern. Red must cover at least 60% of the canvas. Main text on the red background is WHITE. Information cards stay WHITE with navy #0B1E3F title bars so every detail stays easy to read. Navy is the secondary color; no other colors except the green WhatsApp icons. Bold condensed headline font, clean sans-serif for details."],
-    ["Upper-right, three lines of navy text, right-aligned:", "Place both logos together on one white rounded plate so their original colors stay intact on the red background.\nUpper-right, three lines of WHITE text, right-aligned:"],
+    ["Upper-right, three lines of navy text, right-aligned:", "Upper-right, three lines of WHITE text, right-aligned:"],
     ["**PELATIHAN** — white bold capitals inside a red rounded banner", "**PELATIHAN** — red bold capitals inside a white rounded banner"],
+    ["Leave the LOGO BAND completely empty instead: full canvas width, from the very top edge down to y=150 px. Flat single colour", "Leave the LOGO BAND completely empty instead: full canvas width, from the very top edge down to y=150 px. Flat WHITE"],
     ["huge bold navy letters, the largest text on the flyer, with a thin red ECG line beside it", "huge bold WHITE letters with a soft dark shadow, the largest text on the flyer, with a thin white ECG line beside it"],
     ["**for Nurse** — large bold navy, directly below", "**for Nurse** — large bold white, directly below"],
     ["** — white text inside a red rounded banner (write exactly;", "** — white text inside a navy rounded banner (write exactly;"],
@@ -9026,9 +9029,9 @@ function TabLinkKelas({ beriTahu }) {
     p("Do not introduce a different layout or color palette.", "");
     p("### 3. HEADER — TOP 7%", "");
     p("Create a clean horizontal white header.", "");
-    p("**Upper-left:**", "Place the original Kemenkes logo first, followed immediately by the original Dewa Medik Nusantara logo.", "");
-    p("Use the original uploaded logo assets exactly as provided. Do not redraw, distort, recolor, or alter their lettering.", "");
-    p("**Upper-right:**", "Display accreditation as plain navy text, three lines in this order:", "", "Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)", "", "Terakreditasi B", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge or stamp.", "");
+    p("**LOGO RULE — ABSOLUTE:**", "Do NOT draw, imitate or recreate any logo, emblem, shield, crest, monogram, seal, badge or watermark. Do NOT write the words Kemenkes, Kementerian Kesehatan, Dewa Medik or DEWAMEDIK anywhere in the image. The real logos are pasted on afterwards.", "");
+    p("Leave the LOGO BAND completely empty instead: full canvas width, from the very top edge down to y=150 px. Flat single colour, no texture, no gradient, no shadow, no photo, no shape and no text may enter or touch that band.", "");
+    p("**Upper-right, below the logo band (from y=160 px):**", "Display accreditation as plain navy text, three lines in this order:", "", "Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)", "", "Terakreditasi B", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge or stamp.", "");
     p("### 4. HERO — NEXT 30%", "");
     p("**LEFT SIDE:**", "", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "", "## PELATIHAN", "# " + J, "", "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the headline height, left-aligned with the headline. Line 2 \"" + J + "\": very large, bold, condensed navy headline.", "");
     if (untukPerawat) p("Directly underneath, exactly:", "", "**for Nurse**", "");
@@ -9113,7 +9116,7 @@ function TabLinkKelas({ beriTahu }) {
       "- Do not fabricate QR codes.",
       "- Do not fabricate numerical SKP values.",
       "- Do not use promotional discount language: promo, diskon, voucher, early bird, cashback, doorprize, gratis, \"paling murah\", \"SKP on process\", and no claim of Kemenkes recommendation (SE Kemenkes HK.02.03/F.V/2692/2026).",
-      "- Do not distort the official logos.",
+      "- No logo of any kind drawn; the top logo band is left empty and clean.",
       "- Do not crop the footer.",
       "- No text outside the 4:5 safe area.",
       "- Use consistent padding and professional alignment.",
@@ -9181,8 +9184,9 @@ function TabLinkKelas({ beriTahu }) {
       "F. REQUIREMENT BANNER: y=1085–1125 (40px)",
       "G. CONTACTS & COMPLAINTS: y=1130–1240 (110px)",
       "H. ORGANIZER FOOTER: y=1240–1305 (65px)", "");
-    p("HEADER:", "At top left, place the ORIGINAL uploaded Kemenkes logo, followed horizontally by the ORIGINAL uploaded Dewa Medik Nusantara shield logo and wordmark. Never redraw, modify or regenerate either logo.",
-      "Top right in navy:", "Institusi penyelenggara pelatihan", "terakreditasi Kemenkes RI", "Terakreditasi B", "No. HK.02.02/F/4052/2024", "");
+    p("HEADER:", "LOGO RULE — ABSOLUTE: do NOT draw, imitate or recreate any logo, emblem, shield, crest, monogram, seal, badge or watermark, and do NOT write the words Kemenkes, Kementerian Kesehatan, Dewa Medik or DEWAMEDIK anywhere in the image. The real logos are pasted on afterwards.",
+      "Leave the LOGO BAND completely empty instead: full canvas width, from the very top edge down to y=150 px. Flat single colour, no texture, no gradient, no shadow, no photo, no shape and no text may enter or touch that band.",
+      "Top right in navy, below the logo band (from y=160 px):", "Institusi penyelenggara pelatihan", "terakreditasi Kemenkes RI", "Terakreditasi B", "No. HK.02.02/F/4052/2024", "");
     p("HERO:", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "PELATIHAN", J, "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the title height. Line 2: very large bold navy " + J + " title on left with thin red ECG line crossing the bottom of the letters.");
     if (untukPerawat) p("Directly below, exactly:", "for Nurse");
     if (namaResmi) p((untukPerawat ? "Then" : "Directly below") + ", exactly (do not translate, shorten, or rephrase):", namaResmi);
@@ -9216,7 +9220,7 @@ function TabLinkKelas({ beriTahu }) {
     p("BOTTOM THREE PANELS:", "Left payment panel, approximately 35%:", "Bright red header Biaya Pelatihan");
     if (Number(k.harga) > 0) p("Large navy " + rp(Number(k.harga)).replace(/\s+/g, ""));
     else p("Large navy " + Y + "[biaya pelatihan]");
-    p("Navy payment box, original " + bank + " logo", "Pembayaran:", "No. Rekening: " + (setelan.rek_nomor || "201001000824562"), "a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"), "");
+    p("Navy payment box; write \"" + bank + "\" as plain text, do NOT draw the bank logo", "Pembayaran:", "No. Rekening: " + (setelan.rek_nomor || "201001000824562"), "a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"), "");
     p("Middle registration panel, approximately 32.5%:", ...qrDaftarEN(alamat(r.slug)));
     p("Right validation panel, approximately 32.5%:", ...qrValidasiEN());
     p("FULL WIDTH REQUIREMENT BANNER:", "Pale pink with red warning triangle:", "Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK", "");
@@ -9224,7 +9228,7 @@ function TabLinkKelas({ beriTahu }) {
       "Arka — 0821-2348-6576", "Eza — 0851-6145-9345", "Tama — 0856-5556-4911", "Hawa — 0851-1745-4911",
       "On far right a separate red-bordered complaint box:", "Pengaduan", "0813-6666-4911", "");
     p("BOTTOM ORGANIZER FOOTER:", "Diselenggarakan oleh", "PT Dewa Medik Nusantara", "Dewa Medik Nusantara", "Excellence Is The Way. Excellence Evolved.", "@dewamedik_hc", "www.dewamedik911.com", "daftarpelatihan.dewamedik911.com", "");
-    p("TYPOGRAPHY & FIT:", "Use a modern condensed sans-serif such as Anton for " + J + " and a clean sans-serif such as Montserrat for details. Prioritize large event date, venue, method, registration URL, QR areas and phone numbers. All text must be legible, without collisions. Use white negative space strategically. Reduce decorative elements before shrinking important information. Maintain accurate original wording, numbers, and logos. Do not add any SKP numeric values or additional claims.",
+    p("TYPOGRAPHY & FIT:", "Use a modern condensed sans-serif such as Anton for " + J + " and a clean sans-serif such as Montserrat for details. Prioritize large event date, venue, method, registration URL, QR areas and phone numbers. All text must be legible, without collisions. Use white negative space strategically. Reduce decorative elements before shrinking important information. Maintain accurate original wording and numbers. Never draw a logo. Do not add any SKP numeric values or additional claims.",
       "Never invent or translate the expansion of any abbreviation (training names, SKP, LMS, etc.). Only use expansions written in this prompt.",
       "Do not use promotional discount language: promo, diskon, voucher, early bird, cashback, doorprize, gratis, \"paling murah\", \"SKP on process\", and no claim of Kemenkes recommendation (SE Kemenkes HK.02.03/F.V/2692/2026).", "");
     p("FINAL QUALITY CONTROL:",
@@ -9232,7 +9236,7 @@ function TabLinkKelas({ beriTahu }) {
       "- Same visual design as reference.",
       "- No cropped header or footer.",
       "- No text outside safe area.",
-      "- No distorted logos.",
+      "- No logo of any kind drawn; the top logo band is left empty and clean.",
       "- No fabricated QR.",
       "- No clock time.",
       "- All five contact numbers included.",
@@ -9298,10 +9302,9 @@ function TabLinkKelas({ beriTahu }) {
     p("Use clean information panels, strong typography, precise alignment, subtle medical graphics, and a premium editorial finish.", "");
     p("Keep the design professional, modern, and readable on mobile devices.", "");
     p("## 3. HEADER — TOP 7%", "");
-    p("Place the two ORIGINAL user-provided logos side by side at the upper-left:", "");
-    p("1. Kemenkes logo with the turquoise word **Kemenkes**.", "2. Original Dewa Medik Nusantara logo.", "");
-    p("Do not redraw, recreate, recolor, or distort either logo.", "");
-    p("Upper-right accreditation text, without badges:", "");
+    p("**LOGO RULE — ABSOLUTE:** do NOT draw, imitate or recreate any logo, emblem, shield, crest, monogram, seal, badge or watermark, and do NOT write the words Kemenkes, Kementerian Kesehatan, Dewa Medik or DEWAMEDIK anywhere in the image. The real logos are pasted on afterwards.", "");
+    p("Leave the LOGO BAND completely empty instead: full canvas width, from the very top edge down to y=150 px. Flat single colour, no texture, no gradient, no shadow, no photo, no shape and no text may enter or touch that band.", "");
+    p("Upper-right accreditation text, below the logo band (from y=160 px), without badges:", "");
     p("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI", "", "**Terakreditasi B**", "", "**No. HK.02.02/F/4052/2024**", "");
     p("## 4. HERO SECTION — 24%", "");
     p(hero, "");
@@ -9366,8 +9369,7 @@ function TabLinkKelas({ beriTahu }) {
     p("**COLUMN 3 — PAYMENT AND CONTACTS**", "");
     if (Number(k.harga) > 0) p("Heading:", "", "BIAYA PELATIHAN", "", "**" + rp(Number(k.harga)).replace(/\s+/g, "") + "**", "");
     p("Heading:", "", "PEMBAYARAN", "");
-    if (/BRI/i.test(bank)) p("Display the original official BRI logo.", "");
-    else p(bank, "");
+    p(bank + " (plain text — do NOT draw the bank logo).", "");
     p("No. Rekening: " + (setelan.rek_nomor || "201001000824562"), "", "a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"), "");
     p("Heading:", "", "INFORMASI & NARAHUBUNG", "");
     p("**Arka — 0821-2348-6576**", "", "**Eza — 0851-6145-9345**", "", "**Tama — 0856-5556-4911**", "", "**Hawa — 0851-1745-4911**", "");
@@ -9393,7 +9395,7 @@ function TabLinkKelas({ beriTahu }) {
       "- Never invent or translate the expansion of any abbreviation (training names, SKP, LMS, etc.). Only use expansions written in this prompt.",
       "- No fake QR codes.",
       "- No distorted anatomy.",
-      "- Do not recreate the original logos.",
+      "- No logo of any kind drawn; the top logo band is left empty and clean.",
       "- Ensure the QR registration and SKP validation squares remain large.",
       "- Keep facilities prominent and trainer details compact.",
       "- All text must remain readable after resizing to 1080 × 1350 px.", "");
@@ -9494,16 +9496,15 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("### HEADER — 8% OF SAFE CANVAS HEIGHT");
     b.push("");
-    b.push("Upper left:");
+    b.push("LOGO RULE — ABSOLUTE:");
     b.push("");
-    b.push("1. Original Kemenkes logo supplied by the user, showing the teal-green-yellow symbol and the word **Kemenkes**.");
-    b.push("2. Original Dewa Medik Nusantara logo supplied by the user, immediately beside it.");
+    b.push("Do NOT draw, imitate or recreate any logo, emblem, shield, crest, monogram, seal, badge or watermark.");
     b.push("");
-    b.push("Preserve both logos exactly.");
+    b.push("Do NOT write the words Kemenkes, Kementerian Kesehatan, Dewa Medik or DEWAMEDIK anywhere in the image. The real logos are pasted on afterwards.");
     b.push("");
-    b.push("Do not redraw, modify, recolor, or replace either logo.");
+    b.push("Leave the LOGO BAND completely empty instead: full canvas width, from the very top edge down to y=150 px. Flat single colour, no texture, no gradient, no shadow, no photo, no shape and no text may enter or touch that band.");
     b.push("");
-    b.push("Upper right, plain text, three lines in this order:");
+    b.push("Upper right, below the logo band (from y=160 px), plain text, three lines in this order:");
     b.push("");
     b.push("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)");
     b.push("");
@@ -9641,8 +9642,7 @@ function TabLinkKelas({ beriTahu }) {
     }
     b.push("**PEMBAYARAN**");
     b.push("");
-    if (/BRI/i.test(bank)) { b.push("Use the original official BRI logo."); b.push(""); }
-    b.push(bank);
+    b.push(bank + " (plain text — do NOT draw the bank logo).");
     b.push("");
     b.push("No. Rekening: " + (setelan.rek_nomor || "201001000824562"));
     b.push("");
@@ -9697,7 +9697,7 @@ function TabLinkKelas({ beriTahu }) {
     b.push("- Exact 4:5 composition.");
     b.push("- No text or logos outside the safe area.");
     b.push("- No missing or cut-off footer.");
-    b.push("- No distorted logos.");
+    b.push("- No logo of any kind drawn; the top logo band is left empty and clean.");
     b.push("- No invented accreditation claims.");
     b.push("- No numerical SKP values.");
     b.push("- No fake QR codes.");
@@ -9830,7 +9830,7 @@ function TabLinkKelas({ beriTahu }) {
                     React.createElement("button", { type: "button", className: "dm-btn", disabled: !!ed.sibuk, onClick: () => simpanPemateri(k) }, ed.sibuk ? "Tunggu\u2026" : "Simpan"),
                     React.createElement("button", { type: "button", className: "dm-btn-line", disabled: !!ed.sibuk, onClick: () => setEditPem(null) }, "Batal"))) : null);
             })(),
-            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Cara pakai: 1) Salin prompt flyer  2) Unduh logo DMN (+ logo Kemenkes)  3) Buka chat ChatGPT BARU, lampirkan kedua logo, tempel prompt. QR pendaftaran & QR validasi SKP ditempel di Canva."),
+            React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0" } }, "Cara pakai: 1) Salin prompt flyer  2) Buka chat ChatGPT BARU, tempel prompt \u2014 JANGAN lampirkan logo, prompt sudah menyuruh GPT mengosongkan pita atas  3) Unduh strip logo, lalu di Canva tempel strip logo di pita kosong paling atas, QR pendaftaran & QR validasi SKP di kotak yang disediakan. Logo tidak pernah digambar ulang sehingga selalu persis."),
             React.createElement("div", { className: "dm-row", style: { gap: 8, flexWrap: "wrap", marginTop: 8 } },
               React.createElement("button", {
                 type: "button", className: "dm-btn",
@@ -9841,8 +9841,16 @@ function TabLinkKelas({ beriTahu }) {
               }, "Salin prompt flyer"),
               React.createElement("a", {
                 className: "dm-btn-line", style: { textDecoration: "none" },
-                href: "/logo-dmn.png", download: "logo-dewa-medik-nusantara.png"
-              }, "Unduh logo DMN"),
+                href: "/strip-logo.png", download: "strip-logo-kemenkes-dewamedik.png"
+              }, "Unduh strip logo"),
+              React.createElement("a", {
+                className: "dm-btn-line", style: { textDecoration: "none" },
+                href: "/strip-logo-gelap.png", download: "strip-logo-latar-gelap.png"
+              }, "Strip logo (latar gelap)"),
+              React.createElement("a", {
+                className: "dm-btn-line", style: { textDecoration: "none" },
+                href: "/logo-dmn-horizontal.png", download: "logo-dewa-medik-nusantara.png"
+              }, "Logo DMN saja"),
               React.createElement("a", {
                 className: "dm-btn-line", style: { textDecoration: "none" },
                 href: "https://chatgpt.com/", target: "_blank", rel: "noreferrer"

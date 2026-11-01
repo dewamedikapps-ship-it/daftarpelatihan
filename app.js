@@ -761,6 +761,52 @@ function kotaKelas(k) {
   return "";
 }
 
+/* Kota pelaksanaan dalam huruf besar untuk flyer, lengkap dengan provinsinya
+   bila diketahui: "SERANG, BANTEN". Provinsi dicari dari daftar di bawah,
+   lalu dari teks lokasi/judul. Kalau tetap tidak ketemu, cukup nama kotanya. */
+const PROVINSI_KOTA = {
+  serang: "Banten", cilegon: "Banten", tangerang: "Banten", "tangerang selatan": "Banten", pandeglang: "Banten", lebak: "Banten",
+  jakarta: "DKI Jakarta",
+  bandung: "Jawa Barat", bogor: "Jawa Barat", bekasi: "Jawa Barat", depok: "Jawa Barat", cirebon: "Jawa Barat",
+  tasikmalaya: "Jawa Barat", garut: "Jawa Barat", sukabumi: "Jawa Barat", majalengka: "Jawa Barat", karawang: "Jawa Barat",
+  semarang: "Jawa Tengah", surakarta: "Jawa Tengah", solo: "Jawa Tengah", sragen: "Jawa Tengah", pekalongan: "Jawa Tengah",
+  tegal: "Jawa Tengah", kudus: "Jawa Tengah", magelang: "Jawa Tengah", purwokerto: "Jawa Tengah", salatiga: "Jawa Tengah",
+  yogyakarta: "DI Yogyakarta", sleman: "DI Yogyakarta", bantul: "DI Yogyakarta",
+  surabaya: "Jawa Timur", malang: "Jawa Timur", banyuwangi: "Jawa Timur", jember: "Jawa Timur", kediri: "Jawa Timur",
+  sidoarjo: "Jawa Timur", madiun: "Jawa Timur",
+  denpasar: "Bali", mataram: "Nusa Tenggara Barat", kupang: "Nusa Tenggara Timur",
+  medan: "Sumatera Utara", padang: "Sumatera Barat", pekanbaru: "Riau", batam: "Kepulauan Riau",
+  tanjungpinang: "Kepulauan Riau", palembang: "Sumatera Selatan", jambi: "Jambi", bengkulu: "Bengkulu",
+  "bandar lampung": "Lampung", "banda aceh": "Aceh", pontianak: "Kalimantan Barat", banjarmasin: "Kalimantan Selatan",
+  samarinda: "Kalimantan Timur", balikpapan: "Kalimantan Timur", palangkaraya: "Kalimantan Tengah",
+  makassar: "Sulawesi Selatan", palu: "Sulawesi Tengah", manado: "Sulawesi Utara", kendari: "Sulawesi Tenggara",
+  gorontalo: "Gorontalo", ambon: "Maluku", jayapura: "Papua", sorong: "Papua Barat"
+};
+const PROVINSI_DIKENAL = [["Banten", /banten/i], ["DKI Jakarta", /dki|jakarta/i], ["Jawa Barat", /jawa ?barat|jabar/i],
+  ["Jawa Tengah", /jawa ?tengah|jateng/i], ["DI Yogyakarta", /yogyakarta|diy\b/i], ["Jawa Timur", /jawa ?timur|jatim/i],
+  ["Bali", /\bbali\b/i], ["Kepulauan Riau", /kepulauan riau|kepri/i], ["Sumatera Utara", /sumatera ?utara|sumut/i],
+  ["Sulawesi Selatan", /sulawesi ?selatan|sulsel/i], ["Kalimantan Timur", /kalimantan ?timur|kaltim/i]];
+function kotaBesar(k) {
+  let kt = kotaSaring(k);
+  if (!kt) {
+    /* Kota yang belum masuk daftar saringan tetap bisa dikenali dari teks lokasi/judul. */
+    const teks = String((k && k.lokasi) || "") + " " + String((k && k.judul) || "");
+    for (const nama of Object.keys(PROVINSI_KOTA)) {
+      if (new RegExp("\\b" + nama.replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "\\b", "i").test(teks)) {
+        kt = nama.replace(/\b[a-z]/g, c => c.toUpperCase());
+        break;
+      }
+    }
+  }
+  if (!kt) return "";
+  let pr = PROVINSI_KOTA[kt.toLowerCase()] || "";
+  if (!pr) {
+    const teks = String((k && k.lokasi) || "") + " " + String((k && k.judul) || "");
+    for (const [nama, pola] of PROVINSI_DIKENAL) if (pola.test(teks)) { pr = nama; break; }
+  }
+  return (pr ? kt + ", " + pr : kt).toUpperCase();
+}
+
 /* Foto kartu kelas — dipilih otomatis dari jenis pelatihan.
    Setiap kelas yang dibuka di back office langsung tampil dengan foto
    dokumentasi kegiatan DEWAMEDIK yang sesuai jenisnya, tanpa perlu
@@ -8642,6 +8688,7 @@ function TabLinkKelas({ beriTahu }) {
     const tot = /^TOT/.test(jenis);
     const acls = /ACLS/.test(jenis) && !tot;
     const kota = kotaKelas(k);
+    const kotaGede = kotaBesar(k);
     const f = String(k.format || "").trim();
     const untukPerawatK = /\bFN\b|for nurse|\bperawat\b/i.test(String(k.judul || "") + " " + String((r && r.judul) || ""));
     const metode = /daring/i.test(f) && /luring/i.test(f) ? "Blended Training | " + f
@@ -8667,11 +8714,16 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("TATA LETAK WAJIB:");
     b.push("1. Pojok KIRI ATAS: logo Kementerian Kesehatan RI paling kiri, lalu logo Dewa Medik Nusantara tepat di sampingnya (berjajar sejajar). Proporsi dan warna logo tidak diubah.");
-    b.push("2. Pojok KANAN ATAS, SEJAJAR dengan deretan logo (tengah-tengahnya segaris dengan tengah logo, rata kanan): status dan nomor akreditasi ditulis sebagai TEKS biasa \u2014 bukan badge, stempel, perisai, pita, atau gambar \u2014 3 baris berurutan:");
-    b.push("   Baris 1: \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" \u2014 ditulis TEBAL, kontras tinggi, cukup besar untuk terbaca di layar ponsel.");
-    b.push("   Baris 2: kata \"Terakreditasi\" dengan ketebalan biasa, lalu huruf \"B\" sebagai huruf display besar dan tebal, sekitar 2,5 kali tinggi baris 1. Murni tipografi \u2014 huruf B TIDAK boleh ditaruh di dalam perisai, lingkaran, stempel, pita, atau badge.");
-    b.push("   Baris 3: \"No. HK.02.02/F/4052/2024\"");
+    b.push("2. Pojok KANAN ATAS: status dan nomor akreditasi ditulis sebagai TEKS biasa (bukan badge, stempel, atau gambar), 3 baris berurutan:");
+    b.push("   \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" (huruf kecil di atas)");
+    b.push("   \"Terakreditasi B\"");
+    b.push("   \"No. HK.02.02/F/4052/2024\"");
     b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
+    b.push(daring
+      ? "3b. Tepat di bawah judul tulis \"DARING \u2014 ZOOM / LMS PLATARAN SEHAT\" dengan huruf kapital tebal dan ikon laptop."
+      : "3b. Tepat di bawah judul tulis nama KOTA PELAKSANAAN: \"" + (kotaGede || Y + "[KOTA PELAKSANAAN]") + "\" dengan huruf kapital extra-bold disertai ikon pin lokasi. Ukurannya jauh lebih besar daripada teks informasi lain, tetapi tetap lebih kecil daripada judul pelatihan. Jangan menambahkan slogan seperti KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN, atau PRAKTIK LEBIH TERARAH \u2014 ruang itu untuk nama kota.");
+    b.push(daring ? "3c. \u2014" : "3c. Kartu LOKASI LURING dibuat besar: baris pertama nama kota dengan huruf extra-bold merah #E91C25 (baris terbesar di kartu itu), baris kedua nama venue dengan huruf tebal navy #0B1E3F, baris ketiga alamat lengkap dengan huruf lebih kecil tetapi tetap terbaca di layar ponsel.");
+    b.push("3d. Urutan penonjolan visual: judul pelatihan \u2192 nama kota \u2192 tanggal pelaksanaan \u2192 nama venue.");
     b.push(namaResmi
       ? "   BLOK JUDUL (satu kesatuan, ditulis bertumpuk dari atas): baris 1 \"PELATIHAN\" (huruf kapital tebal, ±40% tinggi judul, lebar sama dengan judul), baris 2 judul besar \"" + jenis + "\"" + (untukPerawatK ? ", tepat di bawahnya \"for Nurse\"" : "") + ", lalu di bawahnya ditulis persis: \"" + namaResmi + "\". Jangan diganti, disingkat, diterjemahkan, atau dikarang ulang."
       : "   BLOK JUDUL (satu kesatuan, ditulis bertumpuk dari atas): baris 1 \"PELATIHAN\" (huruf kapital tebal, ±40% tinggi judul), baris 2 judul besar. Tulis " + (jenis || "nama pelatihan") + " sebagai singkatan saja. JANGAN menulis kepanjangan/arti singkatan apa pun, karena kepanjangan resminya tidak diberikan di sini.");
@@ -8710,7 +8762,7 @@ function TabLinkKelas({ beriTahu }) {
       b.push("    \u2022 Daring: " + tglDL(k, "daring", Y + "[tanggal daring]") + " (Zoom/LMS Plataran Sehat)");
       b.push("    \u2022 Luring: " + tglDL(k, "luring", Y + "[tanggal luring]") + " di " + (k.lokasi || Y + "[venue]"));
     }
-    b.push("\u{1F4CD} " + (k.lokasi || Y + "[venue]"));
+    b.push("\u{1F4CD} " + (kotaGede ? kotaGede + " \u2014 " : "") + (k.lokasi || Y + "[venue]"));
     b.push("\u{1F4BB} Metode: " + metode);
     if (Number(k.harga) > 0) b.push("\u{1F4B3} Biaya Pelatihan: " + rp(Number(k.harga)).replace(/\s+/g, ""));
     b.push("");
@@ -8790,6 +8842,7 @@ function TabLinkKelas({ beriTahu }) {
   }
   /* DESAIN UTAMA — satu master prompt ketat ala XMAN 119 dengan tata letak contoh flyer ACLS
      Pak Ryan (19 Okt 2026). Semua isi otomatis dari data kelas; tidak ada 🟨 bila data lengkap. */
+  const KARTU_LOKASI = "Make this card one of the most prominent blocks on the flyer. Line 1: the city, EXTRA-BOLD red #E91C25, the largest text inside the card. Line 2: the venue name, BOLD navy #0B1E3F. Line 3: the full address, smaller but still legible on a phone. City and venue must be readable at a glance without zooming in.";
   const ALAMAT_VENUE = [
     [/kantor\s*dewa\s*medik|kantor\s*dewamedik|irigasi\s*sipon/i, "Jl. Irigasi Sipon No.206, Poris Plawad Utara, Cipondoh, Kota Tangerang"]
   ];
@@ -8800,6 +8853,7 @@ function TabLinkKelas({ beriTahu }) {
     const tot = /^TOT/.test(jenis);
     const untukPerawat = /\bFN\b|for nurse|\bperawat\b/i.test(String(k.judul || "") + " " + String((r && r.judul) || ""));
     const kota = kotaKelas(k);
+    const kotaGede = kotaBesar(k);
     const f = String(k.format || "").trim();
     const blended = /daring/i.test(f) && /luring/i.test(f);
     const daring = !blended && /daring|online/i.test(f);
@@ -8849,16 +8903,19 @@ function TabLinkKelas({ beriTahu }) {
       "Creative freedom never overrides the KEMENKES CHECKLIST at the end: every item there must appear, correctly spelled and readable.");
     H("HEADER — Y 0–110 px");
     p("Upper-left: the ORIGINAL attached Kemenkes logo, a thin divider, then the ORIGINAL attached Dewa Medik Nusantara logo. Use the supplied images exactly; do not redraw, recolor or distort.", "",
-      "Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:",
-      L(["**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "No. HK.02.02/F/4052/2024"]),
-      "No badge, stamp or seal anywhere in this block.");
+      "Upper-right, three lines of navy text, right-aligned:",
+      L(["Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (small)", "**Terakreditasi B** (large, bold)", "No. HK.02.02/F/4052/2024"]),
+      "No badge, stamp or seal.");
     H("HERO — Y 110–470 px");
     p("LEFT side, stacked title (all lines mandatory):",
       L(["**PELATIHAN** — white bold capitals inside a red rounded banner", "**" + J + "** — huge bold navy letters, the largest text on the flyer, with a thin red ECG line beside it"]
         .concat(untukPerawat ? ["**for Nurse** — large bold navy, directly below"] : [])
         .concat(namaResmi ? ["**" + namaResmi + "** — white text inside a red rounded banner (write exactly; do not translate or rephrase)"] : [])));
     if (!namaResmi) p("Write " + J + " as the abbreviation only. Do not add any expansion of the abbreviation.");
-    p("", "Below the title, three small round icons with short navy labels: **KOMPETENSI LEBIH KUAT** · **PASIEN LEBIH AMAN** · **PRAKTIK LEBIH TERARAH**", "",
+    p("", (daring
+      ? "Directly below the subtitle: **DARING \u2014 ZOOM / LMS PLATARAN SEHAT**, extra-bold white capitals with a white laptop icon."
+      : "Directly below the subtitle, filling the space where slogan badges would otherwise sit: **" + (kotaGede || Y + "[KOTA PELAKSANAAN]") + "** \u2014 the city where the training is held, in EXTRA-BOLD WHITE CAPITALS with a white location-pin icon beside it. Far larger than any other information text, but still smaller than the " + J + " title. Use the full width freed up here. On a phone this city name must be the second thing the reader sees, right after " + J + "."),
+      "Do NOT add slogan badges such as KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN or PRAKTIK LEBIH TERARAH \u2014 that space belongs to the city name.", "",
       "RIGHT side: realistic photo in a modern simulation room —", L(foto), "Navy medical uniforms, realistic equipment and monitors, natural Indonesian faces, soft white fade into the left side.");
     H("INFORMATION ROW — Y 480–640 px");
     p("Three white cards side by side, each with a navy title bar and a red round icon:", "",
@@ -8866,7 +8923,7 @@ function TabLinkKelas({ beriTahu }) {
       "**TANGGAL PELAKSANAAN** (calendar icon)", "**" + tgl + "** — large bold red, the most prominent text after the title",
       hari + " · Pukul " + Y + "[jam mulai–selesai] WIB");
     if (blended) p("Navy label \"Daring\": " + tglDL(k, "daring", Y + "[tanggal daring]") + " · Zoom/LMS Plataran Sehat", "Red label \"Luring\": " + tglDL(k, "luring", Y + "[tanggal luring]"));
-    if (!daring) { p("", "**LOKASI LURING** (red location pin)", "**" + (venue || Y + "[venue]") + "**"); if (lokasiBaris2) p(lokasiBaris2); }
+    if (!daring) { p("", "**LOKASI LURING** (red location pin) \u2014 " + KARTU_LOKASI, "**" + (kotaGede || Y + "[KOTA]") + "** \u2014 extra-bold red #E91C25, the largest line in this card", "**" + (venue || Y + "[venue]") + "** \u2014 bold navy #0B1E3F"); if (lokasiBaris2) p(lokasiBaris2 + " \u2014 smaller, but still legible on a phone"); }
     else p("", "**PLATFORM** (video icon)", "**Zoom / LMS Plataran Sehat**");
     H("FACILITIES & " + (tr.length ? "TRAINERS" : "MATERIALS") + " — Y 650–960 px");
     p("LEFT card (about 55% width), navy title bar with gift icon: **FASILITAS PESERTA**", "Rows with navy check icons:", L(fas),
@@ -8905,7 +8962,7 @@ function TabLinkKelas({ beriTahu }) {
       "No extra text, social media accounts, contacts or logos that are not listed here."]));
     H("KEMENKES CHECKLIST (SE HK.02.03/F.V/2692/2026) — ALL MANDATORY");
     p(L(["Kemenkes logo at the far upper-left, then the Dewa Medik Nusantara logo right after it.",
-      "Upper-right, level with the logos, as TEXT (not a badge): a BOLD line \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\", then \"Terakreditasi\" with a large bold letter B, then No. HK.02.02/F/4052/2024.",
+      "Upper-right as TEXT (not a badge): Institusi penyelenggara pelatihan terakreditasi Kemenkes RI · Terakreditasi B · No. HK.02.02/F/4052/2024.",
       "Title \"PELATIHAN " + J + (untukPerawat ? " for Nurse" : "") + "\" clearly written; the fee text is smaller than the title.",
       "Method written explicitly (" + (blended ? "Blended: daring + luring with their dates" : daring ? "Daring" : "Luring") + ").",
       "Day, date, time and location complete.",
@@ -8925,7 +8982,7 @@ function TabLinkKelas({ beriTahu }) {
     ["## STRICT 1080 × 1350 INSTAGRAM / CANVA DESIGN", "## STRICT 1080 × 1350 INSTAGRAM / CANVA DESIGN — RED-DOMINANT EDITION"],
     ["Palette: deep navy #0B1E3F, bright medical red #E91C25, white and light gray. Bold condensed headline font, clean sans-serif for details.",
      "RED-DOMINANT PALETTE (most important visual rule): the whole background is bold medical red #E91C25, with a deeper red #B5121B gradient, subtle diagonal light streaks and a faint white ECG waveform pattern. Red must cover at least 60% of the canvas. Main text on the red background is WHITE. Information cards stay WHITE with navy #0B1E3F title bars so every detail stays easy to read. Navy is the secondary color; no other colors except the green WhatsApp icons. Bold condensed headline font, clean sans-serif for details."],
-    ["Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:", "Place both logos together on one white rounded plate so their original colors stay intact on the red background.\nUpper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of WHITE text, as TEXT only — never a badge, stamp, seal, shield or ribbon:"],
+    ["Upper-right, three lines of navy text, right-aligned:", "Place both logos together on one white rounded plate so their original colors stay intact on the red background.\nUpper-right, three lines of WHITE text, right-aligned:"],
     ["**PELATIHAN** — white bold capitals inside a red rounded banner", "**PELATIHAN** — red bold capitals inside a white rounded banner"],
     ["huge bold navy letters, the largest text on the flyer, with a thin red ECG line beside it", "huge bold WHITE letters with a soft dark shadow, the largest text on the flyer, with a thin white ECG line beside it"],
     ["**for Nurse** — large bold navy, directly below", "**for Nurse** — large bold white, directly below"],
@@ -8949,10 +9006,13 @@ function TabLinkKelas({ beriTahu }) {
       "",
       "⚠️ WAJIB / MANDATORY — tetap tampilkan walaupun gambar referensi tidak memilikinya (do NOT copy the reference here):",
       "1. Judul ditulis 2 baris: \"PELATIHAN\" lalu \"" + J + "\" (PELATIHAN = huruf kapital tebal ±40% tinggi judul, tepat di atasnya). The title text is literally \"PELATIHAN " + J + "\" stacked on two lines — never render " + J + " alone.",
-      "2. Pojok kanan atas, SEJAJAR dengan deretan logo (bukan lebih tinggi, bukan lebih rendah), rata kanan. Urutan tiga baris: (a) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" ditulis TEBAL dan kontras agar terbaca jelas; (b) kata \"Terakreditasi\" ketebalan biasa lalu huruf \"B\" sebagai huruf display besar tebal sekitar 2,5x tinggi baris (a) — murni tipografi, tanpa perisai/lingkaran/stempel/pita/badge; (c) \"No. HK.02.02/F/4052/2024\".",
+      "2. Pojok kanan atas, tepat DI ATAS \"Terakreditasi B\", tulis teks kecil: \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\". Urutan: Institusi penyelenggara pelatihan terakreditasi Kemenkes RI → Terakreditasi B → No. HK.02.02/F/4052/2024.",
+      "3. Nama KOTA PELAKSANAAN ditulis besar dan tebal tepat di bawah judul, dengan ikon pin lokasi \u2014 jauh lebih besar daripada teks informasi lain, tetapi tetap lebih kecil daripada judul pelatihan. Jangan pasang slogan seperti KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN, atau PRAKTIK LEBIH TERARAH; ruang itu untuk nama kota.",
+      "4. Kartu lokasi luring diperbesar: nama kota extra-bold merah #E91C25 (baris terbesar di kartu), nama venue tebal navy #0B1E3F, alamat lebih kecil tetapi tetap terbaca di ponsel.",
+      "5. Urutan penonjolan visual: judul pelatihan \u2192 nama kota \u2192 tanggal pelaksanaan \u2192 nama venue.",
       ""
     ].join("\n");
-    const bawah = "\n\n⚠️ CEK AKHIR / FINAL CHECK sebelum selesai: (1) kata \"PELATIHAN\" terlihat jelas di atas \"" + J + "\"; (2) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" terlihat TEBAL dan jelas di atas \"Terakreditasi B\"; (3) seluruh blok akreditasi itu sejajar dengan deretan logo, tidak melayang lebih tinggi. Jika salah satu belum ada, perbaiki dulu.";
+    const bawah = "\n\n⚠️ CEK AKHIR / FINAL CHECK sebelum selesai: (1) kata \"PELATIHAN\" terlihat jelas di atas \"" + J + "\"; (2) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" terlihat di atas \"Terakreditasi B\". Jika salah satu belum ada, perbaiki dulu.";
     const i = t.indexOf("\n");
     return (i < 0 ? t + atas : t.slice(0, i + 1) + atas + t.slice(i + 1)) + bawah;
   }
@@ -8964,6 +9024,7 @@ function TabLinkKelas({ beriTahu }) {
     const tot = /^TOT/.test(jenis);
     const inti = tot ? jenis.replace(/^TOT\s*/, "") : jenis;
     const kota = kotaKelas(k);
+    const kotaGede = kotaBesar(k);
     const f = String(k.format || "").trim();
     const blended = /daring/i.test(f) && /luring/i.test(f);
     const daring = !blended && /daring|online/i.test(f);
@@ -9028,7 +9089,7 @@ function TabLinkKelas({ beriTahu }) {
     p("Create a clean horizontal white header.", "");
     p("**Upper-left:**", "Place the original Kemenkes logo first, followed immediately by the original Dewa Medik Nusantara logo.", "");
     p("Use the original uploaded logo assets exactly as provided. Do not redraw, distort, recolor, or alter their lettering.", "");
-    p("**Upper-right — level with the logos, vertically centred against them, right-aligned:**", "Display accreditation as plain navy text, three lines in this order:", "", "**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge, stamp, seal or shield.", "");
+    p("**Upper-right:**", "Display accreditation as plain navy text, three lines in this order:", "", "Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)", "", "Terakreditasi B", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge or stamp.", "");
     p("### 4. HERO — NEXT 30%", "");
     p("**LEFT SIDE:**", "", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "", "## PELATIHAN", "# " + J, "", "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the headline height, left-aligned with the headline. Line 2 \"" + J + "\": very large, bold, condensed navy headline.", "");
     if (untukPerawat) p("Directly underneath, exactly:", "", "**for Nurse**", "");
@@ -9053,7 +9114,7 @@ function TabLinkKelas({ beriTahu }) {
     else if (daring) p("Daring via Zoom/LMS Plataran Sehat", "");
     p("**SECTION C — " + (daring ? "PLATFORM" : "LOCATION") + "**", "", daring ? "Laptop icon." : "Red location pin.", "");
     if (daring) p("PLATFORM", "", "Zoom/LMS Plataran Sehat", "");
-    else p("LOKASI LURING", "", (k.lokasi || Y + "[venue]") + (kota && !new RegExp(kota, "i").test(String(k.lokasi || "")) ? ", " + kota : ""), "", Y + "[alamat lengkap venue — hapus baris ini bila tidak perlu]", "");
+    else p("LOKASI LURING", "", KARTU_LOKASI, "", (kotaGede || Y + "[KOTA]") + " \u2014 extra-bold red #E91C25, largest line in this card", "", (k.lokasi || Y + "[venue]") + " \u2014 bold navy #0B1E3F", "", Y + "[alamat lengkap venue \u2014 hapus baris ini bila tidak perlu] \u2014 smaller, still legible", "");
     p("**SECTION D — METHOD**", "", "Navy laptop icon.", "", "METODE", "", blended ? "Blended Training" : daring ? "Daring" : "Luring", "");
     if (f) p(f, "");
     p("Use clear vertical dividers between the four sections.", "");
@@ -9130,6 +9191,7 @@ function TabLinkKelas({ beriTahu }) {
     const tot = /^TOT/.test(jenis);
     const inti = tot ? jenis.replace(/^TOT\s*/, "") : jenis;
     const kota = kotaKelas(k);
+    const kotaGede = kotaBesar(k);
     const f = String(k.format || "").trim();
     const blended = /daring/i.test(f) && /luring/i.test(f);
     const daring = !blended && /daring|online/i.test(f);
@@ -9182,7 +9244,7 @@ function TabLinkKelas({ beriTahu }) {
       "G. CONTACTS & COMPLAINTS: y=1130–1240 (110px)",
       "H. ORGANIZER FOOTER: y=1240–1305 (65px)", "");
     p("HEADER:", "At top left, place the ORIGINAL uploaded Kemenkes logo, followed horizontally by the ORIGINAL uploaded Dewa Medik Nusantara shield logo and wordmark. Never redraw, modify or regenerate either logo.",
-      "Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:", "**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "No. HK.02.02/F/4052/2024", "");
+      "Top right in navy:", "Institusi penyelenggara pelatihan", "terakreditasi Kemenkes RI", "Terakreditasi B", "No. HK.02.02/F/4052/2024", "");
     p("HERO:", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "PELATIHAN", J, "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the title height. Line 2: very large bold navy " + J + " title on left with thin red ECG line crossing the bottom of the letters.");
     if (untukPerawat) p("Directly below, exactly:", "for Nurse");
     if (namaResmi) p((untukPerawat ? "Then" : "Directly below") + ", exactly (do not translate, shorten, or rephrase):", namaResmi);
@@ -9197,7 +9259,7 @@ function TabLinkKelas({ beriTahu }) {
     p("");
     p("Below schedule on white:");
     if (daring) p("Red laptop icon", "Platform: Zoom/LMS Plataran Sehat");
-    else p("Red location icon", venue, (kota && !new RegExp(kota, "i").test(String(k.lokasi || "")) ? kota + " — " : "") + Y + "[alamat lengkap venue — hapus baris ini bila tidak perlu]");
+    else p("Red location icon", KARTU_LOKASI, (kotaGede || Y + "[KOTA]") + " \u2014 extra-bold red #E91C25, largest line in this card", venue + " \u2014 bold navy #0B1E3F", Y + "[alamat lengkap venue \u2014 hapus baris ini bila tidak perlu] \u2014 smaller, still legible");
     p("Red laptop icon", "Metode: " + (blended ? "Blended Training" : daring ? "Daring" : "Luring"));
     if (f) p(f);
     p("DO NOT INCLUDE ANY CLOCK TIME.", "");
@@ -9247,6 +9309,7 @@ function TabLinkKelas({ beriTahu }) {
     const tot = /^TOT/.test(jenis);
     const inti = tot ? jenis.replace(/^TOT\s*/, "") : jenis;
     const kota = kotaKelas(k);
+    const kotaGede = kotaBesar(k);
     const f = String(k.format || "").trim();
     const blended = /daring/i.test(f) && /luring/i.test(f);
     const daring = !blended && /daring|online/i.test(f);
@@ -9301,8 +9364,8 @@ function TabLinkKelas({ beriTahu }) {
     p("Place the two ORIGINAL user-provided logos side by side at the upper-left:", "");
     p("1. Kemenkes logo with the turquoise word **Kemenkes**.", "2. Original Dewa Medik Nusantara logo.", "");
     p("Do not redraw, recreate, recolor, or distort either logo.", "");
-    p("Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:", "");
-    p("**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "", "**No. HK.02.02/F/4052/2024**", "");
+    p("Upper-right accreditation text, without badges:", "");
+    p("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI", "", "**Terakreditasi B**", "", "**No. HK.02.02/F/4052/2024**", "");
     p("## 4. HERO SECTION — 24%", "");
     p(hero, "");
     p("Modern medical simulation environment, navy uniforms, natural Indonesian faces, realistic equipment, and red-blue cinematic lighting.", "");
@@ -9325,9 +9388,11 @@ function TabLinkKelas({ beriTahu }) {
     else p("Pukul " + Y + "[jam mulai–selesai] WIB", "");
     if (daring) p("**RIGHT PANEL — PLATFORM**", "", "Zoom/LMS Plataran Sehat", "");
     else {
-      p("**RIGHT PANEL — LOKASI LURING**", "");
-      p((k.lokasi || Y + "[venue]") + (kota && !new RegExp(kota, "i").test(String(k.lokasi || "")) ? ", " + kota : ""), "");
-      p(Y + "[alamat lengkap venue — hapus baris ini bila tidak perlu]", "");
+      p("**RIGHT PANEL \u2014 LOKASI LURING**", "");
+      p(KARTU_LOKASI, "");
+      p((kotaGede || Y + "[KOTA]") + " \u2014 extra-bold red #E91C25, largest line in this card", "");
+      p((k.lokasi || Y + "[venue]") + " \u2014 bold navy #0B1E3F", "");
+      p(Y + "[alamat lengkap venue \u2014 hapus baris ini bila tidak perlu] \u2014 smaller, still legible", "");
     }
     p("Make the date the most visually prominent information after the main " + (jenis || "training") + " headline.", "");
     p("## 6. FACILITIES AND TRAINERS — 29%", "");
@@ -9409,6 +9474,7 @@ function TabLinkKelas({ beriTahu }) {
     const tot = /^TOT/.test(jenis);
     const inti = tot ? jenis.replace(/^TOT\s*/, "") : jenis;
     const kota = kotaKelas(k);
+    const kotaGede = kotaBesar(k);
     const f = String(k.format || "").trim();
     const blended = /daring/i.test(f) && /luring/i.test(f);
     const daring = !blended && /daring|online/i.test(f);
@@ -9503,11 +9569,11 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("Do not redraw, modify, recolor, or replace either logo.");
     b.push("");
-    b.push("Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:");
+    b.push("Upper right, plain text, three lines in this order:");
     b.push("");
-    b.push("**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone");
+    b.push("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI (smaller text)");
     b.push("");
-    b.push("the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge");
+    b.push("Terakreditasi B");
     b.push("");
     b.push("No. HK.02.02/F/4052/2024");
     b.push("");
@@ -9571,9 +9637,13 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     if (daring) b.push("Zoom/LMS Plataran Sehat");
     else {
-      b.push((k.lokasi || Y + "[venue]") + (kota && !new RegExp(kota, "i").test(String(k.lokasi || "")) ? ", " + kota : ""));
+      b.push(KARTU_LOKASI);
       b.push("");
-      b.push(Y + "[alamat lengkap venue — hapus baris ini bila tidak perlu]");
+      b.push((kotaGede || Y + "[KOTA]") + " \u2014 extra-bold red #E91C25, largest line in this card");
+      b.push("");
+      b.push((k.lokasi || Y + "[venue]") + " \u2014 bold navy #0B1E3F");
+      b.push("");
+      b.push(Y + "[alamat lengkap venue \u2014 hapus baris ini bila tidak perlu] \u2014 smaller, still legible");
     }
     b.push("");
     b.push("The date must be especially prominent and easy to read.");

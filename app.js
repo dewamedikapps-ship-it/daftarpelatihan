@@ -814,11 +814,11 @@ function kotaBesar(k) {
    Menambah foto: taruh berkasnya di folder foto-kelas lalu tambahkan
    namanya ke daftar di bawah ini. */
 const FOTO_KELAS = {
-  BTCLS: ["foto-kelas/btcls-1.jpg", "foto-kelas/btcls-trauma.jpg", "foto-kelas/rjp-1.jpg", "foto-kelas/btcls-cedera.jpg"],
-  ACLS: ["foto-kelas/acls-1.jpg", "foto-kelas/acls-aed.jpg", "foto-kelas/rjp-1.jpg"],
+  BTCLS: ["foto-kelas/btcls-1.jpg", "foto-kelas/praktik-penilaian-pasien.jpg", "foto-kelas/praktik-jalan-napas.jpg", "foto-kelas/btcls-trauma.jpg", "foto-kelas/rjp-1.jpg", "foto-kelas/btcls-cedera.jpg"],
+  ACLS: ["foto-kelas/acls-1.jpg", "foto-kelas/praktik-ventilasi-bvm.jpg", "foto-kelas/praktik-jalan-napas.jpg", "foto-kelas/acls-aed.jpg", "foto-kelas/rjp-1.jpg"],
   EKG: ["foto-kelas/acls-aed.jpg", "foto-kelas/acls-1.jpg", "foto-kelas/umum-ujian.jpg"],
-  PKID: ["foto-kelas/darurat-1.jpg", "foto-kelas/darurat-2.jpg", "foto-kelas/btcls-trauma.jpg"],
-  KKMN: ["foto-kelas/darurat-2.jpg", "foto-kelas/darurat-1.jpg", "foto-kelas/btcls-trauma.jpg"],
+  PKID: ["foto-kelas/darurat-1.jpg", "foto-kelas/praktik-penilaian-pasien.jpg", "foto-kelas/praktik-ventilasi-bvm.jpg", "foto-kelas/darurat-2.jpg", "foto-kelas/btcls-trauma.jpg"],
+  KKMN: ["foto-kelas/darurat-2.jpg", "foto-kelas/praktik-jalan-napas.jpg", "foto-kelas/darurat-1.jpg", "foto-kelas/btcls-trauma.jpg"],
   BONELS: ["foto-kelas/darurat-2.jpg", "foto-kelas/btcls-cedera.jpg", "foto-kelas/darurat-1.jpg"],
   PPIK: ["foto-kelas/darurat-2.jpg", "foto-kelas/umum-ujian.jpg"],
   /* TOT memakai foto kelas induknya. */
@@ -837,12 +837,24 @@ function kelompokFoto(t) {
   if (/PPI|INFEKSI/.test(teks)) return FOTO_KELAS.PPIK;
   return FOTO_KELAS.UMUM;
 }
+/* Foto bawaan yang ikut dalam situs; selalu tersedia di koleksi. */
+const FOTO_BAWAAN = ["foto-kelas/praktik-penilaian-pasien.jpg", "foto-kelas/praktik-jalan-napas.jpg", "foto-kelas/praktik-ventilasi-bvm.jpg",
+  "foto-kelas/btcls-1.jpg", "foto-kelas/btcls-trauma.jpg", "foto-kelas/btcls-cedera.jpg",
+  "foto-kelas/acls-1.jpg", "foto-kelas/acls-aed.jpg", "foto-kelas/rjp-1.jpg",
+  "foto-kelas/darurat-1.jpg", "foto-kelas/darurat-2.jpg", "foto-kelas/umum-ujian.jpg"];
+/* Foto bawaan dipanggil apa adanya; foto unggahan lewat gudang publik. */
+function srcFotoKelas(jalur) {
+  if (!jalur) return null;
+  if (/^https?:\/\//i.test(jalur)) return jalur;
+  if (String(jalur).indexOf("foto-kelas/") === 0) return jalur;
+  return urlFoto(jalur);
+}
 function fotoUntukDaftar(daftar) {
   const hasil = [];
   const hitung = new Map();
   (daftar || []).forEach((t, i) => {
     const sendiri = t && (t.foto || t.gambar || t.image_url);
-    if (sendiri) { hasil.push(sendiri); return; }
+    if (sendiri) { hasil.push(srcFotoKelas(sendiri)); return; }
     const kelompok = kelompokFoto(t);
     let n = hitung.get(kelompok) || 0;
     let pilih = kelompok[n % kelompok.length];
@@ -2230,6 +2242,19 @@ function App() {
         daftarKelas = daftarKelas.filter(x => kmp.kelas_id.indexOf(x.id) > -1);
       }
     }
+    /* Foto kartu kelas disimpan di view terpisah (pelatihan_foto) karena
+       view pelatihan_publik dipakai sistem lain dan tidak boleh diubah.
+       Bila view ini belum ada, daftar kelas tetap tampil apa adanya. */
+    try {
+      const ft = await SB.from("pelatihan_foto").select("id,foto");
+      if (!ft.error && Array.isArray(ft.data)) {
+        const peta = {};
+        ft.data.forEach(function (x) { if (x && x.foto) peta[x.id] = x.foto; });
+        daftarKelas = daftarKelas.map(function (x) {
+          return peta[x.id] ? Object.assign({}, x, { foto: peta[x.id] }) : x;
+        });
+      }
+    } catch (e) {}
     setKelas(daftarKelas);
     setTestimoni(c.error ? [] : c.data || []);
     setLowongan(d.error ? [] : d.data || []);
@@ -5362,6 +5387,7 @@ function TabJadwal({
     tanggal_selesai: "",
     lokasi: "Kantor DEWAMEDIK, Tangerang",
     kota: "Tangerang",
+    foto: "",
     format: "3 hari daring + 3 hari luring",
     kuota: 30,
     harga: 2500000,
@@ -5571,6 +5597,15 @@ function TabJadwal({
     onChange: e => setEdit({
       ...edit,
       kota: e.target.value
+    })
+  })), /*#__PURE__*/React.createElement(Field, {
+    label: "Foto kartu kelas",
+    hint: "Foto yang tampil di kartu kelas halaman peserta. Pilih dari koleksi, atau tambahkan foto baru \u2014 foto yang ditambahkan masuk koleksi dan bisa dipakai kelas lain. Biarkan \u201cOtomatis\u201d bila ingin dipilihkan sendiri sesuai jenis pelatihan."
+  }, /*#__PURE__*/React.createElement(PilihFotoKelas, {
+    nilai: edit.foto || "",
+    onGanti: v => setEdit({
+      ...edit,
+      foto: v
     })
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Link grup WhatsApp kelas",
@@ -5922,6 +5957,75 @@ function TabVoucher({
     className: "dm-btn-line",
     onClick: () => setEdit(null)
   }, "Batal"))) : null);
+}
+/* Koleksi foto kartu kelas. Foto bawaan selalu ada; foto yang pernah
+   diunggah pengurus tersimpan di gudang publik/kelas dan muncul di sini
+   untuk semua kelas, jadi cukup diunggah sekali lalu dipakai ulang. */
+function PilihFotoKelas({ nilai, onGanti }) {
+  const [koleksi, setKoleksi] = useState([]);
+  const [sibuk, setSibuk] = useState(false);
+  const [err, setErr] = useState("");
+  const ref = useRef(null);
+  useEffect(() => {
+    let hidup = true;
+    (async () => {
+      try {
+        const { data, error } = await SB.storage.from("publik")
+          .list("kelas", { limit: 100, sortBy: { column: "created_at", order: "desc" } });
+        if (hidup && !error && Array.isArray(data)) {
+          setKoleksi(data.filter(x => x && x.name && x.name.indexOf(".") !== 0).map(x => "kelas/" + x.name));
+        }
+      } catch (e) {}
+    })();
+    return () => { hidup = false; };
+  }, []);
+  async function unggah(file) {
+    if (!file) return;
+    setSibuk(true); setErr("");
+    try {
+      const jalur = await unggahFotoPublik(file, "kelas");
+      setKoleksi(k => [jalur].concat(k));
+      onGanti(jalur);
+    } catch (e) {
+      setErr((e && e.message) || "Foto gagal diunggah.");
+    }
+    setSibuk(false);
+    if (ref.current) ref.current.value = "";
+  }
+  const semua = koleksi.concat(FOTO_BAWAAN);
+  const petak = (jalur, kunci, isi) => React.createElement("button", {
+    key: kunci, type: "button",
+    onClick: () => onGanti(jalur),
+    title: jalur || "Pilih otomatis sesuai jenis pelatihan",
+    style: {
+      width: 86, height: 64, padding: 0, overflow: "hidden", cursor: "pointer",
+      borderRadius: 8, background: "#F4F6FA",
+      border: (nilai || "") === (jalur || "") ? "3px solid #E91C25" : "1px solid #D3DAE6",
+      display: "flex", alignItems: "center", justifyContent: "center"
+    }
+  }, isi);
+  return React.createElement("div", null,
+    React.createElement("div", {
+      style: { display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 8 }
+    },
+      petak("", "otomatis", React.createElement("span", {
+        style: { fontSize: 11, fontWeight: 700, color: "#0B1E3F", lineHeight: 1.25, textAlign: "center", padding: 4 }
+      }, "Otomatis", React.createElement("br", null), "sesuai jenis")),
+      semua.map((j, i) => petak(j, j + ":" + i, React.createElement("img", {
+        src: srcFotoKelas(j), alt: "", loading: "lazy", decoding: "async",
+        style: { width: "100%", height: "100%", objectFit: "cover", display: "block" }
+      })))),
+    React.createElement("input", {
+      ref, type: "file", accept: "image/*", style: { display: "none" },
+      onChange: e => unggah(e.target.files && e.target.files[0])
+    }),
+    React.createElement("button", {
+      type: "button", className: "dm-btn-line", disabled: sibuk,
+      onClick: () => ref.current && ref.current.click()
+    }, sibuk ? "Mengunggah\u2026" : "Tambah foto ke koleksi"),
+    err ? React.createElement("p", {
+      className: "dm-hint", style: { margin: "6px 0 0", color: "#B3261E", fontWeight: 600 }
+    }, err) : null);
 }
 async function unggahFotoPublik(file, awalan) {
   if (!file.type.startsWith("image/")) throw new Error("Berkas harus berupa gambar JPG, PNG, atau WebP.");

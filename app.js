@@ -492,13 +492,54 @@ const BUKAN_MATERI = /^(ishoma|istirahat|coffee\s*break|rehat|registrasi|daftar 
 const BUKAN_NAMA = /^(-|—|administrator|panitia|tim|semua|seluruh|mot|pmp|-\s*)$/i;
 
 /* Ubah baris tabel/teks menjadi [{nama, materi[]}], urut sesuai kemunculan. */
+/* Berkas "Jadwal Kegiatan" dari DCC memuat tautan materi (Google Drive, Docs,
+   pemendek link). Saat tabelnya dibaca, potongan tautan mudah tercecer ke kolom
+   nama atau materi, lalu muncul di flyer sebagai "gle.com/" atau "file/d/1g". */
+const POLA_URL = /(https?:\/\/\S+|www\.\S+|\b(?:drive|docs|sites|forms)\.google\.com\S*|\b[A-Za-z0-9-]+\.(?:com|net|org|co|io|id|me|ly|goo|gle)\b[^\s]*|\bfile\/d\/\S+|\/d\/\S+|\busp=\S+)/gi;
+function bersihSel(x) {
+  return String(x == null ? "" : x)
+    .replace(POLA_URL, " ")
+    .replace(/[•·]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+const REMAH_URL = /^(file|folder|view|usp|sharing|drive|docs|google|gle|goo|rive|com|net|org|id|http|https|www|link|klik|unduh|download)$/i;
+function sisaUrl(t) {
+  const v = String(t || "").trim();
+  if (!v) return true;
+  if (REMAH_URL.test(v.replace(/[^A-Za-z]/g, ""))) return true;
+  if (!/[A-Za-z]{3}/.test(v)) return true;
+  if (/^[A-Za-z0-9_-]{5,16}$/.test(v) && /\d/.test(v) && /[a-z]/.test(v) && /[A-Z]/.test(v)) return true;
+  if (/\bHK\.\s?\d/.test(v) || /^akreditasi\b/i.test(v)) return true;
+  return false;
+}
+/* Nama orang, bukan potongan gelar atau judul materi yang kebetulan
+   mengandung gelar. Kalau ragu, tolak: lebih baik pengurus mengetik
+   ulang daripada flyer memuat nama ngawur. */
+function namaMasukAkal(n) {
+  const v = bersihSel(n);
+  if (v.length < 4 || sisaUrl(v) || BUKAN_NAMA.test(v)) return false;
+  const adaGelar = POLA_GELAR.test(v);
+  /* Sisa teks setelah seluruh gelar dibuang = calon nama aslinya. */
+  const inti = v.replace(new RegExp(POLA_GELAR.source, "gi"), " ")
+                .replace(/[^A-Za-z\s'-]/g, " ").replace(/\s+/g, " ").trim();
+  /* Kata nama yang sah: berawalan kapital lalu huruf kecil ("Budiyanto"),
+     atau singkatan kapital penuh. Ini menyingkirkan sisa gelar ("Ne"),
+     potongan id berkas ("OKiBCKb"), dan remah tautan ("PVgxr"). */
+  const kata = inti.split(" ").filter(x => /^[A-Z][a-z'\u2019-]{2,}$/.test(x) || /^[A-Z]{3,}$/.test(x));
+  if (!kata.length) return false;                       /* cuma gelar: "S.Kep., Ne" */
+  /* Judul materi yang terseret ke kolom nama. */
+  if (/^(materi|building|learning|anti|triage|bhd|rjp|sindroma|koroner|terapi|listrik|pernafasan|pernapasan|jantung|pasca|henti|dewasa|anak|bayi|rencana|tindak|automatic|lanjutan|external|kegawatdaruratan|keperawatan|manajemen|asuhan|komunikasi|dokumentasi|evaluasi|praktik|simulasi|skill|station|pembukaan|penutupan)\b/i.test(inti)) return false;
+  return adaGelar ? kata.length >= 1 : kata.length >= 2;
+}
 function susunPemateri(baris) {
   const hasil = [];
   const kunci = n => String(n).toLowerCase().replace(/[^a-z]/g, "");
   function tambah(nama, materi) {
-    nama = String(nama || "").replace(/\s+/g, " ").replace(/^[\d.)\-•\s]+/, "").trim();
-    if (!nama || nama.length < 3 || BUKAN_NAMA.test(nama)) return;
-    materi = String(materi || "").replace(/\s+/g, " ").replace(/\s*\(\s*lanjutan\s*\)\s*$/i, "").trim();
+    nama = bersihSel(nama).replace(/^[\d.)\-•\s]+/, "").replace(/[\s,;:\/|-]+$/, "").trim();
+    if (!namaMasukAkal(nama)) return;
+    materi = bersihSel(materi).replace(/\s*\(\s*lanjutan\s*\)\s*$/i, "").replace(/[\s,;:\/|-]+$/, "").trim();
+    if (materi && sisaUrl(materi)) materi = "";
     let t = hasil.find(x => kunci(x.nama) === kunci(nama));
     if (!t) { t = { nama, materi: [] }; hasil.push(t); }
     if (materi && !BUKAN_MATERI.test(materi) && !/^skill\s*station/i.test(materi)
@@ -525,7 +566,7 @@ function susunPemateri(baris) {
   /* 2) Tanpa kepala tabel (PDF/foto): baris bergelar = nama, sisanya materi. */
   let materiTerakhir = "";
   baris.forEach(r => {
-    const s = r.join("  ").replace(/\s+/g, " ").trim();
+    const s = bersihSel(r.join("  "));
     if (!s) return;
     const g = s.search(POLA_GELAR);
     if (g > -1) {
@@ -545,13 +586,30 @@ function susunPemateri(baris) {
 function teksDariPemateri(daftar) {
   return (daftar || []).map(t => [t.nama].concat((t.materi || []).map(m => "- " + m)).join("\n")).join("\n\n");
 }
+/* Teks yang ditempel pengurus. Baris berawalan "-" selalu materi. Baris lain
+   hanya jadi nama baru bila memang berbentuk nama orang; kalau tidak, ia
+   dianggap materi dari nama di atasnya. Dengan begitu daftar yang ditempel
+   mentah dari KAK (nama, lalu materinya baris demi baris tanpa tanda minus)
+   tetap terbaca benar, dan tautan tidak pernah jadi nama. */
 function pemateriDariTeks(teks) {
   const hasil = [];
-  String(teks || "").split(/\n/).forEach(b => {
-    const s = b.trim();
-    if (!s) return;
-    if (/^[-•*]/.test(s)) { if (hasil.length) hasil[hasil.length - 1].materi.push(s.replace(/^[-•*]\s*/, "").trim()); }
-    else hasil.push({ nama: s, materi: [] });
+  const baris = String(teks || "").split(/\n/);
+  /* Bila daftarnya memakai gelar, hanya baris bergelar yang boleh jadi nama.
+     Tanpa aturan ini, judul materi ber-Huruf Besar seperti "Membangun
+     Komitmen Belajar" ikut terbaca sebagai orang. */
+  const pakaiGelar = baris.some(x => POLA_GELAR.test(bersihSel(x)));
+  baris.forEach(b => {
+    const mentah = b.trim();
+    if (!mentah) return;
+    const berbutir = /^[-•*•]/.test(mentah);
+    const isi = bersihSel(mentah.replace(/^[-•*•]\s*/, ""));
+    if (!isi || sisaUrl(isi)) return;
+    const namaBaru = pakaiGelar ? (POLA_GELAR.test(isi) && namaMasukAkal(isi)) : namaMasukAkal(isi);
+    if (!berbutir && namaBaru) { hasil.push({ nama: isi, materi: [] }); return; }
+    if (hasil.length) {
+      const m = hasil[hasil.length - 1].materi;
+      if (!m.some(x => x.toLowerCase() === isi.toLowerCase())) m.push(isi);
+    }
   });
   return hasil.filter(t => t.nama);
 }
@@ -564,7 +622,11 @@ async function bacaJadwalPemateri(file, kabar) {
   else if (/^image\//.test(file.type) || /\.(jpe?g|png|webp|heic)$/.test(n)) baris = await bacaTeksFoto(file, kabar);
   else if (/\.doc$/.test(n)) throw new Error("Format .doc lama belum didukung. Simpan ulang sebagai .docx atau PDF.");
   else throw new Error("Format berkas belum didukung. Pakai Word (.docx), Excel, CSV, PDF, atau foto.");
-  return susunPemateri(baris);
+  const hasil = susunPemateri(baris);
+  if (!hasil.length) {
+    throw new Error("Nama narasumber tidak terbaca rapi dari berkas ini \u2014 kemungkinan tabelnya tidak berkolom \"Materi\" dan \"Narasumber\", atau isinya tertutup tautan. Ketik manual saja di kotak di bawah: satu baris nama, lalu materinya diawali tanda - di baris berikutnya.");
+  }
+  return hasil;
 }
 
 /* Panel cicilan di detail pendaftar: jadwal, bukti yang masuk, dan pencatatan
@@ -8825,7 +8887,7 @@ function TabLinkKelas({ beriTahu }) {
     b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
     b.push(daring
       ? "3b. Tepat di bawah judul tulis \"DARING \u2014 ZOOM / LMS PLATARAN SEHAT\" dengan huruf kapital tebal dan ikon laptop."
-      : "3b. Tepat di bawah judul tulis nama KOTA PELAKSANAAN: \"" + (kotaGede || Y + "[KOTA PELAKSANAAN]") + "\" dengan huruf kapital extra-bold disertai ikon pin lokasi. Ukurannya jauh lebih besar daripada teks informasi lain, tetapi tetap lebih kecil daripada judul pelatihan. Jangan menambahkan slogan seperti KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN, atau PRAKTIK LEBIH TERARAH \u2014 ruang itu untuk nama kota.");
+      : "3b. Tepat di bawah judul tulis dua baris: baris pertama label kecil \"KOTA PELAKSANAAN\", baris kedua \"" + (kotaGede || Y + "[KOTA PELAKSANAAN]") + "\" dengan huruf kapital extra-bold disertai ikon pin lokasi. Ukurannya jauh lebih besar daripada teks informasi lain, tetapi tetap lebih kecil daripada judul pelatihan. Jangan menambahkan slogan seperti KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN, atau PRAKTIK LEBIH TERARAH \u2014 ruang itu untuk nama kota.");
     b.push(daring ? "3c. \u2014" : "3c. Kartu LOKASI LURING dibuat besar: baris pertama nama kota dengan huruf extra-bold merah #E91C25 (baris terbesar di kartu itu), baris kedua nama venue dengan huruf tebal navy #0B1E3F, baris ketiga alamat lengkap dengan huruf lebih kecil tetapi tetap terbaca di layar ponsel.");
     b.push("3d. Urutan penonjolan visual: judul pelatihan \u2192 nama kota \u2192 tanggal pelaksanaan \u2192 nama venue.");
     b.push(namaResmi
@@ -8929,14 +8991,18 @@ function TabLinkKelas({ beriTahu }) {
     { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)" },
     { id: "putih", nama: "Desain 5 — Putih Editorial (referensi)" },
     { id: "grid", nama: "Desain 6 — Grid Padat (materi + fasilitas)" },
-    { id: "merah", nama: "Desain 7 — Merah Dominan (berani, mencolok)" }
+    { id: "merah", nama: "Desain 7 — Merah Dominan (berani, mencolok)" },
+    { id: "kunci", nama: "Desain 8 — Kunci Master (lampirkan flyer contoh; desain dikunci)" },
+    { id: "kuncimateri", nama: "Desain 9 — Kunci Master, Materi Saja (tanpa nama narasumber)" }
   ];
   function desainBawaan(k) {
     return "utama";
   }
   function buatPromptDesain(r, k, desain) {
     let t;
-    if (desain === "infografis") t = buatPromptInfografis(r, k);
+    if (desain === "kunci") t = buatPromptKunci(r, k, false);
+    else if (desain === "kuncimateri") t = buatPromptKunci(r, k, true);
+    else if (desain === "infografis") t = buatPromptInfografis(r, k);
     else if (desain === "putih") t = buatPromptPutih(r, k);
     else if (desain === "grid") t = buatPromptGrid(r, k);
     else if (desain === "utama") return buatPromptUtama(r, k);
@@ -9018,7 +9084,7 @@ function TabLinkKelas({ beriTahu }) {
     if (!namaResmi) p("Write " + J + " as the abbreviation only. Do not add any expansion of the abbreviation.");
     p("", (daring
       ? "Directly below the subtitle: **DARING \u2014 ZOOM / LMS PLATARAN SEHAT**, extra-bold white capitals with a white laptop icon."
-      : "Directly below the subtitle, filling the space where slogan badges would otherwise sit: **" + (kotaGede || Y + "[KOTA PELAKSANAAN]") + "** \u2014 the city where the training is held, in EXTRA-BOLD WHITE CAPITALS with a white location-pin icon beside it. Far larger than any other information text, but still smaller than the " + J + " title. Use the full width freed up here. On a phone this city name must be the second thing the reader sees, right after " + J + "."),
+      : "Directly below the subtitle, filling the space where slogan badges would otherwise sit, two stacked lines: a small label **KOTA PELAKSANAAN**, then **" + (kotaGede || Y + "[KOTA PELAKSANAAN]") + "** in EXTRA-BOLD WHITE CAPITALS with a white location-pin icon beside it. The city line is far larger than any other information text, but still smaller than the " + J + " title. Use the full width freed up here. On a phone the city must be the second thing the reader sees, right after " + J + ", so anyone can tell at a glance which city this class is open in."),
       "Do NOT add slogan badges such as KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN or PRAKTIK LEBIH TERARAH \u2014 that space belongs to the city name.", "",
       "RIGHT side: realistic photo in a modern simulation room —", L(foto), "Navy medical uniforms, realistic equipment and monitors, natural Indonesian faces, soft white fade into the left side.");
     H("INFORMATION ROW — Y 480–640 px");
@@ -9106,17 +9172,20 @@ function TabLinkKelas({ beriTahu }) {
      label "PELATIHAN" di atas judul dan teks institusi terakreditasi di atas "Terakreditasi B". */
   function tambahWajibFlyer(t, k) {
     const J = String((k && k.jenis) || "").trim().toUpperCase() || "judul pelatihan";
+    const KOTA = kotaBesar(k);
+    const fmt = String((k && k.format) || "");
+    const daringSaja = !/luring/i.test(fmt) && /daring|online/i.test(fmt);
     const atas = [
       "",
       "⚠️ WAJIB / MANDATORY — tetap tampilkan walaupun gambar referensi tidak memilikinya (do NOT copy the reference here):",
       "1. Judul ditulis 2 baris: \"PELATIHAN\" lalu \"" + J + "\" (PELATIHAN = huruf kapital tebal ±40% tinggi judul, tepat di atasnya). The title text is literally \"PELATIHAN " + J + "\" stacked on two lines — never render " + J + " alone.",
       "2. Pojok kanan atas, SEJAJAR dengan deretan logo (bukan lebih tinggi, bukan lebih rendah), rata kanan. Urutan tiga baris: (a) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" ditulis TEBAL dan kontras agar terbaca jelas; (b) kata \"Terakreditasi\" ketebalan biasa lalu huruf \"B\" sebagai huruf display besar tebal sekitar 2,5x tinggi baris (a) — murni tipografi, tanpa perisai/lingkaran/stempel/pita/badge; (c) \"No. HK.02.02/F/4052/2024\".",
-      "3. Nama KOTA PELAKSANAAN ditulis besar dan tebal tepat di bawah judul, dengan ikon pin lokasi \u2014 jauh lebih besar daripada teks informasi lain, tetapi tetap lebih kecil daripada judul pelatihan. Jangan pasang slogan seperti KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN, atau PRAKTIK LEBIH TERARAH; ruang itu untuk nama kota.",
+      "3. Tepat DI BAWAH judul \"" + J + "\", tulis dua baris: baris pertama label kecil \"KOTA PELAKSANAAN\", baris kedua " + (daringSaja ? "\"DARING\"" : "\"" + (KOTA || "[KOTA PELAKSANAAN]") + "\"") + " dengan huruf kapital extra-bold disertai ikon pin lokasi. Baris kedua jauh lebih besar daripada teks informasi lain tetapi tetap lebih kecil daripada judul pelatihan, supaya pembaca langsung tahu kota pelaksanaannya hanya dengan melirik flyer di layar ponsel. Jangan pasang slogan seperti KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN, atau PRAKTIK LEBIH TERARAH; ruang itu untuk blok kota.",
       "4. Kartu lokasi luring diperbesar: nama kota extra-bold merah #E91C25 (baris terbesar di kartu), nama venue tebal navy #0B1E3F, alamat lebih kecil tetapi tetap terbaca di ponsel.",
       "5. Urutan penonjolan visual: judul pelatihan \u2192 nama kota \u2192 tanggal pelaksanaan \u2192 nama venue.",
       ""
     ].join("\n");
-    const bawah = "\n\n⚠️ CEK AKHIR / FINAL CHECK sebelum selesai: (1) kata \"PELATIHAN\" terlihat jelas di atas \"" + J + "\"; (2) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" terlihat TEBAL dan jelas di atas \"Terakreditasi B\"; (3) seluruh blok akreditasi itu sejajar dengan deretan logo, tidak melayang lebih tinggi. Jika salah satu belum ada, perbaiki dulu.";
+    const bawah = "\n\n⚠️ CEK AKHIR / FINAL CHECK sebelum selesai: (1) kata \"PELATIHAN\" terlihat jelas di atas \"" + J + "\"; (2) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" terlihat TEBAL dan jelas di atas \"Terakreditasi B\"; (3) seluruh blok akreditasi sejajar dengan deretan logo, tidak melayang lebih tinggi; (4) label \"KOTA PELAKSANAAN\" dan nama kotanya terlihat besar tepat di bawah judul. Jika salah satu belum ada, perbaiki dulu.";
     const i = t.indexOf("\n");
     return (i < 0 ? t + atas : t.slice(0, i + 1) + atas + t.slice(i + 1)) + bawah;
   }
@@ -9572,6 +9641,214 @@ function TabLinkKelas({ beriTahu }) {
   }
 
   /* Master prompt Canva-ready 4:5 (dari template Pak Ryan), diisi otomatis per kelas. */
+  /* Desain 8 — Kunci Master. Templat resmi Pak Ryan (1 Nov 2026):
+     flyer contoh dipakai sebagai desain terkunci, GPT hanya mengganti data
+     kegiatan. Varian materi/trainer dipilih sendiri dari data kelas. */
+  function buatPromptKunci(r, k, paksaMateri) {
+    const jenis = String(k.jenis || "").trim().toUpperCase();
+    const namaResmi = namaResmiJenis(jenis);
+    const kotaGede = kotaBesar(k);
+    const f = String(k.format || "").trim();
+    const blended = /daring/i.test(f) && /luring/i.test(f);
+    const daring = !blended && /daring|online/i.test(f);
+    const Y = "\u{1F7E8}";
+    const tgl = tglFlyer(k.tanggal_mulai, k.tanggal_selesai) || Y + "[tanggal pelaksanaan]";
+    const venue = String(k.lokasi || "").trim();
+    const al = (ALAMAT_VENUE.find(a => a[0].test(venue)) || [])[1] || "";
+    const harga = Number(k.harga) > 0 ? rp(Number(k.harga)).replace(/\s+/g, "") : "";
+    const bank = setelan.rek_bank || "Bank BRI";
+    const url = r && r.slug ? alamat(r.slug) : Y + "[link pendaftaran]";
+    const pm = pemateriKelas(k);
+    const tr = pm ? pm.trainer.filter(t => t && t.nama) : [];
+    const materiSaja = !!paksaMateri || !tr.length;
+    const km = materiSaja ? materiKurikulum(k) : null;
+    const b = [];
+    const H = t => { b.push(""); b.push("## " + t); b.push(""); };
+
+    b.push("# MASTER PROMPT \u2014 FLYER PELATIHAN DEWAMEDIK");
+    b.push(materiSaja ? "## OPSI 1 \u2014 TANPA NAMA NARASUMBER (MATERI SAJA)"
+                      : "## OPSI 2 \u2014 TRAINER & MATERI");
+    b.push("");
+    b.push("Lampirkan flyer contoh DEWAMEDIK bersama prompt ini. Flyer itu adalah MASTER TEMPLATE RESMI.");
+
+    H("1. DESIGN LOCK");
+    b.push("WAJIB: PERTAHANKAN DESAIN ASLI. JANGAN REDESAIN ATAU REGENERATE SELURUH FLYER.");
+    b.push("");
+    b.push("Pertahankan: komposisi dan tata letak seluruh elemen; warna merah, navy, dan putih; foto simulasi medis pada hero; posisi, bentuk, dan ukuran seluruh panel informasi; gaya huruf, ikon, garis ECG, dan elemen dekoratif; posisi logo Kemenkes dan DEWAMEDIK; posisi informasi akreditasi; area dua QR code; informasi rekening, narahubung, dan footer; nomor layanan pengaduan.");
+    b.push("");
+    b.push("Jangan membuat ulang foto atau logo apabila tidak diminta. Gunakan aset asli yang tersedia.");
+    b.push("");
+    b.push("Ukuran final: 1080 \u00d7 1350 px, rasio 4:5, Instagram Feed.");
+    b.push("");
+    b.push("Edit hanya area yang memang perlu diganti.");
+
+    H("2. HEADER \u2014 TETAP");
+    b.push("Kiri atas: logo asli Kemenkes RI, garis pemisah, lalu logo asli PT Dewa Medik Nusantara. Logo tidak boleh digambar ulang, diubah warna, atau dimodifikasi.");
+    b.push("");
+    b.push("Kanan atas, sejajar dengan deretan logo, tiga baris:");
+    b.push("");
+    b.push("Institusi penyelenggara pelatihan terakreditasi Kemenkes RI");
+    b.push("Terakreditasi B");
+    b.push("No. HK.02.02/F/4052/2024");
+    b.push("");
+    b.push("Teks akreditasi berukuran kecil dan seimbang, tidak bertabrakan dengan logo. Jangan memperbesar tulisan \"Terakreditasi B\" secara berlebihan.");
+
+    H("3. HERO \u2014 IDENTITAS PELATIHAN");
+    b.push("Pertahankan komposisi hero dari gambar master. Teks:");
+    b.push("");
+    b.push("PELATIHAN");
+    b.push(jenis || Y + "[singkatan]");
+    if (namaResmi) b.push(namaResmi);
+    else b.push(Y + "[kepanjangan pelatihan \u2014 jangan dikarang, kosongkan bila tidak tahu]");
+    b.push("");
+    b.push("KOTA PELAKSANAAN");
+    b.push(daring ? "DARING" : (kotaGede || Y + "[KOTA PELAKSANAAN]"));
+    b.push("");
+    b.push("Nama kota memakai huruf kapital extra-bold pada bidang merah agar terlihat jelas di layar ponsel.");
+    b.push("");
+    b.push("Jangan menampilkan slogan: Kompetensi lebih kuat, Pasien lebih aman, Praktik lebih terarah.");
+    b.push("");
+    b.push("Pertahankan foto medis master sebagai default. Foto hanya diganti bila diminta secara khusus.");
+
+    H("4. PANEL INFORMASI");
+    b.push("Pertahankan tiga panel dengan posisi dan gaya identik seperti desain master.");
+    b.push("");
+    b.push("PANEL 1 \u2014 METODE");
+    b.push(blended ? "Blended Training" : daring ? "Daring" : "Luring");
+    if (f) b.push(f);
+    b.push("");
+    b.push("PANEL 2 \u2014 TANGGAL PELAKSANAAN");
+    b.push(tgl);
+    if (blended) {
+      b.push("Daring: " + tglDL(k, "daring", Y + "[tanggal daring]"));
+      b.push("Luring: " + tglDL(k, "luring", Y + "[tanggal luring]"));
+    }
+    b.push("");
+    b.push("PANEL 3 \u2014 " + (daring ? "PLATFORM" : "LOKASI LURING"));
+    if (daring) b.push("Zoom / LMS Plataran Sehat");
+    else {
+      b.push((kotaGede || Y + "[KOTA]") + " \u2014 huruf extra-bold merah #E91C25, baris terbesar di panel ini");
+      b.push((venue || Y + "[nama venue]") + " \u2014 huruf tebal navy #0B1E3F");
+      b.push((al || Y + "[alamat lengkap venue]") + " \u2014 huruf lebih kecil, tetap terbaca di ponsel");
+    }
+    b.push("");
+    b.push("PENTING: jangan menampilkan nama hari atau jam pelaksanaan.");
+
+    H("5. FASILITAS PESERTA");
+    ["Sertifikat Resmi ber-SKP Kemenkes RI", "Materi Terkini", "Training Kit Eksklusif",
+     "1x makan siang & 2x coffee break", "Akses Baladewa: eksklusif dan berkelanjutan",
+     "Quickcards: ilmu tetap tajam, ulang materi kapan saja",
+     /ACLS/.test(jenis) && !/^TOT/.test(jenis) ? "Akses Pro 3 Bulan DEWA Clinical Tools" : "DEWA Clinical Tools: asisten klinis di genggaman"
+    ].forEach(x => b.push("- " + x));
+    b.push("");
+    b.push("Syarat: peserta wajib memiliki akun Plataran Sehat / SATUSEHAT SDMK");
+
+    if (materiSaja) {
+      H("6. MATERI PELATIHAN \u2014 PANEL KANAN");
+      b.push("Judul panel: MATERI PELATIHAN");
+      b.push("");
+      b.push("Tampilkan seluruh materi pelatihan memakai bullet merah dan teks navy. Seluruh panel kanan hanya untuk daftar materi.");
+      b.push("");
+      if (km && km.length) km.forEach(x => b.push("- " + x));
+      else b.push(Y + "[daftar materi pelatihan \u2014 isi dari kurikulum/KAK, jangan dikarang]");
+      b.push("");
+      b.push("ATURAN MUTLAK:");
+      ["Tidak ada nama narasumber.", "Tidak ada gelar akademik narasumber.", "Tidak ada foto narasumber.",
+       "Tidak ada tulisan \"Trainer\".", "Tidak ada tulisan \"Narasumber menyusul\".",
+       "Tidak ada placeholder nama pemateri.", "Tidak ada label Opsi 1 atau Opsi 2.",
+       "Seluruh panel kanan hanya digunakan untuk daftar materi."].forEach(x => b.push("- " + x));
+      b.push("");
+      b.push("\u26a0\ufe0f Catatan internal, JANGAN ditulis di flyer: SE Kemenkes HK.02.03/F.V/2692/2026 butir 2.k\u20132.m mewajibkan nama narasumber beserta judul materinya. Flyer materi-saja ini untuk pengumuman awal; lengkapi jadwal pemateri sebelum publikasi resmi.");
+    } else {
+      H("6. TRAINER & MATERI \u2014 PANEL KANAN");
+      b.push("Judul panel: TRAINER & MATERI PELATIHAN");
+      b.push("");
+      b.push("Tulis nama pemateri beserta gelar, lalu materi yang dibawakannya tepat di bawah nama itu. Jangan mengarang nama, gelar, atau pembagian materi. Jangan membuat foto trainer.");
+      b.push("");
+      if (tr.length) {
+        tr.forEach(t => {
+          b.push(t.nama);
+          (Array.isArray(t.materi) ? t.materi : []).forEach(x => b.push("- " + x));
+          b.push("");
+        });
+      } else {
+        b.push(Y + "[nama pemateri dan materinya \u2014 isi dari KAK, jangan dikarang]");
+      }
+    }
+    b.push("Jangan menampilkan kedua opsi dalam satu flyer.");
+
+    H("7. QR PENDAFTARAN & VALIDASI SKP");
+    b.push("Pertahankan dua panel QR dengan ukuran dan posisi seperti master.");
+    b.push("");
+    b.push("QR 1 \u2014 SCAN PENDAFTARAN. Masukkan QR pendaftaran asli tanpa redraw atau modifikasi.");
+    b.push(url);
+    b.push("");
+    b.push("QR 2 \u2014 SCAN VALIDASI SKP & KRITERIA PESERTA. Masukkan QR resmi dari Surat Keterangan Registrasi Kemenkes.");
+    b.push("Teks di bawahnya: Scan QR dari Surat Keterangan Registrasi Kemenkes.");
+    b.push("");
+    b.push("Bila QR belum tersedia, biarkan areanya kosong dengan empat siku penanda seperti gambar master. Jangan membuat QR palsu.");
+
+    H("8. BIAYA DAN PEMBAYARAN");
+    b.push("BIAYA PELATIHAN");
+    b.push(harga || Y + "[biaya pelatihan]");
+    b.push("");
+    b.push("Angka merah besar, tetapi tetap lebih kecil daripada judul utama pelatihan.");
+    b.push("");
+    b.push(bank);
+    b.push("No. Rekening: " + (setelan.rek_nomor || "201001000824562"));
+    b.push("a.n. " + (setelan.rek_atas_nama || "Dewa Medik Nusantara"));
+    b.push("");
+    b.push("Gunakan logo " + bank + " asli bila asetnya tersedia. Jangan membuat ulang logo dengan AI.");
+
+    H("9. NARAHUBUNG \u2014 TETAP");
+    b.push("INFORMASI & NARAHUBUNG");
+    b.push("");
+    ["Arka \u2014 0821-2348-6576", "Eza \u2014 0851-6145-9345",
+     "Tama \u2014 0856-5556-4911", "Hawa \u2014 0851-1745-4911"].forEach(x => b.push(x));
+    b.push("");
+    b.push("Nomor telepon harus terbaca jelas.");
+
+    H("10. FOOTER \u2014 TETAP");
+    b.push("Pertahankan footer navy dari desain master.");
+    b.push("");
+    b.push("Diselenggarakan oleh PT Dewa Medik Nusantara");
+    b.push("Instagram / TikTok / YouTube: @dewamedik_hc");
+    b.push("Website: www.dewamedik911.com");
+    b.push("Kalender pelatihan: daftarpelatihan.dewamedik911.com");
+    b.push("Layanan Pengaduan: 081366664911");
+    b.push("Excellence Is The Way. Excellence Evolved.");
+
+    H("11. KETENTUAN PUBLIKASI");
+    [
+      "Gunakan informasi akreditasi sesuai data resmi.",
+      "Jangan menampilkan angka jumlah SKP \u2014 nilai SKP hanya lewat QR code.",
+      "Jangan memakai kata promo, diskon, voucher, early bird, cashback, doorprize, atau gratis.",
+      "Jangan membuat klaim direkomendasikan Kemenkes.",
+      "Jangan mengarang tanggal, biaya, alamat, pemateri, atau materi.",
+      "Jangan membuat logo atau QR buatan.",
+      "Semua teks harus terbaca pada ukuran 1080 \u00d7 1350 px.",
+      "Jangan memotong informasi penting demi memaksakan ukuran teks.",
+      "Bila ada data wajib yang belum tersedia, laporkan bagian yang belum lengkap secara terpisah, jangan menampilkan data karangan."
+    ].forEach(x => b.push("- " + x));
+
+    H("12. FINAL DESIGN LOCK");
+    b.push("EDIT THE PROVIDED MASTER FLYER. DO NOT GENERATE A NEW DESIGN.");
+    b.push("");
+    b.push("Preserve the original composition, photo, logo assets, background, colors, typography, information cards, QR positions, payment details, contacts, and footer. Replace only the explicitly supplied dynamic training information. Produce exactly ONE 1080 \u00d7 1350 px Instagram flyer.");
+    b.push("");
+    b.push(materiSaja
+      ? "The right content panel must contain TRAINING MATERIALS ONLY, with absolutely no trainer or speaker names."
+      : "The right content panel lists each trainer with their own materials directly beneath their name.");
+    b.push("");
+    b.push("Do not add days, clock times, comparison options, or new design elements. Final output must visually match the approved reference template.");
+    b.push("");
+    b.push("Sebelum selesai, periksa: (1) jenis kegiatan benar; (2) kota pelaksanaan besar dan jelas; (3) tanggal benar, tanpa nama hari atau jam; (4) biaya benar; (5) panel materi memakai opsi yang benar; (6) nomor kontak, rekening, dan layanan pengaduan benar; (7) dua area QR tersedia; (8) seluruh desain tetap konsisten dengan flyer master.");
+
+    const simbol = b.join("\n").indexOf("\u{1F7E8}") > -1;
+    if (simbol) b.push("");
+    return b.join("\n").replace(/\n{3,}/g, "\n\n");
+  }
+
   function buatPromptMaster(r, k, terang) {
     const jenis = String(k.jenis || "").trim().toUpperCase();
     const namaResmi = namaResmiJenis(jenis);
@@ -9990,7 +10267,7 @@ function TabLinkKelas({ beriTahu }) {
                   up && !ed ? React.createElement("button", { type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 }, onClick: () => hapusPemateri(k) }, "Hapus") : null),
                 React.createElement("p", { className: "dm-hint", style: { margin: "6px 0 0" } },
                   up ? "Dipakai untuk prompt flyer: " + (up.nama_file || "diketik manual") + "."
-                     : "Opsional. Upload \u201cJadwal Kegiatan\u201d atau \u201cRekap Materi dan Narasumber\u201d dari DCC, Excel, PDF, atau foto jadwal. Bila ada, ini yang dipakai (mengalahkan data KAK DCC)."),
+                     : "Opsional. Upload \u201cJadwal Kegiatan\u201d atau \u201cRekap Materi dan Narasumber\u201d dari DCC, Excel, PDF, atau foto jadwal \u2014 atau ketik/tempel langsung di kotak: satu baris nama lengkap dengan gelar, lalu judul materinya di baris-baris berikutnya. Baris yang bukan nama orang otomatis dianggap materi dari nama di atasnya, dan tautan dibuang. Bila ada, ini yang dipakai (mengalahkan data KAK DCC)."),
                 ed ? React.createElement("div", { style: { marginTop: 8 } },
                   React.createElement("p", { className: "dm-hint", style: { margin: "0 0 4px", fontWeight: 600 } }, ed.pesan || ""),
                   React.createElement("textarea", {

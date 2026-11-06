@@ -31,6 +31,30 @@ const SB = supabase.createClient(bersihkanUrl(window.DMN_CONFIG.url), String(win
    pengurus untuk kampanye itu. Gerbang biaya dan alur
    pendaftaran tidak berubah sedikit pun.
    ============================================================ */
+/* Masa berlaku link kelas: tetap hidup sampai seminggu setelah hari
+   terakhir kelasnya. Lewat itu link dianggap kedaluwarsa supaya tautan
+   lama yang masih beredar tidak lagi menarik pendaftar baru. */
+window.DM_TENGGANG_HARI = 7;
+function kelasBerakhir(k) {
+  var t = (k && (k.tanggal_selesai || k.tanggal_mulai)) || "";
+  return /^\d{4}-\d{2}-\d{2}/.test(t) ? t.slice(0, 10) : "";
+}
+/* Tanggal terakhir dari sekumpulan kelas. "" bila tak satu pun bertanggal. */
+function akhirTerjauh(daftar) {
+  return (daftar || []).reduce(function (m, k) {
+    var t = kelasBerakhir(k);
+    return t > m ? t : m;
+  }, "");
+}
+function sudahLewatTenggang(akhir) {
+  if (!akhir) return false;                 /* tanpa tanggal: jangan tebak */
+  var batas = new Date(akhir + "T00:00:00");
+  if (isNaN(batas)) return false;
+  batas.setDate(batas.getDate() + window.DM_TENGGANG_HARI);
+  var kini = new Date();
+  kini.setHours(0, 0, 0, 0);
+  return kini > batas;
+}
 window.DM_SLUG = (function () {
   try {
     var v = new URLSearchParams(window.location.search).get("k") || "";
@@ -2245,6 +2269,7 @@ function App() {
   const [lowongan, setLowongan] = useState([]);
   const [fasilitas, setFasilitas] = useState([]);
   const [kampanye, setKampanye] = useState(null);
+  const [kampanyeTutup, setKampanyeTutup] = useState(null);
   const [sisi, setSisi] = useState("daftar");
   const [toast, setToast] = useState("");
   const ketukRef = useRef([]);
@@ -2317,6 +2342,22 @@ function App() {
         });
       }
     } catch (e) {}
+    /* Kampanye yang kelas terakhirnya sudah lewat lebih dari seminggu
+       ditutup: pengunjung diberi tahu, bukan dilempar diam-diam ke
+       seluruh jadwal seperti dulu. */
+    if (kmp) {
+      const akhir = akhirTerjauh(daftarKelas);
+      if (sudahLewatTenggang(akhir)) {
+        setKampanye(null);
+        setKampanyeTutup({ judul: kmp.judul || "Kelas ini", akhir: akhir });
+        daftarKelas = (b.data || []).map(function (x) {
+          var h = (window.DM_BIAYA || {})[x.id];
+          return Object.assign({}, x, { harga: h == null ? null : Number(h) });
+        });
+      } else {
+        setKampanyeTutup(null);
+      }
+    } else setKampanyeTutup(null);
     setKelas(daftarKelas);
     setTestimoni(c.error ? [] : c.data || []);
     setLowongan(d.error ? [] : d.data || []);
@@ -2495,6 +2536,7 @@ function App() {
   }, "Lihat jadwal pelatihan"))) : /*#__PURE__*/React.createElement(Pendaftaran, {
     setelan: setelan,
     kampanye: kampanye,
+    kampanyeTutup: kampanyeTutup,
     kelas: kelas,
     testimoni: testimoni,
     lowongan: lowongan,
@@ -2518,6 +2560,7 @@ function App() {
 function Pendaftaran({
   setelan,
   kampanye,
+  kampanyeTutup,
   kelas,
   testimoni,
   lowongan,
@@ -3046,7 +3089,9 @@ function Pendaftaran({
     "aria-hidden": "true"
   }), /*#__PURE__*/React.createElement(EcgHero, null), /*#__PURE__*/React.createElement("div", {
     className: "dm-wrap dm-hero-in"
-  }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("p", {
+  }, /*#__PURE__*/React.createElement("div", null, kampanyeTutup ? /*#__PURE__*/React.createElement("div", {
+    style: { background: "#FFF4E5", border: "1px solid #E8C89A", borderRadius: 12, padding: "12px 14px", marginBottom: 14, color: "#7A4F11" }
+  }, /*#__PURE__*/React.createElement("b", null, "Pendaftaran " + kampanyeTutup.judul + " sudah ditutup."), " Kelasnya telah selesai. Silakan pilih jadwal lain yang masih dibuka di bawah ini.") : null, /*#__PURE__*/React.createElement("p", {
     className: "dm-eyebrow"
   }, kampanye ? "Pendaftaran Kelas Pilihan" : "Portal Pendaftaran Pelatihan"), kampanye ? /*#__PURE__*/React.createElement("h1", null, /*#__PURE__*/React.createElement("span", {
     className: "dm-baris1"
@@ -10380,10 +10425,24 @@ function TabLinkKelas({ beriTahu }) {
                       k.tanggal_mulai ? rentang(k.tanggal_mulai, k.tanggal_selesai) : "")));
                 })()),
                 React.createElement("td", { className: "dm-mono", style: { whiteSpace: "nowrap", fontSize: 12.5 } }, alamatTampil(r.slug)),
-                React.createElement("td", null,
-                  React.createElement("span", {
-                    style: { fontWeight: 600, color: r.aktif ? "#166534" : "#8a6d3b" }
-                  }, r.aktif ? "Aktif" : "Nonaktif")),
+                React.createElement("td", null, (() => {
+                  /* Tiga keadaan yang membuat sebuah link tidak menargetkan
+                     kelasnya: belum ada kelas tercentang, dimatikan, atau
+                     kelasnya sudah lewat lebih dari seminggu. */
+                  const isi = (r.kelas_id || []).map(id => kelas.find(k => k.id === id)).filter(Boolean);
+                  const habis = sudahLewatTenggang(akhirTerjauh(isi));
+                  const kosong = !isi.length;
+                  const warna = !r.aktif || kosong ? "#B3261E" : habis ? "#8a6d3b" : "#166534";
+                  const teks = kosong ? "Belum ada kelas" : !r.aktif ? "Nonaktif" : habis ? "Kedaluwarsa" : "Aktif";
+                  return React.createElement("div", null,
+                    React.createElement("span", { style: { fontWeight: 600, color: warna } }, teks),
+                    (kosong || !r.aktif) ? React.createElement("div", {
+                      className: "dm-hint", style: { color: "#B3261E", fontSize: 11.5, lineHeight: 1.35, marginTop: 2 }
+                    }, "Link ini menampilkan semua kelas") : null,
+                    habis && r.aktif && !kosong ? React.createElement("div", {
+                      className: "dm-hint", style: { fontSize: 11.5, lineHeight: 1.35, marginTop: 2 }
+                    }, "Pendaftaran sudah ditutup otomatis") : null);
+                })()),
                 React.createElement("td", null,
                   React.createElement("div", { className: "dm-row dm-aksi-link", style: { gap: 6 } },
                     React.createElement("button", {

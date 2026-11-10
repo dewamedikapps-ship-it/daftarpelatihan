@@ -1261,6 +1261,44 @@ function linkPelunasan(r) {
     return cadangan;
   }
 }
+/* Pesan penagihan sisa pembayaran. Berbeda dari pesan verifikasi: isinya
+   hanya yang perlu untuk melunasi — berapa sisanya, ke mana transfernya,
+   dan tautan unggah bukti milik peserta itu. */
+function pesanTagihPelunasan(r, setelan) {
+  const kelas = r.pelatihan ? r.pelatihan.judul : "pelatihan DEWAMEDIK";
+  const jadwal = r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "-";
+  const b = [];
+  b.push(`${sapaan()} Kak ${r.nama},`);
+  b.push("");
+  b.push(`Kami mengingatkan dengan baik ya Kak. Pendaftaran Kakak di *${kelas}* (${jadwal}) masih menyisakan pembayaran.`);
+  b.push("");
+  b.push("*RINCIAN*");
+  b.push(`Nomor registrasi : ${r.nomor}`);
+  b.push(`Jenis pendaftaran: ${labelTipeBayar(r.tipe_bayar, r.cicilan_kali)}`);
+  b.push(`Sudah dibayar    : ${rp(r.jumlah_bayar)}`);
+  b.push(`Sisa             : ${rp(r.sisa_bayar)}`);
+  if (r.tipe_bayar === "cicilan") {
+    const st = statusCicilan(r);
+    const berikut = st.rin.filter(c => c.ke > st.lunasKe)[0];
+    if (berikut) b.push(`Cicilan berikutnya: ${rp(berikut.nominal)}${berikut.tenggat ? " paling lambat " + tglPanjang(berikut.tenggat) : " sebelum pelatihan dimulai"}`);
+  }
+  b.push("");
+  b.push("*CARA MELUNASI*");
+  b.push(`1. Transfer ke rekening resmi ${(setelan && setelan.rek_bank) || "-"} ${(setelan && setelan.rek_nomor) || "-"} a.n. ${(setelan && setelan.rek_atas_nama) || "PT. Dewa Medik Nusantara"}`);
+  b.push("2. Buka tautan di bawah ini — kelas Kakak sudah langsung tampil di sana, tinggal pilih berkas buktinya:");
+  b.push(linkPelunasan(r));
+  b.push("");
+  b.push("Tautan itu khusus untuk Kakak, mohon jangan dibagikan.");
+  b.push("");
+  b.push("Hati-hati penipuan mengatasnamakan Dewa Medik Nusantara. Kami tidak pernah meminta transfer ke rekening pribadi atau nama lain.");
+  b.push("");
+  b.push("Terima kasih ya Kak.");
+  b.push("");
+  b.push("Akademia DEWAMEDIK");
+  b.push("PT. Dewa Medik Nusantara");
+  b.push("_Excellence Is The Way_");
+  return b.join("\n");
+}
 function pesanTerverifikasi(r, setelan) {
   const kelas = r.pelatihan ? r.pelatihan.judul : "pelatihan DEWAMEDIK";
   const jadwal = r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "-";
@@ -4665,6 +4703,7 @@ function TabPendaftar({
   const [alasan, setAlasan] = useState("");
   const [kelas, setKelas] = useState([]);
   const [pindah, setPindah] = useState(null);      /* {r, tujuan, sebab} */
+  const [tagih, setTagih] = useState(false);       /* panel tagih pelunasan satu angkatan */
   const [cicilan, setCicilan] = useState({});      /* pendaftaran_id -> riwayat pembayaran cicilan */
   useEffect(() => {
     SB.from("pelatihan").select("id,judul,tanggal_mulai,tanggal_selesai,status")
@@ -4959,6 +4998,21 @@ function TabPendaftar({
       : fBayar === "cek" ? r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0 && !!r.berkas_pelunasan && !r.pelunasan_ditolak
       : r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0);
   const nilai = aktif.filter(r => r.status === "terverifikasi").reduce((a, b) => a + Number(b.total), 0);
+  /* Semua peserta pada pilihan kelas yang sekarang yang masih punya sisa
+     bayar. Sengaja memakai `dasar`, bukan `tampil`: panel penagihan harus
+     memperlihatkan satu angkatan utuh, tidak terpotong saringan status
+     atau jenis pembayaran yang kebetulan sedang aktif. */
+  /* Bukti yang sudah masuk dan belum ditolak: orangnya jangan ditagih lagi. */
+  const sudahKirimBukti = r => r.tipe_bayar === "cicilan"
+    ? (cicilan[r.id] || []).some(x => x.status === "menunggu")
+    : !!r.berkas_pelunasan && !r.pelunasan_ditolak;
+  const belumLunas = dasar
+    .filter(r => !mati(r) && Number(r.sisa_bayar) > 0 && (r.tipe_bayar === "booking" || r.tipe_bayar === "cicilan"))
+    /* Yang benar-benar perlu ditagih naik ke atas; yang buktinya sudah
+       masuk turun ke bawah supaya tidak tertagih dua kali. */
+    .sort((a, b) => (sudahKirimBukti(a) ? 1 : 0) - (sudahKirimBukti(b) ? 1 : 0)
+      || String(a.nama || "").localeCompare(String(b.nama || ""), "id"));
+  const perluDitagih = belumLunas.filter(r => !sudahKirimBukti(r));
   return /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("div", {
     className: "dm-stat"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("span", null, "Pendaftar"), /*#__PURE__*/React.createElement("b", {
@@ -5040,7 +5094,15 @@ function TabPendaftar({
   }, /*#__PURE__*/React.createElement(Ikon, {
     nama: "papan",
     ukuran: 15
-  }), " Unduh Excel")), /*#__PURE__*/React.createElement(RekapTshirt, {
+  }), " Unduh Excel"), /*#__PURE__*/React.createElement("button", {
+    className: "dm-btn-line",
+    disabled: !belumLunas.length,
+    title: belumLunas.length ? "" : "Tidak ada peserta dengan sisa bayar pada pilihan ini",
+    onClick: () => setTagih(true)
+  }, /*#__PURE__*/React.createElement(Ikon, {
+    nama: "headset",
+    ukuran: 15
+  }), " Tagih pelunasan (" + belumLunas.length + ")")), /*#__PURE__*/React.createElement(RekapTshirt, {
     baris: tampil
   }), tampil.length === 0 ? /*#__PURE__*/React.createElement("p", {
     className: "dm-kosong"
@@ -5262,6 +5324,81 @@ function TabPendaftar({
       else beriTahu(t);
     }
   }, "Salin tautan pelunasan") : null)) : null) : null,
+
+    tagih ? /*#__PURE__*/React.createElement(Modal, {
+      judul: "Tagih pelunasan" + (labelPilihan ? " \u2014 " + labelPilihan : ""),
+      onTutup: () => setTagih(false),
+      lebar: 820
+    }, /*#__PURE__*/React.createElement("p", { className: "dm-hint", style: { marginBottom: 12 } },
+      belumLunas.length + " peserta masih punya sisa bayar",
+      perluDitagih.length !== belumLunas.length
+        ? ", " + (belumLunas.length - perluDitagih.length) + " di antaranya sudah mengirim bukti dan tinggal dicek"
+        : "",
+      ". Pesannya sudah tersusun lengkap beserta tautan pelunasan masing-masing \u2014 tinggal ditekan kirim."),
+      /*#__PURE__*/React.createElement("div", { className: "dm-row", style: { marginBottom: 12 } },
+        /*#__PURE__*/React.createElement("button", {
+          className: "dm-btn-line",
+          onClick: () => {
+            const t = perluDitagih.map(r =>
+              r.nama + " \u00b7 " + r.nomor + " \u00b7 " + labelTipeBayar(r.tipe_bayar, r.cicilan_kali) +
+              " \u00b7 sisa " + rp(r.sisa_bayar) + " \u00b7 " + r.hp + "\n" + linkPelunasan(r)
+            ).join("\n\n");
+            if (!t) return beriTahu("Tidak ada yang perlu ditagih.");
+            if (navigator.clipboard) navigator.clipboard.writeText(t).then(
+              () => beriTahu("Rekap " + perluDitagih.length + " peserta disalin."),
+              () => beriTahu("Gagal menyalin."));
+            else beriTahu("Gagal menyalin.");
+          }
+        }, "Salin rekap yang perlu ditagih")),
+      /*#__PURE__*/React.createElement("div", { className: "dm-tabel-bungkus" },
+        /*#__PURE__*/React.createElement("table", { className: "dm-tabel" },
+          /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null,
+            /*#__PURE__*/React.createElement("th", null, "Peserta"),
+            /*#__PURE__*/React.createElement("th", null, "Jenis"),
+            /*#__PURE__*/React.createElement("th", null, "Sisa"),
+            /*#__PURE__*/React.createElement("th", null, "Kirim"))),
+          /*#__PURE__*/React.createElement("tbody", null, belumLunas.map(r => {
+            const kirimBukti = sudahKirimBukti(r);
+            const telat = r.tipe_bayar === "cicilan" && !!statusCicilan(r).telat;
+            return /*#__PURE__*/React.createElement("tr", { key: r.id },
+              /*#__PURE__*/React.createElement("td", null,
+                /*#__PURE__*/React.createElement("b", null, r.nama),
+                /*#__PURE__*/React.createElement("div", { className: "dm-hint", style: { fontSize: 11.5 } },
+                  r.nomor + " \u00b7 " + r.hp)),
+              /*#__PURE__*/React.createElement("td", null,
+                labelTipeBayar(r.tipe_bayar, r.cicilan_kali),
+                r.status !== "terverifikasi" ? /*#__PURE__*/React.createElement("div", {
+                  className: "dm-hint", style: { fontSize: 11.5, color: "#8a6d3b" }
+                }, "Pendaftaran belum diverifikasi") : null,
+                telat ? /*#__PURE__*/React.createElement("div", {
+                  className: "dm-hint", style: { fontSize: 11.5, color: "#B3261E" }
+                }, "Cicilan lewat tenggat") : null,
+                kirimBukti ? /*#__PURE__*/React.createElement("div", {
+                  className: "dm-hint", style: { fontSize: 11.5, color: "#166534" }
+                }, "Bukti sudah masuk, tinggal dicek") : null),
+              /*#__PURE__*/React.createElement("td", { className: "dm-mono" }, rp(r.sisa_bayar)),
+              /*#__PURE__*/React.createElement("td", null,
+                /*#__PURE__*/React.createElement("div", { className: "dm-row" },
+                  /*#__PURE__*/React.createElement("a", {
+                    className: "dm-btn dm-btn-wa",
+                    href: waLink(r.hp, pesanTagihPelunasan(r, setelan)),
+                    target: "_blank",
+                    rel: "noreferrer",
+                    style: kirimBukti ? { opacity: .55 } : undefined
+                  }, "WhatsApp"),
+                  /*#__PURE__*/React.createElement("button", {
+                    className: "dm-btn-line",
+                    onClick: () => {
+                      const t = pesanTagihPelunasan(r, setelan);
+                      if (navigator.clipboard) navigator.clipboard.writeText(t).then(
+                        () => beriTahu("Pesan untuk " + r.nama + " disalin."),
+                        () => beriTahu("Gagal menyalin."));
+                      else beriTahu("Gagal menyalin.");
+                    }
+                  }, "Salin"))));
+          })))),
+      /*#__PURE__*/React.createElement("div", { className: "dm-row dm-row-akhir", style: { marginTop: 14 } },
+        /*#__PURE__*/React.createElement("button", { className: "dm-btn-line", onClick: () => setTagih(false) }, "Tutup"))) : null,
 
     pindah ? /*#__PURE__*/React.createElement(Modal, {
       judul: "Pindah jadwal — " + pindah.r.nama,

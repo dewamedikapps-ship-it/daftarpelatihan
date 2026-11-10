@@ -1236,6 +1236,31 @@ function sapaan() {
   if (j < 18) return "Semangat sore";
   return "Selamat malam";
 }
+/* Tautan pelunasan milik satu peserta. Isinya tiga data yang memang sudah
+   ada pada pesan yang mengantarnya, jadi tidak membuka apa pun yang belum
+   diketahui penerima. Portal memakainya untuk mengisi dan mencari sendiri,
+   sehingga peserta tidak perlu mengetik apa-apa dan langsung melihat
+   kelasnya. Pencariannya tetap lewat cari_pelunasan apa adanya. */
+function linkPelunasan(r) {
+  const cadangan = "https://daftarpelatihan.dewamedik911.com/?lunas";
+  try {
+    const asal = (window.location && window.location.origin) || "";
+    if (!asal) return cadangan;
+    const q = new URLSearchParams();
+    q.set("lunas", "1");
+    /* Ketiga data dikirim apa adanya seperti tersimpan di back office,
+       supaya yang dicocokkan cari_pelunasan sama persis dengan isi tabel.
+       Yang kosong tidak ikut, agar tautannya tetap pendek. */
+    const isi = { n: (r && r.nama) || "", w: (r && r.hp) || "", e: (r && r.email) || "" };
+    Object.keys(isi).forEach(function (k) {
+      const v = String(isi[k]).trim();
+      if (v) q.set(k, v);
+    });
+    return asal + "/?" + q.toString();
+  } catch (e) {
+    return cadangan;
+  }
+}
 function pesanTerverifikasi(r, setelan) {
   const kelas = r.pelatihan ? r.pelatihan.judul : "pelatihan DEWAMEDIK";
   const jadwal = r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "-";
@@ -1262,12 +1287,20 @@ function pesanTerverifikasi(r, setelan) {
     b.push("*JADWAL CICILAN BERIKUTNYA*");
     st.rin.filter(c => c.ke > st.lunasKe).forEach(c => b.push(`Cicilan ${c.ke} : ${rp(c.nominal)}${c.tenggat ? " paling lambat " + tglPanjang(c.tenggat) : " sebelum pelatihan dimulai"}`));
     b.push("");
-    b.push("Bukti transfer cicilan diunggah di daftarpelatihan.dewamedik911.com/?lunas ya Kak.");
+    b.push("*CARA MENGUNGGAH BUKTI CICILAN*");
+    b.push("Buka tautan di bawah ini, kelas Kakak sudah langsung tampil di sana — tinggal pilih berkasnya.");
+    b.push(linkPelunasan(r));
+    b.push("Tautan ini khusus untuk Kakak, mohon jangan dibagikan.");
   } else if (r.tipe_bayar === "booking" && Number(r.sisa_bayar) > 0) {
     b.push(`Pembayaran       : Booking seat, uang muka ${rp(r.jumlah_bayar)} sudah kami terima`);
     b.push(`Sisa pelunasan   : ${rp(r.sisa_bayar)}`);
     b.push("");
     b.push("Mohon sisa pembayaran dilunasi sebelum pelatihan dimulai ya Kak.");
+    b.push("");
+    b.push("*CARA MENGUNGGAH BUKTI PELUNASAN*");
+    b.push("Buka tautan di bawah ini, kelas Kakak sudah langsung tampil di sana — tinggal pilih berkasnya.");
+    b.push(linkPelunasan(r));
+    b.push("Tautan ini khusus untuk Kakak, mohon jangan dibagikan.");
   } else {
     b.push(`Pembayaran       : LUNAS ${rp(r.total)}`);
   }
@@ -1659,10 +1692,12 @@ function Fasilitas({
    dan email; server mencari sendiri booking yang belum lunas (2 dari 3
    harus cocok, WA atau email wajib salah satunya; nama dicocokkan longgar).
    Status TIDAK otomatis lunas: admin mengecek mutasi lalu Tandai lunas. */
-function UnggahPelunasan({ setelan, onTutup }) {
-  const [nama, setNama] = useState("");
-  const [wa, setWa] = useState("");
-  const [email, setEmail] = useState("");
+function UnggahPelunasan({ setelan, awal, onTutup }) {
+  const aw = awal || {};
+  const lewatTautan = !!(aw.nama && aw.wa && aw.email);
+  const [nama, setNama] = useState(aw.nama || "");
+  const [wa, setWa] = useState(aw.wa || "");
+  const [email, setEmail] = useState(aw.email || "");
   const [sibuk, setSibuk] = useState(false);
   const [pesan, setPesan] = useState("");
   const [daftar, setDaftar] = useState(null);
@@ -1670,6 +1705,7 @@ function UnggahPelunasan({ setelan, onTutup }) {
   const [berkas, setBerkas] = useState(null);
   const [selesai, setSelesai] = useState(null);
   const [nominal, setNominal] = useState("");
+  const [membuka, setMembuka] = useState(lewatTautan);
   const h = React.createElement;
   const dPilih = daftar && daftar.find(d => d.nomor === pilih) || null;
   const cicil = !!(dPilih && dPilih.tipe === "cicilan");
@@ -1686,6 +1722,15 @@ function UnggahPelunasan({ setelan, onTutup }) {
     return String(sisa);
   }
   useEffect(() => { setNominal(saranNominal(dPilih)); }, [pilih, daftar]);
+  /* Datang lewat tautan khusus yang sudah membawa ketiga datanya: cari
+     sekali sendiri, supaya yang pertama dilihat peserta adalah kelasnya,
+     bukan formulir yang harus diisi ulang. */
+  const sudahCari = useRef(false);
+  useEffect(() => {
+    if (sudahCari.current || !lewatTautan) return;
+    sudahCari.current = true;
+    Promise.resolve(cari()).finally(() => setMembuka(false));
+  }, []);
   async function cari() {
     setPesan("");
     if (nama.trim().length < 3) return setPesan("Masukkan nama lengkap Anda.");
@@ -1762,6 +1807,10 @@ function UnggahPelunasan({ setelan, onTutup }) {
         selesai.dikirim ? h("div", null, h("span", null, "Nominal cicilan"), h("b", { className: "dm-mono" }, rp(selesai.dikirim)))
           : selesai.sisa_bayar != null ? h("div", null, h("span", null, "Sisa yang dilunasi"), h("b", { className: "dm-mono" }, rp(selesai.sisa_bayar))) : null),
       h("div", { className: "dm-row dm-row-akhir" }, h("button", { className: "dm-btn", onClick: onTutup }, "Selesai")));
+  } else if (!daftar && membuka) {
+    /* Datang lewat tautan khusus yang sudah membawa datanya: yang terlihat
+       hanya keterangan singkat, bukan formulir yang tak perlu diisi. */
+    isi = h("p", { className: "dm-lead dm-lead-kecil" }, "Membuka data pendaftaran Anda\u2026");
   } else if (!daftar) {
     isi = h(React.Fragment, null,
       h("p", { className: "dm-lead dm-lead-kecil" }, "Untuk peserta booking seat atau cicilan. Isi data yang Anda pakai saat mendaftar — kelas, lokasi, dan sisa pembayaran Anda akan muncul otomatis."),
@@ -2556,6 +2605,14 @@ function App() {
     onTutup: () => setBukaCek(false)
   }) : null, bukaLunas && setelan ? /*#__PURE__*/React.createElement(UnggahPelunasan, {
     setelan: setelan,
+    awal: (() => {
+      try {
+        const q = new URLSearchParams(location.search);
+        return { nama: q.get("n") || "", wa: q.get("w") || "", email: q.get("e") || "" };
+      } catch (e) {
+        return { nama: "", wa: "", email: "" };
+      }
+    })(),
     onTutup: () => setBukaLunas(false)
   }) : null, siap && !galat && setelan && sisi !== "admin" ? /*#__PURE__*/React.createElement(Footer, {
     setelan: setelan
@@ -5197,7 +5254,14 @@ function TabPendaftar({
   }, "Kirim lewat WhatsApp"), /*#__PURE__*/React.createElement("a", {
     className: "dm-btn-line",
     href: mailLink(detail.email, detail.status === "terverifikasi" ? `Pendaftaran Berhasil — ${detail.nomor} · Akademia DEWAMEDIK` : `Perlu Dilengkapi — ${detail.nomor} · Akademia DEWAMEDIK`, detail.status === "terverifikasi" ? pesanTerverifikasi(detail, setelan) : pesanPerbaikan(detail, setelan))
-  }, "Kirim lewat email"))) : null) : null,
+  }, "Kirim lewat email"), Number(detail.sisa_bayar) > 0 ? /*#__PURE__*/React.createElement("button", {
+    className: "dm-btn-line",
+    onClick: () => {
+      const t = linkPelunasan(detail);
+      if (navigator.clipboard) navigator.clipboard.writeText(t).then(() => beriTahu("Tautan pelunasan disalin."), () => beriTahu("Gagal menyalin. Salin manual: " + t));
+      else beriTahu(t);
+    }
+  }, "Salin tautan pelunasan") : null)) : null) : null,
 
     pindah ? /*#__PURE__*/React.createElement(Modal, {
       judul: "Pindah jadwal — " + pindah.r.nama,

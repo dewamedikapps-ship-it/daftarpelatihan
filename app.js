@@ -2393,7 +2393,7 @@ function App() {
     const [a, b, c, d, f, g] = await Promise.all([SB.from("pengaturan").select("*").eq("id", 1).single(), SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,kota,format,kuota,status,sisa").order("tanggal_mulai").then(function (r) {
       /* Kolom kota mungkin belum ada di tampilan publik: ulangi tanpa kota. */
       return r && r.error && /kota/i.test(r.error.message || "") ? SB.from("pelatihan_publik").select("id,jenis,judul,tanggal_mulai,tanggal_selesai,lokasi,format,kuota,status,sisa").order("tanggal_mulai") : r;
-    }), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12), window.DM_SLUG ? SB.from("kampanye").select("*").in("slug", varianSlug(window.DM_SLUG)).eq("aktif", true).then(function (res) {
+    }), SB.from("testimoni").select("*").eq("tampil", true).order("urutan").limit(6), SB.from("lowongan").select("*").order("urutan").limit(6), SB.from("fasilitas").select("*").eq("tampil", true).order("urutan").limit(12), window.DM_SLUG ? SB.from("kampanye").select("id,slug,judul,subjudul,kelas_id,aktif,dibuat").in("slug", varianSlug(window.DM_SLUG)).eq("aktif", true).then(function (res) {
       /* Slug persis didahulukan; varian tot-btcls-/totbtcls- sebagai cadangan. */
       var d = res && res.data ? res.data : [];
       var pas = d.filter(function (x) { return x.slug === window.DM_SLUG; })[0] || d[0] || null;

@@ -1498,6 +1498,8 @@ function Badge({
     batal: ["dm-badge dm-badge-no", "Dibatalkan"],
     refund: ["dm-badge dm-badge-no", "Refund"],
     buka: ["dm-badge dm-badge-ok", "Buka"],
+    penuh: ["dm-badge dm-badge-wait", "Kuota penuh"],
+    jadwal_ulang: ["dm-badge dm-badge-wait", "Dijadwalkan ulang"],
     tutup: ["dm-badge dm-badge-no", "Tutup"],
     selesai: ["dm-badge", "Selesai"]
   };
@@ -6274,10 +6276,17 @@ function TabJadwal({
   }, /*#__PURE__*/React.createElement("option", {
     value: "buka"
   }, "Buka"), /*#__PURE__*/React.createElement("option", {
+    value: "penuh"
+  }, "Kuota penuh \u2014 kunci pendaftaran"), /*#__PURE__*/React.createElement("option", {
+    value: "jadwal_ulang"
+  }, "Dijadwalkan ulang \u2014 kunci pendaftaran"), /*#__PURE__*/React.createElement("option", {
     value: "tutup"
   }, "Tutup"), /*#__PURE__*/React.createElement("option", {
     value: "batal"
-  }, "Dibatalkan")))), /*#__PURE__*/React.createElement("div", {
+  }, "Dibatalkan")), /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint",
+    style: { marginTop: 6 }
+  }, "Selain \"Buka\", kelas hilang dari jadwal publik dan dari bot WhatsApp, sehingga tidak ada pendaftar baru yang masuk. Pakai \"Kuota penuh\" bila kursi sudah dipesan rombongan yang datanya belum masuk portal."))), /*#__PURE__*/React.createElement("div", {
     className: "dm-kotak-khusus"
   }, /*#__PURE__*/React.createElement("label", {
     style: { display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }

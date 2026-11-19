@@ -2348,7 +2348,12 @@ function FormKerjasama({ langsung } = {}) {
           className: "dm-btn-line",
           href: "https://wa.me/6282123486576?text=Halo%20Akademia%20DEWAMEDIK%2C%20institusi%20kami%20ingin%20menjajaki%20kerja%20sama%20pelatihan.",
           target: "_blank", rel: "noopener"
-        }, "Tanya dulu lewat WhatsApp")
+        }, "Tanya dulu lewat WhatsApp"),
+        React.createElement("button", {
+          className: "dm-btn-line",
+          type: "button",
+          onClick: () => unduhTemplatPeserta()
+        }, "Unduh format data peserta (Excel)")
       ),
       React.createElement("p", { className: "dm-hint" }, "Pengajuan ini belum mengikat. Kami menghubungi Anda lebih dulu untuk membahas kebutuhan sebelum apa pun diputuskan.")
     )
@@ -2716,6 +2721,7 @@ function Pendaftaran({
   const [bukaFilter, setBukaFilter] = useState(false);
   const [bukaRingkas, setBukaRingkas] = useState(false);
   const [mintaInvoice, setMintaInvoice] = useState(false);
+  const [permintaan, setPermintaan] = useState("");
   const [invInstansi, setInvInstansi] = useState("");
   const [invPenerima, setInvPenerima] = useState("");
   const [salah, setSalah] = useState({});
@@ -3007,6 +3013,23 @@ function Pendaftaran({
         if (galatTshirt) console.warn("Ukuran T-shirt belum tersimpan:", galatTshirt.message);
       } catch (eT) {
         console.warn("Ukuran T-shirt belum tersimpan:", eT);
+      }
+
+      /* Permintaan khusus juga disimpan terpisah, dengan alasan yang sama:
+         kirim_pendaftaran_v2 tidak perlu diubah, dan kalau langkah ini
+         gagal pendaftarannya tetap sah. */
+      if (permintaan.trim()) {
+        try {
+          const {
+            error: galatMinta
+          } = await SB.rpc("simpan_permintaan_khusus", {
+            p_nomor: h.nomor,
+            p_teks: permintaan.trim()
+          });
+          if (galatMinta) console.warn("Permintaan khusus belum tersimpan:", galatMinta.message);
+        } catch (eM) {
+          console.warn("Permintaan khusus belum tersimpan:", eM);
+        }
       }
 
       if (window.dmCatatAsal) window.dmCatatAsal(h.nomor, null);
@@ -3808,7 +3831,29 @@ function Pendaftaran({
     placeholder: "Direktur"
   }))), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
-  }, "Tim kami akan menghubungi Anda lewat WhatsApp untuk mengurus invoice resmi berkop DEWAMEDIK setelah pendaftaran diverifikasi.")) : null, /*#__PURE__*/React.createElement("button", {
+  }, "Tim kami akan menghubungi Anda lewat WhatsApp untuk mengurus invoice resmi berkop DEWAMEDIK setelah pendaftaran diverifikasi.")) : null, /*#__PURE__*/React.createElement("p", {
+    className: "dm-kelompok-judul",
+    style: {
+      marginTop: 26
+    }
+  }, "Permintaan Khusus"), /*#__PURE__*/React.createElement(Field, {
+    label: "Berkas atau permintaan lain",
+    hint: "Opsional. Misalnya surat keterangan non-PKP, surat tugas, atau kop khusus."
+  }, /*#__PURE__*/React.createElement("textarea", {
+    className: "dm-input",
+    rows: 3,
+    maxLength: 500,
+    value: permintaan,
+    onChange: e => setPermintaan(e.target.value),
+    placeholder: "Contoh: mohon dibuatkan surat keterangan non-PKP atas nama RSUD ..."
+  }), permintaan.trim() ? /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint",
+    style: {
+      marginTop: 6,
+      color: "#166534",
+      fontWeight: 600
+    }
+  }, "Dicatat. Tim kami akan menyiapkan berkasnya dan menghubungi Anda lewat WhatsApp.") : null), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-ghost dm-buka-kode",
     onClick: () => {
       if (bukaKode) {
@@ -4678,6 +4723,214 @@ function SelTshirt({
   }, nilai || "—");
 }
 
+/* Kolom baku berkas peserta kelas kerja sama. Urutannya mengikuti
+   bentuk yang sudah biasa dikirim institusi, supaya mereka tidak perlu
+   mengubah kebiasaan — portal yang menyesuaikan. */
+const KOLOM_TEMPLAT = ["NAMA", "EMAIL", "NIK", "NO.HP", "UK.BAJU"];
+async function unduhTemplatPeserta() {
+  const XLSX = await muatPustakaXLSX();
+  const ws = XLSX.utils.aoa_to_sheet([
+    KOLOM_TEMPLAT,
+    ["Siti Aminah", "siti.aminah@contoh.com", "3601344312040004", "081234567890", "M"]
+  ]);
+  /* NIK dan nomor HP dipaksa bertipe teks. Tanpa ini Excel membuang
+     angka 0 di depan nomor dan mengubah NIK jadi notasi ilmiah. */
+  [2, 3].forEach(c => {
+    const ref = XLSX.utils.encode_cell({ r: 1, c: c });
+    if (ws[ref]) { ws[ref].t = "s"; ws[ref].z = "@"; }
+  });
+  ws["!cols"] = [{ wch: 30 }, { wch: 32 }, { wch: 22 }, { wch: 18 }, { wch: 10 }];
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Peserta");
+  XLSX.writeFile(wb, "Format-Data-Peserta-DEWAMEDIK.xlsx");
+}
+
+/* Pencocokan judul kolom dibuat longgar: berkas yang judulnya sedikit
+   berbeda tetap terbaca tanpa perlu diedit lebih dulu. */
+const POLA_KOLOM = {
+  nama: /^(nama|nama\s*lengkap|nama\s*peserta)$/i,
+  email: /^(e-?mail|alamat\s*e-?mail)$/i,
+  nik: /^(nik|no\.?\s*nik|nomor\s*induk\s*kependudukan)$/i,
+  hp: /^(no\.?\s*hp|hp|telp|telepon|wa|no\.?\s*wa|whats\s*app|whatsapp|nomor\s*wa)$/i,
+  ukuran_tshirt: /^(uk\.?\s*baju|ukuran\s*baju|ukuran\s*kaos|ukuran\s*t-?shirt|size)$/i
+};
+/* Angka dari Excel kadang terbaca "85273351181.0". Ekor desimalnya
+   dibuang di sini; kalau tidak, nol itu ikut jadi digit nomor. */
+function angkaTeks(v) {
+  return String(v == null ? "" : v).trim().replace(/[.,]0+$/, "");
+}
+function barisDariTabel(tabel) {
+  let judul = -1, peta = null;
+  for (let i = 0; i < Math.min(tabel.length, 15); i++) {
+    const sel = (tabel[i] || []).map(x => String(x == null ? "" : x).trim());
+    const p = {};
+    sel.forEach((t, k) => {
+      Object.keys(POLA_KOLOM).forEach(f => {
+        if (p[f] === undefined && POLA_KOLOM[f].test(t)) p[f] = k;
+      });
+    });
+    if (p.nama !== undefined && (p.nik !== undefined || p.email !== undefined)) {
+      judul = i; peta = p; break;
+    }
+  }
+  if (!peta) return null;
+  const ambil = (r, k) => k === undefined ? "" : String(r[k] == null ? "" : r[k]).trim();
+  const baris = [];
+  for (let i = judul + 1; i < tabel.length; i++) {
+    const r = tabel[i] || [];
+    const nama = ambil(r, peta.nama);
+    if (!nama) continue;            /* baris kosong di tengah tabel dilewati */
+    baris.push({
+      nama: nama,
+      email: ambil(r, peta.email),
+      nik: angkaTeks(ambil(r, peta.nik)),
+      hp: angkaTeks(ambil(r, peta.hp)),
+      ukuran_tshirt: ambil(r, peta.ukuran_tshirt)
+    });
+  }
+  return { peta: peta, baris: baris };
+}
+
+/* Impor peserta kelas kerja sama. Dua langkah dengan sengaja: berkas
+   diperiksa lebih dulu dan hasilnya diperlihatkan baris per baris,
+   baru setelah disetujui datanya benar-benar masuk. */
+function ImporPesertaInstansi({ kelas, beriTahu, onSelesai, onTutup }) {
+  const h = React.createElement;
+  const [kelasId, setKelasId] = useState("");
+  const [instansi, setInstansi] = useState("");
+  const [profesi, setProfesi] = useState("");
+  const [harga, setHarga] = useState("");
+  const [tipe, setTipe] = useState("booking");
+  const [namaBerkas, setNamaBerkas] = useState("");
+  const [baris, setBaris] = useState(null);
+  const [lihat, setLihat] = useState(null);
+  const [sibuk, setSibuk] = useState("");
+  const [galat, setGalat] = useState("");
+  const [hasil, setHasil] = useState(null);
+
+  const kelasBuka = (kelas || []).slice().sort((a, b) =>
+    String(b.tanggal_mulai || "").localeCompare(String(a.tanggal_mulai || "")));
+
+  async function pilihBerkas(f) {
+    setGalat(""); setLihat(null); setBaris(null); setNamaBerkas("");
+    if (!f) return;
+    setSibuk("Membaca berkas…");
+    try {
+      const n = String(f.name || "").toLowerCase();
+      if (!/\.(xlsx|xls|csv)$/.test(n)) throw new Error("Pakai berkas Excel (.xlsx) atau CSV.");
+      const tabel = await bacaTabelXlsx(await f.arrayBuffer());
+      const b = barisDariTabel(tabel);
+      if (!b) throw new Error("Kolom tidak dikenali. Berkas harus punya judul kolom NAMA dan NIK atau EMAIL — gunakan template di bawah.");
+      if (!b.baris.length) throw new Error("Tidak ada baris peserta di bawah judul kolom.");
+      setBaris(b.baris); setNamaBerkas(f.name);
+    } catch (e) {
+      setGalat(e.message || String(e));
+    } finally {
+      setSibuk("");
+    }
+  }
+
+  function kurang() {
+    if (!kelasId) return "Pilih kelasnya dulu.";
+    if (instansi.trim().length < 3) return "Nama instansi belum lengkap.";
+    if (!(Number(harga) >= 0)) return "Biaya per peserta belum diisi.";
+    if (!baris || !baris.length) return "Berkas pesertanya belum dipilih.";
+    return "";
+  }
+
+  async function jalankan(terapkan) {
+    const k = kurang();
+    if (k) { setGalat(k); return; }
+    setGalat(""); setSibuk(terapkan ? "Menyimpan…" : "Memeriksa…");
+    try {
+      const { data, error } = await SB.rpc("impor_peserta_instansi", {
+        p_pelatihan: kelasId,
+        p_instansi: instansi.trim(),
+        p_profesi: profesi.trim(),
+        p_harga: Number(harga),
+        p_tipe: tipe,
+        p_baris: baris,
+        p_terapkan: !!terapkan
+      });
+      if (error) throw new Error(error.message);
+      if (!data || !data.ok) throw new Error((data && data.pesan) || "Impor ditolak.");
+      if (terapkan) {
+        setHasil(data);
+        beriTahu(data.siap + " peserta masuk ke " + instansi.trim() + ".");
+        if (onSelesai) onSelesai();
+      } else {
+        setLihat(data);
+      }
+    } catch (e) {
+      setGalat(e.message || String(e));
+    } finally {
+      setSibuk("");
+    }
+  }
+
+  const warnaStatus = st => st === "siap" ? "#166534" : st === "lewati" ? "#8a6d3b" : "#B3261E";
+
+  const isi = hasil
+    ? h("div", null,
+        h("p", null, h("b", null, hasil.siap + " peserta berhasil masuk."),
+          hasil.bermasalah ? " " + hasil.bermasalah + " baris dilewati." : ""),
+        h("p", { className: "dm-hint" }, "Nomor registrasi sudah terbit untuk masing-masing. Penagihan tercatat atas nama " + instansi.trim() + ", jadi tab Invoice bisa langsung menariknya."),
+        h("div", { className: "dm-row dm-row-akhir", style: { marginTop: 14 } },
+          h("button", { className: "dm-btn", onClick: onTutup }, "Selesai")))
+    : h("div", null,
+        h("div", { className: "dm-grid2" },
+          h(Field, { label: "Kelas tujuan" },
+            h("select", { className: "dm-input", value: kelasId, onChange: e => setKelasId(e.target.value) },
+              h("option", { value: "" }, "— pilih kelas —"),
+              kelasBuka.map(k => h("option", { key: k.id, value: k.id },
+                (k.judul || "Kelas") + " · " + (k.kota || k.lokasi || "") + " · " + (k.tanggal_mulai || ""))))),
+          h(Field, { label: "Instansi penagihan", hint: "Nama resmi untuk invoice." },
+            h("input", { className: "dm-input", value: instansi, onChange: e => setInstansi(e.target.value), placeholder: "Universitas Banten" })),
+          h(Field, { label: "Profesi peserta", hint: "Diisi sama untuk satu batch." },
+            h("input", { className: "dm-input", value: profesi, onChange: e => setProfesi(e.target.value), placeholder: "Mahasiswa Keperawatan" })),
+          h(Field, { label: "Biaya per peserta", hint: "Sesuai RAB atau surat penawaran." },
+            h("input", { className: "dm-input", type: "number", min: "0", value: harga, onChange: e => setHarga(e.target.value), placeholder: "2000000" })),
+          h(Field, { label: "Status pembayaran" },
+            h("select", { className: "dm-input", value: tipe, onChange: e => setTipe(e.target.value) },
+              h("option", { value: "booking" }, "Ditagih lewat invoice — masuk daftar tagihan"),
+              h("option", { value: "lunas" }, "Sudah dibayar instansi — langsung lunas")))),
+        h(Field, { label: "Berkas peserta dari institusi", hint: "Excel (.xlsx) atau CSV. Baris kosong dan nomor berformat angka dirapikan otomatis." },
+          h("input", { className: "dm-input", type: "file", accept: ".xlsx,.xls,.csv", onChange: e => pilihBerkas(e.target.files && e.target.files[0]) })),
+        baris ? h("p", { className: "dm-hint", style: { color: "#166534", fontWeight: 600 } },
+          namaBerkas + " · " + baris.length + " baris peserta terbaca") : null,
+        h("p", { className: "dm-hint" },
+          "Belum punya formatnya? ",
+          h("a", { href: "#", onClick: e => { e.preventDefault(); unduhTemplatPeserta(); } }, "Unduh template Excel DEWAMEDIK"),
+          " lalu kirimkan ke institusi."),
+        galat ? h("p", { className: "dm-err" }, galat) : null,
+        lihat ? h("div", { style: { marginTop: 14 } },
+          h("p", null, h("b", null, lihat.siap + " baris siap diimpor"),
+            lihat.bermasalah ? " · " + lihat.bermasalah + " baris bermasalah dan akan dilewati" : " · semua baris bersih"),
+          h("div", { className: "dm-tabel-bungkus", style: { maxHeight: 320, overflowY: "auto" } },
+            h("table", { className: "dm-tabel" },
+              h("thead", null, h("tr", null,
+                h("th", null, "Nama"), h("th", null, "NIK"), h("th", null, "WhatsApp"),
+                h("th", null, "Baju"), h("th", null, "Keterangan"))),
+              h("tbody", null, (lihat.baris || []).map((b, i) =>
+                h("tr", { key: i },
+                  h("td", null, b.nama || h("i", null, "kosong")),
+                  h("td", { className: "dm-mono" }, b.nik || "—"),
+                  h("td", { className: "dm-mono" }, b.hp || "—"),
+                  h("td", null, b.ukuran_tshirt || "—"),
+                  h("td", { style: { color: warnaStatus(b.status), fontWeight: 600 } },
+                    b.status === "siap" ? "siap" : (b.pesan || b.status)))))))) : null,
+        h("div", { className: "dm-row dm-row-akhir", style: { marginTop: 14 } },
+          h("button", { className: "dm-btn-line", onClick: onTutup, disabled: !!sibuk }, "Batal"),
+          h("button", { className: "dm-btn-line", onClick: () => jalankan(false), disabled: !!sibuk },
+            sibuk === "Memeriksa…" ? "Memeriksa…" : "Periksa berkas"),
+          h("button", {
+            className: "dm-btn",
+            disabled: !!sibuk || !lihat || !Number(lihat.siap),
+            onClick: () => jalankan(true)
+          }, sibuk === "Menyimpan…" ? "Menyimpan…" : (lihat ? "Impor " + lihat.siap + " peserta" : "Impor peserta"))));
+
+  return h(Modal, { judul: "Impor peserta kelas kerja sama", onTutup: onTutup, lebar: 860 }, isi);
+}
 function TabPendaftar({
   beriTahu,
   peran
@@ -4703,6 +4956,7 @@ function TabPendaftar({
   const [alasan, setAlasan] = useState("");
   const [kelas, setKelas] = useState([]);
   const [pindah, setPindah] = useState(null);      /* {r, tujuan, sebab} */
+  const [impor, setImpor] = useState(false);       /* panel impor peserta instansi */
   const [tagih, setTagih] = useState(false);       /* panel tagih pelunasan satu angkatan */
   const [cicilan, setCicilan] = useState({});      /* pendaftaran_id -> riwayat pembayaran cicilan */
   useEffect(() => {
@@ -4870,7 +5124,7 @@ function TabPendaftar({
   async function unduhCsv() {
     const data = tampil;
     if (!data.length) return beriTahu("Tidak ada data untuk diekspor.");
-    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Kota/kabupaten asal", "Profesi", "Ukuran T-shirt", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Kota pelaksanaan", "Jadwal", "Harga awal", "Kode member", "Persen Member Benefit", "Member Benefit", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Asal link", "Status", "Catatan"];
+    const head = ["No registrasi", "Tanggal daftar", "Nama", "NIK", "Email", "WhatsApp", "Instansi", "Kota/kabupaten asal", "Profesi", "Ukuran T-shirt", "Akun Plataran Sehat/SATUSEHAT SDMK", "Pelatihan", "Kota pelaksanaan", "Jadwal", "Harga awal", "Kode member", "Persen Member Benefit", "Member Benefit", "Total", "Jenis pendaftaran", "Dibayar", "Sisa pelunasan", "Minta invoice", "Instansi penagihan", "Permintaan khusus", "Asal link", "Status", "Catatan"];
     const tglRingkas = v => {
       if (!v) return "";
       const d = new Date(v);
@@ -4888,7 +5142,7 @@ function TabPendaftar({
     // apostrof agar NIK tidak berubah jadi notasi ilmiah
     r.email, "'" + (r.hp || ""),
     // agar angka 0 di depan tidak hilang
-    r.instansi, r.kota || "", r.profesi, r.ukuran_tshirt || "", r.plataran, r.pelatihan ? r.pelatihan.judul : "", kotaKelas(r.pelatihan), r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "", Number(r.harga_awal) || 0, r.voucher_kode || "", Number(r.persen) || 0, Number(r.diskon) || 0, Number(r.total) || 0, labelTipeBayar(r.tipe_bayar, r.cicilan_kali), Number(r.jumlah_bayar != null ? r.jumlah_bayar : r.total) || 0, Number(r.sisa_bayar) || 0, r.minta_invoice ? "Ya" : "Tidak", r.invoice_instansi || "", r.kampanye || "", statusTeks[r.status] || r.status, r.catatan || ""]);
+    r.instansi, r.kota || "", r.profesi, r.ukuran_tshirt || "", r.plataran, r.pelatihan ? r.pelatihan.judul : "", kotaKelas(r.pelatihan), r.pelatihan ? rentang(r.pelatihan.tanggal_mulai, r.pelatihan.tanggal_selesai) : "", Number(r.harga_awal) || 0, r.voucher_kode || "", Number(r.persen) || 0, Number(r.diskon) || 0, Number(r.total) || 0, labelTipeBayar(r.tipe_bayar, r.cicilan_kali), Number(r.jumlah_bayar != null ? r.jumlah_bayar : r.total) || 0, Number(r.sisa_bayar) || 0, r.minta_invoice ? "Ya" : "Tidak", r.invoice_instansi || "", r.permintaan_khusus || "", r.kampanye || "", statusTeks[r.status] || r.status, r.catatan || ""]);
     const sel = v => {
       if (typeof v === "number") return String(v); // angka polos, siap dijumlahkan
       const t = String(v ?? "");
@@ -5090,6 +5344,12 @@ function TabPendaftar({
     value: "cicilan-telat"
   }, "Cicilan telat (" + baris.filter(r => !mati(r) && r.tipe_bayar === "cicilan" && Number(r.sisa_bayar) > 0 && !!statusCicilan(r).telat).length + ")")), /*#__PURE__*/React.createElement("button", {
     className: "dm-btn-line",
+    onClick: () => setImpor(true)
+  }, /*#__PURE__*/React.createElement(Ikon, {
+    nama: "papan",
+    ukuran: 15
+  }), " Impor peserta instansi"), /*#__PURE__*/React.createElement("button", {
+    className: "dm-btn-line",
     onClick: unduhCsv
   }, /*#__PURE__*/React.createElement(Ikon, {
     nama: "papan",
@@ -5123,7 +5383,11 @@ function TabPendaftar({
     className: "dm-tanda-mati"
   }, r.status === "refund" ? "REFUND" : "BATAL") : null, r.minta_invoice ? /*#__PURE__*/React.createElement("span", {
     className: "dm-tanda-invoice"
-  }, "Invoice") : null, r.benefit_status === "menunggu" ? /*#__PURE__*/React.createElement("span", {
+  }, "Invoice") : null, r.permintaan_khusus ? /*#__PURE__*/React.createElement("span", {
+    className: "dm-chip",
+    title: r.permintaan_khusus,
+    style: { background: "#FFF4E5", color: "#7A4F11", borderColor: "#E8C89A" }
+  }, "Permintaan khusus") : null, r.benefit_status === "menunggu" ? /*#__PURE__*/React.createElement("span", {
     className: "dm-tanda-invoice",
     style: { background: "#FEF3C7", color: "#92400E" }
   }, "Cek kartu member") : null, /*#__PURE__*/React.createElement("p", {
@@ -5191,6 +5455,10 @@ function TabPendaftar({
   }, "Akun Plataran Sehat / SATUSEHAT SDMK"), /*#__PURE__*/React.createElement("p", null, detail.plataran), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, "Permintaan invoice"), /*#__PURE__*/React.createElement("p", null, detail.minta_invoice ? /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("b", null, "Ya"), " — ", detail.invoice_instansi || "instansi tidak diisi", detail.invoice_penerima ? ` (u.p. ${detail.invoice_penerima})` : "") : "Tidak"), /*#__PURE__*/React.createElement("p", {
+    className: "dm-hint"
+  }, "Permintaan khusus"), /*#__PURE__*/React.createElement("p", {
+    style: detail.permintaan_khusus ? { whiteSpace: "pre-wrap", fontWeight: 600, color: "#7A4F11" } : undefined
+  }, detail.permintaan_khusus || "Tidak ada"), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, "Pelatihan"), /*#__PURE__*/React.createElement("p", null, detail.pelatihan ? detail.pelatihan.judul : "—"), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
@@ -5399,6 +5667,13 @@ function TabPendaftar({
           })))),
       /*#__PURE__*/React.createElement("div", { className: "dm-row dm-row-akhir", style: { marginTop: 14 } },
         /*#__PURE__*/React.createElement("button", { className: "dm-btn-line", onClick: () => setTagih(false) }, "Tutup"))) : null,
+
+    impor ? /*#__PURE__*/React.createElement(ImporPesertaInstansi, {
+      kelas: kelas,
+      beriTahu: beriTahu,
+      onSelesai: muat,
+      onTutup: () => setImpor(false)
+    }) : null,
 
     pindah ? /*#__PURE__*/React.createElement(Modal, {
       judul: "Pindah jadwal — " + pindah.r.nama,

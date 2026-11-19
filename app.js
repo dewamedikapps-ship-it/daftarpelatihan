@@ -1488,6 +1488,18 @@ function Field({
     className: "dm-hint"
   }, hint) : null);
 }
+/* Mata terbuka berarti "klik untuk memperlihatkan", mata tercoret
+   berarti kata sandinya sedang terlihat dan bisa disembunyikan. */
+function IkonMata(terlihat) {
+  const h = React.createElement;
+  return h("svg", {
+    width: 19, height: 19, viewBox: "0 0 24 24", fill: "none",
+    stroke: "currentColor", strokeWidth: 1.8,
+    strokeLinecap: "round", strokeLinejoin: "round", "aria-hidden": "true"
+  }, h("path", { d: "M1.8 12S5.5 5 12 5s10.2 7 10.2 7-3.7 7-10.2 7S1.8 12 1.8 12Z" }),
+     h("circle", { cx: 12, cy: 12, r: 3 }),
+     terlihat ? h("path", { d: "M3 3l18 18" }) : null);
+}
 function Badge({
   status
 }) {
@@ -4503,15 +4515,29 @@ function BackOffice({
     placeholder: "admin@dewamedik911.com"
   })), /*#__PURE__*/React.createElement(Field, {
     label: "Kata sandi"
+  }, /*#__PURE__*/React.createElement("div", {
+    style: { position: "relative" }
   }, /*#__PURE__*/React.createElement("input", {
     className: "dm-input",
-    type: "password",
+    style: { paddingRight: 46 },
+    type: lihatSandi ? "text" : "password",
     name: "password",
     autoComplete: "current-password",
     value: sandi,
     onChange: e => setSandi(e.target.value),
     onKeyDown: e => e.key === "Enter" && login()
-  })), err ? /*#__PURE__*/React.createElement("p", {
+  }), /*#__PURE__*/React.createElement("button", {
+    type: "button",
+    onClick: () => setLihatSandi(!lihatSandi),
+    title: lihatSandi ? "Sembunyikan kata sandi" : "Tampilkan kata sandi",
+    "aria-label": lihatSandi ? "Sembunyikan kata sandi" : "Tampilkan kata sandi",
+    style: {
+      position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+      background: "none", border: 0, padding: 4, cursor: "pointer",
+      display: "flex", alignItems: "center", lineHeight: 0,
+      color: lihatSandi ? "var(--dm-navy-800, #1b3a6b)" : "var(--dm-text-secondary, #6b7a8c)"
+    }
+  }, IkonMata(lihatSandi)))), err ? /*#__PURE__*/React.createElement("p", {
     className: "dm-err"
   }, err) : null, pesanPulih ? /*#__PURE__*/React.createElement("p", {
     className: "dm-hint",

@@ -9076,6 +9076,19 @@ function TabLinkKelas({ beriTahu }) {
     }
     return pemateriDcc(k);
   }
+  /* KAK yang jenis dan tanggal mulainya sama persis. Lebih dari satu berarti
+     di DCC ada entri kembar, dan portal sengaja tidak menebak. */
+  function kakKembar(k) {
+    if (!k || !k.tanggal_mulai) return [];
+    const j = normJenis(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
+    return pemateri.filter(p => String(p.dcc_event_id || "").indexOf("kurikulum:") !== 0
+      && String(p.mulai).slice(0, 10) === t && normJenis(p.jenis) === j
+      && Array.isArray(p.trainer) && p.trainer.length);
+  }
+  function ringkasKak(p) {
+    return (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "tanpa kota")
+      + " \u00b7 " + p.trainer.length + " pemateri";
+  }
   /* Semua KAK kiriman DCC yang punya trainer, yang sejenis didahulukan. */
   function daftarKak(k) {
     const j = normJenis(k && k.jenis);
@@ -10922,6 +10935,19 @@ function TabLinkKelas({ beriTahu }) {
               const pm = pemateriKelas(k);
               const wkt = pm && pm.diperbarui ? " (diperbarui " + new Date(pm.diperbarui).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "";
               const sdhPilih = kakPilih[k.id];
+              const kembar = pm ? [] : kakKembar(k);
+              if (!pm && !sdhPilih && kembar.length > 1) {
+                const kotaSama = kembar.every(x => String(x.kota || "").trim().toLowerCase()
+                  === String(kembar[0].kota || "").trim().toLowerCase());
+                return React.createElement("p", {
+                  className: "dm-hint",
+                  style: { margin: "4px 0 0", color: "#B3261E", fontWeight: 600 }
+                }, "\u26A0\uFE0F Di DCC ada " + kembar.length + " KAK " + String(k.jenis || "").toUpperCase()
+                   + " dengan tanggal mulai yang sama" + (kotaSama ? " dan kota yang sama" : "") + ": "
+                   + kembar.map(ringkasKak).join("; ")
+                   + ". Portal sengaja tidak menebak supaya nama narasumber di flyer tidak tertukar. "
+                   + "Pilih yang benar di menu \u201cKAK dari DCC\u201d di bawah, lalu rapikan entri kembarnya di DCC.");
+              }
               return React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
                 !pm ? (sdhPilih ? "\u26A0\uFE0F KAK yang dipilih sudah tidak ada di kiriman DCC. Pilih ulang di bawah, atau kembalikan ke Cocokkan otomatis."
                       : materiKurikulum(k) ? "\u26A0\uFE0F Trainer belum ada \u2014 prompt memakai daftar materi " + String(k.jenis || "").toUpperCase() + " saja. Menurut SE Kemenkes 2692/2026 flyer WAJIB memuat nama narasumber + materi di bawah namanya: pilih KAK-nya di bawah, upload jadwal pemateri, atau susun KAK di DCC sebelum flyer diterbitkan."

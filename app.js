@@ -8882,6 +8882,10 @@ function TabLinkKelas({ beriTahu }) {
   const [pemateri, setPemateri] = useState([]);
   /* Jadwal pemateri yang diupload per kelas (mengalahkan data KAK DCC). */
   const [pemUpload, setPemUpload] = useState({});
+  /* KAK DCC yang dipilih tangan untuk sebuah kelas: pelatihan_id -> dcc_event_id.
+     Dipakai bila tanggal di portal dan di DCC berbeda, atau ada beberapa KAK sejenis
+     di tanggal yang sama sehingga pencocokan otomatis tidak berani menebak. */
+  const [kakPilih, setKakPilih] = useState({});
   const [editPem, setEditPem] = useState(null);
   /* Panel per bulan: link dikelompokkan menurut bulan kelasnya. */
   const [bulanLink, setBulanLink] = useState(null);
@@ -8947,6 +8951,28 @@ function TabLinkKelas({ beriTahu }) {
       (u && !u.error && Array.isArray(u.data) ? u.data : []).forEach(x => { m[x.pelatihan_id] = x; });
       setPemUpload(m);
     } catch (e) { setPemUpload({}); }
+    try {
+      const kp = await SB.from("kak_pilihan").select("pelatihan_id,dcc_event_id");
+      const n = {};
+      (kp && !kp.error && Array.isArray(kp.data) ? kp.data : []).forEach(x => { n[x.pelatihan_id] = x.dcc_event_id; });
+      setKakPilih(n);
+    } catch (e) { setKakPilih({}); }
+  }
+
+  async function simpanKakPilihan(k, id) {
+    const v = String(id || "").trim();
+    if (!v) {
+      const { error } = await SB.from("kak_pilihan").delete().eq("pelatihan_id", k.id);
+      if (error) return beriTahu("Gagal menyimpan: " + error.message);
+      setKakPilih(m => { const n = { ...m }; delete n[k.id]; return n; });
+      return beriTahu("Kembali ke pencocokan otomatis.");
+    }
+    const { error } = await SB.from("kak_pilihan").upsert(
+      { pelatihan_id: k.id, dcc_event_id: v, diperbarui: new Date().toISOString() },
+      { onConflict: "pelatihan_id" });
+    if (error) return beriTahu("Gagal menyimpan: " + error.message);
+    setKakPilih(m => ({ ...m, [k.id]: v }));
+    beriTahu("KAK dipilih. Prompt flyer memakai nama pemateri dari KAK itu.");
   }
 
   async function simpanPemateri(k) {
@@ -8999,7 +9025,26 @@ function TabLinkKelas({ beriTahu }) {
   function pemateriKelas(k) {
     const up = k && pemUpload[k.id];
     if (up && Array.isArray(up.trainer) && up.trainer.length) return { ...up, sumber: "upload" };
+    /* KAK yang dipilih tangan menang atas pencocokan tanggal. Kalau KAK itu hilang
+       dari kiriman DCC, sengaja dikembalikan null supaya ketahuan, bukan diam-diam
+       jatuh ke KAK lain yang belum tentu kelas ini. */
+    const dipilih = k && kakPilih[k.id];
+    if (dipilih) {
+      const row = pemateri.find(p => String(p.dcc_event_id) === String(dipilih)
+        && Array.isArray(p.trainer) && p.trainer.length);
+      return row ? { ...row, sumber: "pilih" } : null;
+    }
     return pemateriDcc(k);
+  }
+  /* Semua KAK kiriman DCC yang punya trainer, yang sejenis didahulukan. */
+  function daftarKak(k) {
+    const j = normJenis(k && k.jenis);
+    return pemateri
+      .filter(p => String(p.dcc_event_id || "").indexOf("kurikulum:") !== 0
+        && Array.isArray(p.trainer) && p.trainer.length)
+      .map(p => ({ ...p, sejenis: normJenis(p.jenis) === j }))
+      .sort((a, b) => (b.sejenis ? 1 : 0) - (a.sejenis ? 1 : 0)
+        || String(b.mulai).localeCompare(String(a.mulai)));
   }
   /* Daftar materi inti per jenis (kiriman DCC "kurikulum:<JENIS>"), dipakai bila kelas belum punya trainer. */
   function materiKurikulum(k) {
@@ -9569,17 +9614,19 @@ function TabLinkKelas({ beriTahu }) {
 
   /* Pilihan desain prompt flyer. Default berselang-seling antar kelas
      (supaya feed bervariasi); pengurus tetap bisa memilih sendiri. */
+  /* pakaiNama: prompt memuat nama narasumber + materi di bawah namanya (SE 2692/2026 i19 & i21).
+     Yang false sengaja tanpa nama — untuk kelas yang belum teregistrasi di Kemenkes. */
   const DESAIN_FLYER = [
-    { id: "utama", nama: "Desain Utama — seperti contoh ACLS (rekomendasi)" },
-    { id: "klasik", nama: "Desain 1 — Klasik (naskah lengkap)" },
-    { id: "master", nama: "Desain 2 — Master Canva (navy–merah)" },
-    { id: "terang", nama: "Desain 3 — Master Canva (terang)" },
-    { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)" },
-    { id: "putih", nama: "Desain 5 — Putih Editorial (referensi)" },
-    { id: "grid", nama: "Desain 6 — Grid Padat (materi + fasilitas)" },
-    { id: "merah", nama: "Desain 7 — Merah Dominan (berani, mencolok)" },
-    { id: "kunci", nama: "Desain 8 — Kunci Master (lampirkan flyer contoh; desain dikunci)" },
-    { id: "kuncimateri", nama: "Desain 9 — Kunci Master, Materi Saja (tanpa nama narasumber)" }
+    { id: "utama", nama: "Desain Utama — seperti contoh ACLS (rekomendasi)", pakaiNama: true },
+    { id: "klasik", nama: "Desain 1 — Klasik (naskah lengkap)", pakaiNama: true },
+    { id: "master", nama: "Desain 2 — Master Canva (navy–merah)", pakaiNama: true },
+    { id: "terang", nama: "Desain 3 — Master Canva (terang)", pakaiNama: true },
+    { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)", pakaiNama: true },
+    { id: "putih", nama: "Desain 5 — Putih Editorial (referensi)", pakaiNama: true },
+    { id: "grid", nama: "Desain 6 — Grid Padat (materi + fasilitas)", pakaiNama: true },
+    { id: "merah", nama: "Desain 7 — Merah Dominan (berani, mencolok)", pakaiNama: true },
+    { id: "kunci", nama: "Desain 8 — Kunci Master (lampirkan flyer contoh; desain dikunci)", pakaiNama: true },
+    { id: "kuncimateri", nama: "Desain 9 — Kunci Master, Materi Saja — kelas belum teregistrasi", pakaiNama: false }
   ];
   function desainBawaan(k) {
     return "utama";
@@ -10809,15 +10856,21 @@ function TabLinkKelas({ beriTahu }) {
               }, daftarK.map(x => React.createElement("option", { key: x.id, value: x.id },
                 (kotaKelas(x) || x.judul) + " \u00b7 " + tglFlyer(x.tanggal_mulai, x.tanggal_selesai)))) : null,
               React.createElement("select", {
-                className: "dm-input", style: { width: "auto", padding: "5px 10px", fontSize: 13 },
+                className: "dm-input", style: { width: "auto", maxWidth: "100%", padding: "5px 28px 5px 10px", fontSize: 13 },
                 value: desain, "aria-label": "Desain flyer",
                 onChange: e => { const v = e.target.value; setFlyerDesain(o => ({ ...o, [kunciKelas]: v })); }
-              }, DESAIN_FLYER.map(d => React.createElement("option", { key: d.id, value: d.id }, d.nama + (d.id === desainBawaan(k) ? " \u2022 bawaan" : "")))),
+              }, DESAIN_FLYER.map(d => React.createElement("option", { key: d.id, value: d.id },
+                (d.pakaiNama ? "\u2713 " : "\u26A0 ") + d.nama + (d.id === desainBawaan(k) ? " \u2022 bawaan" : "")))),
               React.createElement("button", {
                 type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 },
                 title: "Ganti ke desain berikutnya",
                 onClick: () => { const i = DESAIN_FLYER.findIndex(d => d.id === desain); setFlyerDesain(o => ({ ...o, [kunciKelas]: DESAIN_FLYER[(i + 1) % DESAIN_FLYER.length].id })); }
               }, "\u{1F500} Desain lain")),
+            React.createElement("p", { className: "dm-hint", style: { margin: "0 0 8px" } },
+              "\u2713 = nama narasumber dan materinya ikut masuk sendiri dari KAK. ",
+              "\u26A0 Desain 9 sengaja tanpa nama narasumber \u2014 untuk kelas yang belum teregistrasi di Kemenkes atau draf cepat. ",
+              "Kalau dipakai, flyernya juga tidak boleh memasang logo Kemenkes maupun keterangan SKP (SE 2692/2026 butir 4.1). ",
+              "Begitu kelasnya teregistrasi, pindah ke desain bertanda \u2713."),
             React.createElement("textarea", {
               className: "dm-textarea dm-input", rows: 10,
               style: { width: "100%", fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" },
@@ -10827,11 +10880,32 @@ function TabLinkKelas({ beriTahu }) {
             (() => {
               const pm = pemateriKelas(k);
               const wkt = pm && pm.diperbarui ? " (diperbarui " + new Date(pm.diperbarui).toLocaleString("id-ID", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) + ")" : "";
+              const sdhPilih = kakPilih[k.id];
               return React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
-                !pm ? (materiKurikulum(k) ? "\u26A0\uFE0F Trainer belum ada \u2014 prompt memakai daftar materi " + String(k.jenis || "").toUpperCase() + " saja. Menurut SE Kemenkes 2692/2026 flyer WAJIB memuat nama narasumber + materi di bawah namanya: upload jadwal pemateri di bawah (atau susun KAK di DCC) sebelum flyer diterbitkan."
-                                         : "\u{1F7E8} Trainer & materi belum ada \u2014 upload jadwal pemateri di bawah, atau susun KAK-nya di DCC.")
+                !pm ? (sdhPilih ? "\u26A0\uFE0F KAK yang dipilih sudah tidak ada di kiriman DCC. Pilih ulang di bawah, atau kembalikan ke Cocokkan otomatis."
+                      : materiKurikulum(k) ? "\u26A0\uFE0F Trainer belum ada \u2014 prompt memakai daftar materi " + String(k.jenis || "").toUpperCase() + " saja. Menurut SE Kemenkes 2692/2026 flyer WAJIB memuat nama narasumber + materi di bawah namanya: pilih KAK-nya di bawah, upload jadwal pemateri, atau susun KAK di DCC sebelum flyer diterbitkan."
+                                         : "\u{1F7E8} Trainer & materi belum ada \u2014 pilih KAK dari DCC di bawah, upload jadwal pemateri, atau susun KAK-nya di DCC.")
                   : pm.sumber === "upload" ? "\u2705 Trainer & materi dari jadwal yang diupload" + (pm.nama_file ? ": " + pm.nama_file : "") + wkt + "."
+                  : pm.sumber === "pilih" ? "\u2705 Trainer & materi dari KAK DCC yang Anda pilih: " + (pm.judul || "KAK") + wkt + ". Ganti penugasannya di DCC, prompt ikut berubah."
                   : "\u2705 Trainer & materi diambil otomatis dari KAK DCC" + wkt + ". Ganti trainer di DCC, flyer ikut berubah.");
+            })(),
+            (() => {
+              const daftar = daftarKak(k);
+              const dipilih = kakPilih[k.id] || "";
+              const oto = pemateriDcc(k);
+              return React.createElement("div", { style: { marginTop: 8, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" } },
+                React.createElement("b", { style: { fontSize: 13 } }, "\u{1F517} KAK dari DCC"),
+                React.createElement("select", {
+                  className: "dm-input",
+                  style: { width: "auto", maxWidth: "100%", padding: "5px 28px 5px 10px", fontSize: 13 },
+                  value: dipilih, "aria-label": "KAK dari DCC untuk kelas ini",
+                  onChange: e => simpanKakPilihan(k, e.target.value)
+                }, [React.createElement("option", { key: "oto", value: "" },
+                      "Cocokkan otomatis \u2014 " + (oto ? "ketemu: " + (oto.judul || "KAK") : "belum ketemu"))]
+                   .concat(daftar.map(p => React.createElement("option", { key: p.dcc_event_id, value: p.dcc_event_id },
+                      (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "-") + " \u00b7 " + String(p.mulai).slice(0, 10) + " \u00b7 " + p.trainer.length + " pemateri")))),
+                React.createElement("p", { className: "dm-hint", style: { margin: 0, flex: "1 1 240px", minWidth: 200 } },
+                  "Pakai ini bila tanggal di portal dan di DCC berbeda, atau ada beberapa KAK sejenis di tanggal yang sama. Pilihannya tersimpan, dan namanya tetap ikut berubah bila penugasan di DCC diubah."));
             })(),
             (() => {
               const up = pemUpload[k.id];
@@ -10847,7 +10921,7 @@ function TabLinkKelas({ beriTahu }) {
                     onChange: e => { const f = e.target.files && e.target.files[0]; e.target.value = ""; pilihBerkasPemateri(k, f); }
                   }),
                   !ed ? React.createElement("button", { type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 },
-                    onClick: () => setEditPem({ kid: k.id, teks: up ? teksDariPemateri(up.trainer) : teksDariPemateri((pemateriDcc(k) || {}).trainer || []), nama_file: up ? up.nama_file : null, jalur_file: up ? up.jalur_file : null, pesan: "Tulis nama trainer, lalu materinya di baris berikutnya diawali tanda -" })
+                    onClick: () => setEditPem({ kid: k.id, teks: up ? teksDariPemateri(up.trainer) : teksDariPemateri((pemateriKelas(k) || {}).trainer || []), nama_file: up ? up.nama_file : null, jalur_file: up ? up.jalur_file : null, pesan: "Tulis nama trainer, lalu materinya di baris berikutnya diawali tanda -" })
                   }, up ? "Ubah isi" : "Ketik manual") : null,
                   up && up.jalur_file ? React.createElement("button", { type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 }, onClick: () => bukaBerkasPemateri(up.jalur_file) }, "Lihat berkas") : null,
                   up && !ed ? React.createElement("button", { type: "button", className: "dm-btn-line", style: { padding: "5px 10px", fontSize: 13 }, onClick: () => hapusPemateri(k) }, "Hapus") : null),

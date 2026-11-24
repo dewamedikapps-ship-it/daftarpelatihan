@@ -9505,6 +9505,7 @@ function TabLinkKelas({ beriTahu }) {
       /ACLS/.test(jenis) && !tot ? "\u2705 Akses Pro 3 Bulan DEWA Clinical Tools" : "\u2705 DEWA Clinical Tools: asisten klinis di genggaman"
     ];
     const blended = /daring/i.test(f) && /luring/i.test(f);
+    const daring = !blended && /daring|online/i.test(f);
     const Y = "\u{1F7E8}";
     const b = [];
     b.push("Buatkan desain flyer pelatihan resmi Akademia DEWAMEDIK (PT Dewa Medik Nusantara), rasio 4:5 (1080x1350) untuk feed Instagram, sesuai SE Kemenkes HK.02.03/F.V/2692/2026.");

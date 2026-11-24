@@ -112,6 +112,23 @@ for (const [labelPm, trainer, kurikulum] of PEMATERI) {
               rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
                 sebab: "ditandai TANPA nama narasumber, tapi " + ada + " nama tetap muncul di prompt" });
             }
+            /* Butir i21: judul materi wajib tepat DI BAWAH nama narasumber yang
+               membawakannya, bukan sebagai daftar materi terpisah. Diukur dengan
+               menuntut seluruh materi seorang pemateri muncul dalam 300 karakter
+               sesudah namanya. */
+            if (d.pakaiNama) {
+              const nempel = trainer.trainer.filter(x => {
+                const i = t.indexOf(x.nama);
+                if (i < 0) return false;
+                const jendela = t.slice(i, i + 300);
+                return x.materi.every(m => jendela.indexOf(m) > -1);
+              }).length;
+              if (nempel < trainer.trainer.length) {
+                rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
+                  sebab: "materi tidak menempel di bawah nama: hanya " + nempel + " dari "
+                    + trainer.trainer.length + " nama yang diikuti materinya (SE 2692/2026 butir i21)" });
+              }
+            }
           }
         } catch (e) {
           rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR, sebab: String((e && e.message) || e) });

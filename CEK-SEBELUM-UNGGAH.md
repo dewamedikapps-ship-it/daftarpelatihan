@@ -45,6 +45,9 @@ dengan 5 pemateri diuji isi promptnya:
 
 - `pakaiNama: true` → **seluruh** nama pemateri harus muncul di prompt
 - `pakaiNama: false` → **tidak satu pun** nama boleh muncul
+- `pakaiNama: true` → judul materi tiap pemateri harus muncul dalam 300 karakter
+  **sesudah namanya**, karena butir i21 menuntut materi tepat di bawah nama yang
+  membawakannya, bukan sebagai daftar materi terpisah di tempat lain
 
 Jadi kalau nanti ada desain baru, atau prompt desain lama diubah, penandanya
 tidak bisa lagi berbohong tanpa ketahuan. Diuji balik dengan memasang kembali

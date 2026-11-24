@@ -97,6 +97,21 @@ for (const [labelPm, trainer, kurikulum] of PEMATERI) {
           const t = api.buatPromptDesain(r, k, d.id);
           if (typeof t !== "string" || !t.trim()) {
             rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR, sebab: "prompt kosong" });
+          } else if (trainer) {
+            /* Penanda pakaiNama harus jujur. Inilah yang 25 Nov 2026 kelewat:
+               Desain 6 diberi centang padahal promptnya justru menyuruh
+               "Do not add trainer names", sehingga flyernya terbit tanpa
+               nama narasumber dan melanggar SE 2692/2026 butir i19 & i21. */
+            const ada = trainer.trainer.filter(x => t.indexOf(x.nama) > -1).length;
+            if (d.pakaiNama && ada < trainer.trainer.length) {
+              rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
+                sebab: "ditandai memuat nama narasumber, tapi hanya " + ada + " dari "
+                  + trainer.trainer.length + " nama yang muncul di prompt" });
+            }
+            if (!d.pakaiNama && ada > 0) {
+              rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
+                sebab: "ditandai TANPA nama narasumber, tapi " + ada + " nama tetap muncul di prompt" });
+            }
           }
         } catch (e) {
           rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR, sebab: String((e && e.message) || e) });

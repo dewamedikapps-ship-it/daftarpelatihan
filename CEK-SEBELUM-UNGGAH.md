@@ -33,6 +33,23 @@ tanggalnya tidak cocok) dikali tiga keadaan pemateri dan dua keadaan slug —
 420 kombinasi. Dijalankan pada app.js sebelum perbaikan, ia melaporkan 42
 kegagalan, semuanya Desain 1.
 
+**25 November 2026.** Desain 6 (Grid Padat) diberi penanda ✓ seolah nama
+narasumber ikut masuk otomatis, padahal promptnya justru memuat perintah
+`Do not add trainer names or portraits.` Akibatnya flyer BTCLS Cilegon terbit
+tanpa nama narasumber sama sekali, padahal KAK di DCC sudah berisi 5 pemateri
+lengkap — pelanggaran SE 2692/2026 butir i19 dan i21.
+
+Sebabnya: `cek-desain.js` saat itu hanya menguji desainnya **tidak error**, dan
+tidak pernah menguji bahwa **penandanya benar**. Sekarang setiap kombinasi
+dengan 5 pemateri diuji isi promptnya:
+
+- `pakaiNama: true` → **seluruh** nama pemateri harus muncul di prompt
+- `pakaiNama: false` → **tidak satu pun** nama boleh muncul
+
+Jadi kalau nanti ada desain baru, atau prompt desain lama diubah, penandanya
+tidak bisa lagi berbohong tanpa ketahuan. Diuji balik dengan memasang kembali
+penanda yang salah: pemeriksanya langsung melaporkan 14 kegagalan.
+
 `cek-scope.js` memakai acorn untuk menandai setiap identifier yang dipakai
 tetapi tidak pernah dideklarasikan di rantai scope-nya. Pada app.js yang sehat
 ia hanya menyisakan `DOMParser` dan `supabase`, dua-duanya memang global dari

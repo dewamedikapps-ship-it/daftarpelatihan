@@ -9677,7 +9677,7 @@ function TabLinkKelas({ beriTahu }) {
     { id: "terang", nama: "Desain 3 — Master Canva (terang)", pakaiNama: true },
     { id: "infografis", nama: "Desain 4 — Infografis (navy–biru–merah)", pakaiNama: true },
     { id: "putih", nama: "Desain 5 — Putih Editorial (referensi)", pakaiNama: true },
-    { id: "grid", nama: "Desain 6 — Grid Padat (materi + fasilitas)", pakaiNama: true },
+    { id: "grid", nama: "Desain 6 — Grid Padat, materi saja — tanpa nama narasumber", pakaiNama: false },
     { id: "merah", nama: "Desain 7 — Merah Dominan (berani, mencolok)", pakaiNama: true },
     { id: "kunci", nama: "Desain 8 — Kunci Master (lampirkan flyer contoh; desain dikunci)", pakaiNama: true },
     { id: "kuncimateri", nama: "Desain 9 — Kunci Master, Materi Saja — kelas belum teregistrasi", pakaiNama: false }
@@ -10922,9 +10922,9 @@ function TabLinkKelas({ beriTahu }) {
               }, "\u{1F500} Desain lain")),
             React.createElement("p", { className: "dm-hint", style: { margin: "0 0 8px" } },
               "\u2713 = nama narasumber dan materinya ikut masuk sendiri dari KAK. ",
-              "\u26A0 Desain 9 sengaja tanpa nama narasumber \u2014 untuk kelas yang belum teregistrasi di Kemenkes atau draf cepat. ",
+              "\u26A0 Desain 6 dan 9 hanya memuat daftar materi, tanpa nama narasumber \u2014 untuk kelas yang belum teregistrasi di Kemenkes atau draf cepat. ",
               "Kalau dipakai, flyernya juga tidak boleh memasang logo Kemenkes maupun keterangan SKP (SE 2692/2026 butir 4.1). ",
-              "Begitu kelasnya teregistrasi, pindah ke desain bertanda \u2713."),
+              "Untuk flyer yang benar-benar diterbitkan, pakai desain bertanda \u2713: butir i19 dan i21 mewajibkan nama narasumber beserta materi di bawah namanya."),
             React.createElement("textarea", {
               className: "dm-textarea dm-input", rows: 10,
               style: { width: "100%", fontFamily: "inherit", lineHeight: 1.5, resize: "vertical" },

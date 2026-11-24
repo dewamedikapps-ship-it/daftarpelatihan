@@ -4835,9 +4835,33 @@ function ImporPesertaInstansi({ kelas, beriTahu, onSelesai, onTutup }) {
   const [sibuk, setSibuk] = useState("");
   const [galat, setGalat] = useState("");
   const [hasil, setHasil] = useState(null);
+  const [cariKelas, setCariKelas] = useState("");
+  const [lewatJuga, setLewatJuga] = useState(false);
 
-  const kelasBuka = (kelas || []).slice().sort((a, b) =>
-    String(b.tanggal_mulai || "").localeCompare(String(a.tanggal_mulai || "")));
+  /* Daftar kelas gampang jadi puluhan baris. Yang sudah lewat disembunyikan
+     supaya tidak memenuhi menu, tetapi tetap bisa dimunculkan karena data
+     institusi kadang baru masuk setelah kelasnya selesai. */
+  const hariIniISO = (() => {
+    const d = new Date(), p = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  })();
+  const sudahLewatKelas = k => {
+    const akhir = String((k && (k.tanggal_selesai || k.tanggal_mulai)) || "").slice(0, 10);
+    return !!akhir && akhir < hariIniISO;
+  };
+  const teksKelas = k => [k.judul, k.jenis, k.kota, k.lokasi, k.tanggal_mulai, k.tanggal_selesai]
+    .map(x => String(x || "")).join(" ").toLowerCase();
+  const kataCari = String(cariKelas || "").toLowerCase().split(/\s+/).filter(Boolean);
+  const semuaKelas = (kelas || []).slice().sort((a, b) =>
+    String(a.tanggal_mulai || "").localeCompare(String(b.tanggal_mulai || "")));
+  const kelasLewat = semuaKelas.filter(sudahLewatKelas);
+  const dasarKelas = lewatJuga ? semuaKelas : semuaKelas.filter(k => !sudahLewatKelas(k));
+  let kelasBuka = dasarKelas.filter(k => kataCari.every(w => teksKelas(k).indexOf(w) > -1));
+  /* Kelas yang sedang terpilih tidak boleh hilang gara-gara saringan. */
+  if (kelasId && !kelasBuka.some(k => k.id === kelasId)) {
+    const dipilih = semuaKelas.find(k => k.id === kelasId);
+    if (dipilih) kelasBuka = [dipilih].concat(kelasBuka);
+  }
 
   async function pilihBerkas(f) {
     setGalat(""); setLihat(null); setBaris(null); setNamaBerkas("");
@@ -4908,10 +4932,26 @@ function ImporPesertaInstansi({ kelas, beriTahu, onSelesai, onTutup }) {
     : h("div", null,
         h("div", { className: "dm-grid2" },
           h(Field, { label: "Kelas tujuan" },
+            h("input", {
+              className: "dm-input", type: "search", value: cariKelas, autoComplete: "off",
+              style: { marginBottom: 6 },
+              placeholder: "Ketik nama kelas, kota, atau tanggal\u2026",
+              "aria-label": "Cari kelas tujuan",
+              onChange: e => setCariKelas(e.target.value)
+            }),
             h("select", { className: "dm-input", value: kelasId, onChange: e => setKelasId(e.target.value) },
-              h("option", { value: "" }, "— pilih kelas —"),
+              h("option", { value: "" }, kelasBuka.length ? "— pilih kelas —" : "— tidak ada kelas yang cocok —"),
               kelasBuka.map(k => h("option", { key: k.id, value: k.id },
-                (k.judul || "Kelas") + " · " + (k.kota || k.lokasi || "") + " · " + (k.tanggal_mulai || ""))))),
+                (k.judul || "Kelas") + " · " + (k.kota || k.lokasi || "") + " · " + (k.tanggal_mulai || "")))),
+            h("label", {
+              className: "dm-hint",
+              style: { display: "flex", alignItems: "center", gap: 6, marginTop: 6, cursor: "pointer" }
+            }, h("input", {
+              type: "checkbox", checked: lewatJuga,
+              onChange: e => setLewatJuga(e.target.checked)
+            }), "Tampilkan juga kelas yang tanggalnya sudah lewat" + (kelasLewat.length ? " (" + kelasLewat.length + ")" : "")),
+            h("p", { className: "dm-hint", style: { margin: "2px 0 0" } },
+              kelasBuka.length + " kelas ditampilkan" + (kataCari.length ? " dari pencarian \u201c" + cariKelas.trim() + "\u201d" : ""))),
           h(Field, { label: "Instansi penagihan", hint: "Nama resmi untuk invoice." },
             h("input", { className: "dm-input", value: instansi, onChange: e => setInstansi(e.target.value), placeholder: "Universitas Banten" })),
           h(Field, { label: "Profesi peserta", hint: "Diisi sama untuk satu batch." },

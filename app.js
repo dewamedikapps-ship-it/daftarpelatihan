@@ -9184,15 +9184,36 @@ function TabLinkKelas({ beriTahu }) {
     return (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "tanpa kota")
       + " \u00b7 " + p.trainer.length + " pemateri";
   }
-  /* Semua KAK kiriman DCC yang punya trainer, yang sejenis didahulukan. */
+  function hariIniISO() {
+    const d = new Date(), p = n => String(n).padStart(2, "0");
+    return d.getFullYear() + "-" + p(d.getMonth() + 1) + "-" + p(d.getDate());
+  }
+  /* KAK kiriman DCC yang punya trainer, yang sejenis didahulukan.
+     KAK yang tanggalnya sudah lewat sengaja tidak ditawarkan: daftarnya jadi
+     panjang dan Ryan sempat bingung memilih. Dua perkecualian, supaya tidak
+     ada yang hilang diam-diam:
+       1. KAK yang sedang dipilih untuk kelas ini tetap tampil, walau lewat;
+       2. KAK yang tanggalnya tidak lebih awal dari tanggal kelasnya sendiri
+          tetap tampil, supaya kelas lama yang dibuka ulang masih menemukan
+          KAK-nya. */
   function daftarKak(k) {
     const j = normJenis(k && k.jenis);
+    const kini = hariIniISO();
+    const dipilih = String((k && kakPilih[k.id]) || "");
+    const acuan = String((k && k.tanggal_mulai) || "").slice(0, 10);
+    const masihLayak = p => {
+      if (dipilih && String(p.dcc_event_id) === dipilih) return true;
+      const t = String(p.mulai).slice(0, 10);
+      if (t >= kini) return true;
+      return !!acuan && t >= acuan;
+    };
     return pemateri
       .filter(p => String(p.dcc_event_id || "").indexOf("kurikulum:") !== 0
-        && Array.isArray(p.trainer) && p.trainer.length)
-      .map(p => ({ ...p, sejenis: normJenis(p.jenis) === j }))
+        && Array.isArray(p.trainer) && p.trainer.length && masihLayak(p))
+      .map(p => ({ ...p, sejenis: normJenis(p.jenis) === j,
+        lewat: String(p.mulai).slice(0, 10) < kini }))
       .sort((a, b) => (b.sejenis ? 1 : 0) - (a.sejenis ? 1 : 0)
-        || String(b.mulai).localeCompare(String(a.mulai)));
+        || String(a.mulai).localeCompare(String(b.mulai)));
   }
   /* Daftar materi inti per jenis (kiriman DCC "kurikulum:<JENIS>"), dipakai bila kelas belum punya trainer. */
   function materiKurikulum(k) {
@@ -11065,9 +11086,11 @@ function TabLinkKelas({ beriTahu }) {
                 }, [React.createElement("option", { key: "oto", value: "" },
                       "Cocokkan otomatis \u2014 " + (oto ? "ketemu: " + (oto.judul || "KAK") : "belum ketemu"))]
                    .concat(daftar.map(p => React.createElement("option", { key: p.dcc_event_id, value: p.dcc_event_id },
-                      (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "-") + " \u00b7 " + String(p.mulai).slice(0, 10) + " \u00b7 " + p.trainer.length + " pemateri")))),
+                      (p.lewat ? "(sudah lewat) " : "") + (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "-") + " \u00b7 " + String(p.mulai).slice(0, 10) + " \u00b7 " + p.trainer.length + " pemateri")))),
                 React.createElement("p", { className: "dm-hint", style: { margin: 0, flex: "1 1 240px", minWidth: 200 } },
-                  "Pakai ini bila tanggal di portal dan di DCC berbeda, atau ada beberapa KAK sejenis di tanggal yang sama. Pilihannya tersimpan, dan namanya tetap ikut berubah bila penugasan di DCC diubah."));
+                  daftar.length
+                    ? "Hanya KAK yang tanggalnya belum lewat yang ditawarkan. Pakai ini bila tanggal di portal dan di DCC berbeda, atau ada beberapa KAK sejenis di tanggal yang sama. Pilihannya tersimpan, dan namanya tetap ikut berubah bila penugasan di DCC diubah."
+                    : "Belum ada KAK mendatang di DCC yang bisa dipilih untuk kelas ini. Buat KAK-nya dulu di DCC, nanti muncul di sini."));
             })(),
             (() => {
               const up = pemUpload[k.id];

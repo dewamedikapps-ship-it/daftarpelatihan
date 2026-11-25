@@ -58,4 +58,77 @@ for (const [nama, kelas, pilih, harap] of KASUS) {
   if (st.kode === "kembar" || st.kode === "hilang" || st.kode === "belum") console.log("        pesan: " + st.pesan);
 }
 console.log("\n" + (gagal ? gagal + " KASUS GAGAL" : "Semua " + KASUS.length + " kasus lulus."));
-process.exit(gagal ? 1 : 0);
+
+/* ------------------------------------------------------------------
+   Bagian 2 — isi dropdown "KAK dari DCC" di tab Link Kelas.
+
+   25 Nov 2026 Ryan: "Bulan udah lewat kenapa masih bisa di pilih."
+   Dropdown itu dulu memuat seluruh KAK, termasuk bulan-bulan lama, jadi
+   daftarnya panjang dan salah pilih gampang terjadi. Sekarang KAK yang
+   tanggalnya sudah lewat disembunyikan, dengan dua perkecualian yang
+   wajib tetap jalan: KAK yang sedang dipilih, dan KAK yang sezaman
+   dengan kelasnya sendiri.
+   ------------------------------------------------------------------ */
+const A2 = "  function hariIniISO() {";
+const B2 = "  /* Daftar materi inti per jenis";
+if (src.indexOf(A2) < 0 || src.indexOf(B2) < 0) { console.error("penanda daftarKak tidak ketemu"); process.exit(2); }
+const blok2 = src.slice(src.indexOf(A2), src.indexOf(B2));
+
+/* Tanggal dibuat relatif terhadap hari ini supaya ujinya tidak basi. */
+const hari = d => { const x = new Date(); x.setDate(x.getDate() + d);
+  const p = n => String(n).padStart(2, "0");
+  return x.getFullYear() + "-" + p(x.getMonth() + 1) + "-" + p(x.getDate()); };
+
+const KAK2 = [
+  { dcc_event_id:"lama-1",  jenis:"BTCLS", mulai:hari(-22), kota:"Tangerang", judul:"BTCLS lama", trainer:T(5) },
+  { dcc_event_id:"lama-2",  jenis:"BTCLS", mulai:hari(-8),  kota:"Serang",    judul:"BTCLS UNIBANG", trainer:T(5) },
+  { dcc_event_id:"kemarin", jenis:"BTCLS", mulai:hari(-1),  kota:"Semarang",  judul:"BTCLS Kota Semarang", trainer:T(5) },
+  { dcc_event_id:"besok",   jenis:"BTCLS", mulai:hari(1),   kota:"Cilegon",   judul:"BTCLS Cilegon", trainer:T(5) },
+  { dcc_event_id:"depan",   jenis:"BTCLS", mulai:hari(20),  kota:"Cirebon",   judul:"BTCLS CIREBON", trainer:T(5) },
+  { dcc_event_id:"acls",    jenis:"ACLS",  mulai:hari(20),  kota:"Tangerang", judul:"ACLS FN", trainer:T(5) },
+  { dcc_event_id:"kurikulum:BTCLS", jenis:"BTCLS", mulai:null, kota:null, judul:"Kurikulum", trainer:[{nama:"-",materi:["a"]}] },
+  { dcc_event_id:"tanpatrainer", jenis:"BTCLS", mulai:hari(5), kota:"Bogor", judul:"BTCLS tanpa trainer", trainer:[] }
+];
+const buatDaftar = kakPilih => new Function("pemateri", "kakPilih", "normJenis",
+  blok2 + "\nreturn daftarKak;")(KAK2, kakPilih,
+  t => String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, ""));
+
+const idnya = d => d.map(x => x.dcc_event_id);
+let gagal2 = 0;
+const cek = (nama, dapat, harap) => {
+  const ok = JSON.stringify(dapat) === JSON.stringify(harap);
+  if (!ok) gagal2++;
+  console.log((ok ? "  ok  " : "GAGAL ") + nama.padEnd(54) + "-> [" + dapat.join(", ") + "]");
+  if (!ok) console.log(" ".repeat(60) + "harusnya [" + harap.join(", ") + "]");
+};
+
+console.log("\nIsi dropdown KAK dari DCC:");
+cek("Kelas mendatang: KAK lewat semua disembunyikan",
+  idnya(buatDaftar({})({ id:"k1", jenis:"BTCLS", tanggal_mulai: hari(20) })),
+  ["besok", "depan", "acls"]);
+cek("Kurikulum & KAK tanpa trainer tidak pernah ikut",
+  idnya(buatDaftar({})({ id:"k1", jenis:"BTCLS", tanggal_mulai: hari(20) }))
+    .filter(x => x === "kurikulum:BTCLS" || x === "tanpatrainer"),
+  []);
+cek("KAK yang sedang dipilih tetap tampil walau sudah lewat",
+  idnya(buatDaftar({ k2:"lama-1" })({ id:"k2", jenis:"BTCLS", tanggal_mulai: hari(20) })),
+  ["lama-1", "besok", "depan", "acls"]);
+cek("Kelas lama: KAK sezaman kelasnya tetap tampil",
+  idnya(buatDaftar({})({ id:"k3", jenis:"BTCLS", tanggal_mulai: hari(-8) })),
+  ["lama-2", "kemarin", "besok", "depan", "acls"]);
+cek("Kelas lama sekali: KAK sejak tanggal kelasnya tampil",
+  idnya(buatDaftar({})({ id:"k4", jenis:"BTCLS", tanggal_mulai: hari(-22) })),
+  ["lama-1", "lama-2", "kemarin", "besok", "depan", "acls"]);
+cek("Kelas tanpa tanggal: hanya yang belum lewat",
+  idnya(buatDaftar({})({ id:"k5", jenis:"BTCLS", tanggal_mulai: null })),
+  ["besok", "depan", "acls"]);
+cek("Sejenis didahulukan: kelas ACLS menaruh ACLS di depan",
+  idnya(buatDaftar({})({ id:"k6", jenis:"ACLS", tanggal_mulai: hari(20) })),
+  ["acls", "besok", "depan"]);
+cek("Penanda (sudah lewat) hanya pada yang memang lewat",
+  buatDaftar({ k7:"lama-1" })({ id:"k7", jenis:"BTCLS", tanggal_mulai: hari(20) })
+    .map(x => x.dcc_event_id + ":" + (x.lewat ? "lewat" : "aktif")),
+  ["lama-1:lewat", "besok:aktif", "depan:aktif", "acls:aktif"]);
+
+console.log("\n" + (gagal + gagal2 ? (gagal + gagal2) + " KASUS GAGAL" : "Semua lulus."));
+process.exit(gagal + gagal2 ? 1 : 0);

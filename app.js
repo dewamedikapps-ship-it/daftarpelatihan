@@ -6014,6 +6014,10 @@ function TabJadwal({
   const [baris, setBaris] = useState(null);
   const [edit, setEdit] = useState(null);
   const [tampilan, setTampilan] = useState("tabel");
+  /* KAK kiriman DCC + KAK yang dipilih tangan di tab Link Kelas, dipakai
+     hanya untuk menandai status tiap kelas di sini. */
+  const [kakDcc, setKakDcc] = useState([]);
+  const [kakPilihJ, setKakPilihJ] = useState({});
   /* Panel pilih bulan agar daftar jadwal tidak menumpuk. */
   const [bulanJ, setBulanJ] = useState(null);
   const NAMA_BLN_J = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -6099,6 +6103,21 @@ function TabJadwal({
     });
     if (error) return beriTahu("Gagal memuat: " + error.message);
     setBaris(data || []);
+    muatKak();
+  }
+  /* Sengaja tidak memakai beriTahu kalau gagal: penanda KAK itu pelengkap,
+     jadwalnya sendiri harus tetap tampil walau tabel DCC tidak terbaca. */
+  async function muatKak() {
+    try {
+      const d = await SB.from("pemateri_dcc").select("dcc_event_id,jenis,mulai,kota,judul,trainer");
+      setKakDcc(d && !d.error && Array.isArray(d.data) ? d.data : []);
+    } catch (e) { setKakDcc([]); }
+    try {
+      const kp = await SB.from("kak_pilihan").select("pelatihan_id,dcc_event_id");
+      const m = {};
+      if (kp && !kp.error && Array.isArray(kp.data)) kp.data.forEach(x => { m[x.pelatihan_id] = x.dcc_event_id; });
+      setKakPilihJ(m);
+    } catch (e) { setKakPilihJ({}); }
   }
   useEffect(() => {
     muat();
@@ -6135,6 +6154,82 @@ function TabJadwal({
     setEdit(null);
     beriTahu("Tersimpan.");
     muat();
+  }
+  /* Status KAK sebuah kelas. Nilai "sendiri" dari pencocokan jenis + tanggal
+     mulai, persis aturan yang dipakai tab Link Kelas, supaya dua tempat ini
+     tidak pernah memberi jawaban berbeda untuk kelas yang sama. */
+  function normJenisJ(t) { return String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function kakKelas(k) {
+    if (!k) return { kode: "tak", pesan: "" };
+    const nyata = kakDcc.filter(p => String(p.dcc_event_id || "").indexOf("kurikulum:") !== 0
+      && Array.isArray(p.trainer) && p.trainer.length);
+    const dipilih = kakPilihJ[k.id];
+    if (dipilih) {
+      const row = nyata.find(p => String(p.dcc_event_id) === String(dipilih));
+      if (row) return { kode: "pilih", jml: row.trainer.length,
+        pesan: "KAK DCC dipilih tangan: " + (row.judul || row.jenis || "KAK") + " \u00b7 " + row.trainer.length + " pemateri" };
+      return { kode: "hilang", pesan: "KAK yang dipilih sudah tidak ada di kiriman DCC \u2014 pilih ulang di tab Link Kelas" };
+    }
+    if (!k.tanggal_mulai) return { kode: "tak", pesan: "Tanggal mulai belum diisi, jadi tidak bisa dicocokkan ke DCC" };
+    const j = normJenisJ(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
+    const cocok = nyata.filter(p => String(p.mulai).slice(0, 10) === t && normJenisJ(p.jenis) === j);
+    if (!cocok.length) return { kode: "belum", pesan: "Belum ada KAK " + String(k.jenis || "").toUpperCase()
+      + " di DCC untuk tanggal mulai ini" };
+    if (cocok.length === 1) return { kode: "ada", jml: cocok[0].trainer.length,
+      pesan: "KAK DCC: " + (cocok[0].judul || cocok[0].jenis || "KAK") + " \u00b7 " + cocok[0].trainer.length + " pemateri" };
+    /* Beberapa KAK sejenis di tanggal yang sama: coba bedakan dengan kota. */
+    const nk = x => String(x || "").toLowerCase().replace(/\b(kota|kab|kabupaten)\b\.?/g, "").replace(/[^a-z]/g, "");
+    const kk = nk(kotaKelas(k) || k.kota || k.lokasi);
+    const perKota = kk ? cocok.filter(p => { const pk = nk(p.kota); return pk && (pk.indexOf(kk) > -1 || kk.indexOf(pk) > -1); }) : [];
+    if (perKota.length === 1) return { kode: "ada", jml: perKota[0].trainer.length,
+      pesan: "KAK DCC: " + (perKota[0].judul || perKota[0].jenis || "KAK") + " \u00b7 " + perKota[0].trainer.length + " pemateri" };
+    return { kode: "kembar", jml: cocok.length,
+      pesan: "Di DCC ada " + cocok.length + " KAK " + String(k.jenis || "").toUpperCase()
+        + " dengan tanggal mulai sama: " + cocok.map(p => (p.judul || p.jenis || "KAK")
+        + " (" + (p.kota || "tanpa kota") + ", " + p.trainer.length + " pemateri)").join("; ")
+        + ". Rapikan entri kembarnya di DCC, atau pilih yang benar di tab Link Kelas." };
+  }
+  const RUPA_KAK = {
+    ada:    { teks: "\u2713 KAK DCC", warna: "#1E6B4F" },
+    pilih:  { teks: "\u2713 KAK DCC (dipilih)", warna: "#1E6B4F" },
+    belum:  { teks: "\u26A0 Belum ada di DCC", warna: "#B4740A" },
+    kembar: { teks: "\u26D4 KAK DCC kembar", warna: "#B3261E" },
+    hilang: { teks: "\u26D4 KAK pilihan hilang", warna: "#B3261E" },
+    tak:    { teks: "", warna: "" }
+  };
+  function labelKak(k) {
+    const st = kakKelas(k);
+    const r = RUPA_KAK[st.kode];
+    if (!r || !r.teks) return null;
+    return React.createElement("span", {
+      title: st.pesan,
+      style: {
+        display: "inline-block", marginLeft: 8, padding: "1px 7px", borderRadius: 999,
+        fontSize: 11.5, fontWeight: 700, whiteSpace: "nowrap",
+        color: r.warna, border: "1px solid " + r.warna + "55", background: r.warna + "12"
+      }
+    }, r.teks + (st.kode === "ada" || st.kode === "pilih" ? " \u00b7 " + st.jml + " pemateri"
+      : st.kode === "kembar" ? " (" + st.jml + ")" : ""));
+  }
+  /* Ringkasan sebulan: berapa yang sudah sinkron, berapa yang terlewat,
+     berapa yang kembar. Inilah yang dibaca sekilas sebelum membuat KAK baru. */
+  function ringkasKakBulan() {
+    const daftar = jadwalTampil() || [];
+    if (!kakDcc.length || !daftar.length) return null;
+    const n = { ada: 0, pilih: 0, belum: 0, kembar: 0, hilang: 0, tak: 0 };
+    daftar.forEach(k => { n[kakKelas(k).kode]++; });
+    const bagian = [];
+    if (n.ada + n.pilih) bagian.push({ t: (n.ada + n.pilih) + " sudah ada KAK di DCC", w: "#1E6B4F" });
+    if (n.belum) bagian.push({ t: n.belum + " belum ada di DCC", w: "#B4740A" });
+    if (n.kembar) bagian.push({ t: n.kembar + " KAK kembar di DCC", w: "#B3261E" });
+    if (n.hilang) bagian.push({ t: n.hilang + " KAK pilihannya hilang", w: "#B3261E" });
+    if (!bagian.length) return null;
+    return React.createElement("p", { className: "dm-hint", style: { margin: "0 0 12px" } },
+      "Status KAK di DCC untuk bulan ini: ",
+      bagian.map((b, i) => React.createElement(React.Fragment, { key: b.t },
+        i ? " \u00b7 " : null,
+        React.createElement("b", { style: { color: b.w } }, b.t))),
+      ". Arahkan kursor ke penanda di tiap baris untuk rinciannya.");
   }
   async function hapus(t) {
     if (!window.confirm(`Hapus ${t.judul}?`)) return;
@@ -6173,7 +6268,7 @@ function TabJadwal({
     onPilih: t => setEdit(t)
   }) : /*#__PURE__*/React.createElement("div", {
     className: "dm-tabel-bungkus"
-  }, baris && baris.length ? panelBlnJ() : null, /*#__PURE__*/React.createElement("table", {
+  }, baris && baris.length ? panelBlnJ() : null, baris && baris.length ? ringkasKakBulan() : null, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Kelas"), /*#__PURE__*/React.createElement("th", null, "Jadwal"), /*#__PURE__*/React.createElement("th", null, "Harga"), /*#__PURE__*/React.createElement("th", null, "Kuota"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, jadwalTampil().map(t => /*#__PURE__*/React.createElement("tr", {
     key: t.id
@@ -6184,7 +6279,7 @@ function TabJadwal({
     title: "Tidak tampil di jadwal umum; hanya lewat Link Kelas"
   }, "Khusus") : null, Number(t.cicilan_kali) >= 2 ? /*#__PURE__*/React.createElement("span", {
     className: "dm-label-cicil"
-  }, "Cicilan ", t.cicilan_kali, "x") : null, /*#__PURE__*/React.createElement("p", {
+  }, "Cicilan ", t.cicilan_kali, "x") : null, labelKak(t), /*#__PURE__*/React.createElement("p", {
     className: "dm-hint"
   }, t.lokasi, " · ", t.format)), /*#__PURE__*/React.createElement("td", null, rentang(t.tanggal_mulai, t.tanggal_selesai)), /*#__PURE__*/React.createElement("td", {
     className: "dm-mono"

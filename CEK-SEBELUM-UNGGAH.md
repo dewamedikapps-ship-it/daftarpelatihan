@@ -12,7 +12,8 @@ hanya memeriksa sintaks, dan itu tidak cukup.
 ```bash
 node --check app.js            # 1. sintaks
 node cek-desain.js             # 2. semua desain flyer benar-benar jalan
-npm i acorn && node cek-scope.js app.js        # 3. variabel yang tidak pernah dideklarasikan
+node cek-kak.js                # 3. penanda status KAK DCC di daftar kelas
+npm i acorn && node cek-scope.js app.js        # 4. variabel yang tidak pernah dideklarasikan
 ```
 
 Ketiganya harus bersih. Baru setelah itu naikkan tag versi di `index.html`
@@ -52,6 +53,15 @@ dengan 5 pemateri diuji isi promptnya:
 Jadi kalau nanti ada desain baru, atau prompt desain lama diubah, penandanya
 tidak bisa lagi berbohong tanpa ketahuan. Diuji balik dengan memasang kembali
 penanda yang salah: pemeriksanya langsung melaporkan 14 kegagalan.
+
+`cek-kak.js` memotong fungsi `kakKelas` dan `labelKak` dari `TabJadwal` lalu
+menjalankannya terhadap 13 keadaan: KAK cocok satu, KAK belum ada, KAK ada tapi
+trainernya kosong, dua KAK di tanggal yang sama (kasus ACLS 15 Des yang nyata),
+KAK yang sudah dipilih tangan, KAK pilihan yang sudah dihapus di DCC, kelas tanpa
+tanggal mulai, baris kurikulum yang tidak boleh dihitung sebagai KAK, serta
+variasi penulisan kota dan huruf besar/kecil jenis pelatihan. Penanda inilah yang
+dipakai untuk mencegah KAK dobel dan kelas yang KAK-nya terlewat, jadi kalau
+logikanya meleset akibatnya langsung ke kepatuhan.
 
 `cek-scope.js` memakai acorn untuk menandai setiap identifier yang dipakai
 tetapi tidak pernah dideklarasikan di rantai scope-nya. Pada app.js yang sehat

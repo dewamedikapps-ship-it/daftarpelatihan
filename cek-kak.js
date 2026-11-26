@@ -1,63 +1,120 @@
-/* Uji penanda status KAK DCC di tab Jadwal (daftar kelas).
+/* Uji pencocokan KAK DCC dengan kelas portal.
  *
  * Jalankan dari folder repo:   node cek-kak.js
  *
- * Penanda ini yang dipakai Ryan untuk tahu kelas mana yang KAK-nya belum
- * dibuat di DCC (terlewat) dan kelas mana yang KAK-nya kembar (double).
- * Kalau logikanya meleset, akibatnya KAK dobel atau kelas tayang tanpa KAK,
- * jadi fungsinya dipotong langsung dari app.js dan diuji apa adanya.
+ * Kenapa berkas ini ada, dua kejadian nyata:
+ *
+ * 24 Nov 2026 — di DCC ada DUA KAK ACLS dengan tanggal mulai sama, portal
+ * diam saja dan hanya bilang "trainer belum ada".
+ *
+ * 26 Nov 2026 — "ACLS Cirebon" 15 Des memungut KAK "ACLS Tangerang" 15 Des.
+ * Sebabnya aturan lama hanya memeriksa kota bila KAK yang cocok LEBIH DARI
+ * SATU. Kalau di DCC cuma ada satu KAK ACLS pada tanggal itu, semua kelas
+ * ACLS tanggal itu memungutnya, apa pun kotanya. Flyer Cirebon jadi memuat
+ * nama narasumber Tangerang — melanggar SE 2692/2026 butir i40.
+ *
+ * Sejak itu pencocokannya satu fungsi saja, cocokkanKak(), dipakai tab Link
+ * Kelas maupun tab Jadwal. Berkas ini mengujinya langsung dari app.js.
  */
 "use strict";
 const fs = require("fs");
 const src = fs.readFileSync(require("path").join(__dirname, "app.js"), "utf-8");
 
-const A = "  function normJenisJ(t) {";
-const B = "  const RUPA_KAK = {";
-if (src.indexOf(A) < 0 || src.indexOf(B) < 0) { console.error("penanda tidak ketemu"); process.exit(2); }
+const A = "function normJenisKak(t) {";
+const B = "/* Kota pelaksanaan dalam huruf besar untuk flyer";
+if (src.indexOf(A) < 0 || src.indexOf(B) < 0) {
+  console.error("Penanda cocokkanKak tidak ketemu di app.js. Perbarui penanda di cek-kak.js.");
+  process.exit(2);
+}
 const blok = src.slice(src.indexOf(A), src.indexOf(B));
 
-function buat(kakDcc, kakPilihJ) {
-  const kotaKelas = k => (k && k.kota) || "";
-  return new Function("kakDcc", "kakPilihJ", "kotaKelas",
-    blok + "\nreturn kakKelas;")(kakDcc, kakPilihJ, kotaKelas);
-}
+/* kotaKelas asli bergantung pada tabel KOTA_DIKENAL; di sini cukup versi
+   sederhana yang membaca kolom kota, lalu judul/lokasi apa adanya. */
+const kotaKelas = k => String((k && k.kota) || "").trim();
+const cocokkanKak = new Function("kotaKelas", blok + "\nreturn cocokkanKak;")(kotaKelas);
 
-const T = (n, nama) => Array.from({length:n},(_,i)=>({nama:(nama||"Pelatih ")+(i+1),materi:["M"+i]}));
+const T = (n, awalan) => Array.from({ length: n },
+  (_, i) => ({ nama: (awalan || "Ns. Pelatih ") + (i + 1) + ", S.Kep", materi: ["Materi " + i] }));
+
+/* ------------------------------------------------------------------
+   Bagian 1 — aturan pencocokan
+   ------------------------------------------------------------------ */
 const KAK = [
-  { dcc_event_id:"e-acls-smg", jenis:"ACLS", mulai:"2026-12-08", kota:"Semarang", judul:"ACLS PERAWAT SEMARANG", trainer:T(5) },
-  { dcc_event_id:"e-btcls-clg", jenis:"BTCLS", mulai:"2026-12-08", kota:"Cilegon", judul:"BTCLS Cilegon", trainer:T(5) },
-  { dcc_event_id:"e-acls-tng-a", jenis:"ACLS", mulai:"2026-12-15", kota:"Tangerang", judul:"ACLS FN Tangerang", trainer:T(5) },
-  { dcc_event_id:"e-acls-tng-b", jenis:"ACLS", mulai:"2026-12-15", kota:"Tangerang", judul:"ACLS TANGERANG", trainer:T(1) },
-  { dcc_event_id:"e-btcls-yk",  jenis:"BTCLS", mulai:"2026-12-15", kota:"Yogyakarta", judul:"BTCLS Yogyakarta", trainer:T(4) },
-  { dcc_event_id:"kurikulum:BTCLS", jenis:"BTCLS", mulai:null, kota:null, judul:"Kurikulum", trainer:[{nama:"-",materi:["a","b"]}] },
-  { dcc_event_id:"e-kosong", jenis:"PKID", mulai:"2026-12-08", kota:"Tangerang", judul:"PKID tanpa trainer", trainer:[] }
+  { dcc_event_id: "acls-tng",   jenis: "ACLS",  mulai: "2026-12-15", kota: "Tangerang", judul: "ACLS FN Tangerang", trainer: T(5) },
+  { dcc_event_id: "acls-tng-2", jenis: "ACLS",  mulai: "2026-12-15", kota: "Tangerang", judul: "ACLS TANGERANG",    trainer: T(1) },
+  { dcc_event_id: "btcls-clg",  jenis: "BTCLS", mulai: "2026-12-08", kota: "Cilegon",   judul: "BTCLS Cilegon",     trainer: T(5) },
+  { dcc_event_id: "acls-smg",   jenis: "ACLS",  mulai: "2026-12-08", kota: "Semarang",  judul: "ACLS PERAWAT SEMARANG", trainer: T(5) },
+  { dcc_event_id: "tot-nokota", jenis: "TOT BTCLS", mulai: "2026-12-15", kota: "",      judul: "TOT BTCLS",         trainer: T(3) },
+  { dcc_event_id: "kurikulum:BTCLS", jenis: "BTCLS", mulai: null, kota: null, judul: "Kurikulum", trainer: [{ nama: "-", materi: ["a", "b"] }] },
+  { dcc_event_id: "pkid-kosong", jenis: "PKID", mulai: "2026-12-08", kota: "Tangerang", judul: "PKID tanpa trainer", trainer: [] }
 ];
 
 const KASUS = [
-  ["ACLS Semarang 8 Des — cocok satu",            {id:"k1",jenis:"ACLS",kota:"Semarang",tanggal_mulai:"2026-12-08"}, {}, "ada"],
-  ["BTCLS Cilegon 8 Des — cocok satu",            {id:"k2",jenis:"BTCLS",kota:"Cilegon",tanggal_mulai:"2026-12-08"}, {}, "ada"],
-  ["BTCLS Des 1 (1 Des) — tidak ada di DCC",      {id:"k3",jenis:"BTCLS",kota:"Tangerang",tanggal_mulai:"2026-12-01"}, {}, "belum"],
-  ["PKID 8 Des — KAK ada tapi trainer kosong",    {id:"k4",jenis:"PKID",kota:"Tangerang",tanggal_mulai:"2026-12-08"}, {}, "belum"],
-  ["ACLS Tangerang 15 Des — DUA KAK, kota sama",  {id:"k5",jenis:"ACLS",kota:"Tangerang",tanggal_mulai:"2026-12-15"}, {}, "kembar"],
-  ["ACLS Tangerang 15 Des — sudah dipilih",       {id:"k5",jenis:"ACLS",kota:"Tangerang",tanggal_mulai:"2026-12-15"}, {k5:"e-acls-tng-a"}, "pilih"],
-  ["ACLS Tangerang 15 Des — pilihan sudah hilang",{id:"k5",jenis:"ACLS",kota:"Tangerang",tanggal_mulai:"2026-12-15"}, {k5:"e-sudah-dihapus"}, "hilang"],
-  ["BTCLS Yogyakarta 15 Des — cocok satu",        {id:"k6",jenis:"BTCLS",kota:"Yogyakarta",tanggal_mulai:"2026-12-15"}, {}, "ada"],
-  ["TOT BTCLS 15 Des — jenis beda, bukan BTCLS",  {id:"k7",jenis:"TOT BTCLS",kota:"Tangerang",tanggal_mulai:"2026-12-15"}, {}, "belum"],
-  ["Kelas tanpa tanggal mulai",                   {id:"k8",jenis:"BTCLS",kota:"",tanggal_mulai:null}, {}, "tak"],
-  ["Kurikulum tidak boleh dihitung sebagai KAK",  {id:"k9",jenis:"BTCLS",kota:"Bandung",tanggal_mulai:"2026-12-22"}, {}, "belum"],
-  ["Kota 'Kota Semarang' tetap cocok",            {id:"k10",jenis:"ACLS",kota:"Kota Semarang",tanggal_mulai:"2026-12-08"}, {}, "ada"],
-  ["Jenis 'acls' huruf kecil tetap cocok",        {id:"k11",jenis:"acls",kota:"Semarang",tanggal_mulai:"2026-12-08"}, {}, "ada"]
+  // Inilah kejadian 26 Nov 2026 yang memicu perbaikan ini.
+  ["ACLS Cirebon 15 Des TIDAK boleh memungut KAK Tangerang",
+    { id: "a", jenis: "ACLS", kota: "Cirebon", tanggal_mulai: "2026-12-15" }, "bedakota", null],
+  ["ACLS Bandung 15 Des juga tidak boleh",
+    { id: "b", jenis: "ACLS", kota: "Bandung", tanggal_mulai: "2026-12-15" }, "bedakota", null],
+  ["ACLS Tangerang 15 Des: dua KAK sama-sama sah -> kembar",
+    { id: "c", jenis: "ACLS", kota: "Tangerang", tanggal_mulai: "2026-12-15" }, "kembar", null],
+  ["ACLS Semarang 8 Des cocok tepat satu",
+    { id: "d", jenis: "ACLS", kota: "Semarang", tanggal_mulai: "2026-12-08" }, "ada", "acls-smg"],
+  ["BTCLS Cilegon 8 Des cocok tepat satu",
+    { id: "e", jenis: "BTCLS", kota: "Cilegon", tanggal_mulai: "2026-12-08" }, "ada", "btcls-clg"],
+  ["BTCLS 1 Des: tidak ada KAK tanggal itu",
+    { id: "f", jenis: "BTCLS", kota: "Tangerang", tanggal_mulai: "2026-12-01" }, "belum", null],
+  ["PKID 8 Des: KAK ada tapi trainernya kosong",
+    { id: "g", jenis: "PKID", kota: "Tangerang", tanggal_mulai: "2026-12-08" }, "belum", null],
+  ["KAK tanpa kota tetap boleh dipakai kelas mana pun",
+    { id: "h", jenis: "TOT BTCLS", kota: "Cirebon", tanggal_mulai: "2026-12-15" }, "ada", "tot-nokota"],
+  ["Kelas tanpa kota + dua KAK sejenis -> kembar, bukan tebak",
+    { id: "i", jenis: "ACLS", kota: "", tanggal_mulai: "2026-12-15" }, "kembar", null],
+  ["Kelas tanpa kota + satu KAK sejenis -> cocok",
+    { id: "j", jenis: "ACLS", kota: "", tanggal_mulai: "2026-12-08" }, "ada", "acls-smg"],
+  ["Kelas tanpa tanggal mulai",
+    { id: "k", jenis: "ACLS", kota: "Cirebon", tanggal_mulai: null }, "tanpatgl", null],
+  ["Baris kurikulum tidak pernah dianggap KAK",
+    { id: "l", jenis: "BTCLS", kota: "Bandung", tanggal_mulai: "2026-12-22" }, "belum", null],
+  ["'Kota Semarang' tetap sepadan dengan 'Semarang'",
+    { id: "m", jenis: "ACLS", kota: "Kota Semarang", tanggal_mulai: "2026-12-08" }, "ada", "acls-smg"],
+  ["Jenis huruf kecil 'acls' tetap cocok",
+    { id: "n", jenis: "acls", kota: "Semarang", tanggal_mulai: "2026-12-08" }, "ada", "acls-smg"],
+  ["Tanggal beda satu hari tidak dicocokkan",
+    { id: "o", jenis: "ACLS", kota: "Semarang", tanggal_mulai: "2026-12-09" }, "belum", null]
 ];
 
 let gagal = 0;
-for (const [nama, kelas, pilih, harap] of KASUS) {
-  const st = buat(KAK, pilih)(kelas);
-  const ok = st.kode === harap;
+console.log("Pencocokan KAK DCC:");
+for (const [nama, kelas, sebabHarap, pilihHarap] of KASUS) {
+  const h = cocokkanKak(KAK, kelas);
+  const pilih = h.pilih ? h.pilih.dcc_event_id : null;
+  const ok = h.sebab === sebabHarap && pilih === pilihHarap;
   if (!ok) gagal++;
-  console.log((ok ? "  ok  " : "GAGAL ") + nama.padEnd(46) + " -> " + st.kode.padEnd(7) + (ok ? "" : " (harusnya " + harap + ")"));
-  if (st.kode === "kembar" || st.kode === "hilang" || st.kode === "belum") console.log("        pesan: " + st.pesan);
+  console.log((ok ? "  ok  " : "GAGAL ") + nama.padEnd(56) + "-> " + h.sebab
+    + (pilih ? " (" + pilih + ")" : ""));
+  if (!ok) console.log(" ".repeat(62) + "harusnya " + sebabHarap + (pilihHarap ? " (" + pilihHarap + ")" : ""));
 }
-console.log("\n" + (gagal ? gagal + " KASUS GAGAL" : "Semua " + KASUS.length + " kasus lulus."));
+
+/* Tidak boleh ada dua kelas berbeda kota yang memungut KAK yang sama. */
+const diambil = {};
+let bentrok = 0;
+for (const kota of ["Cirebon", "Bandung", "Tangerang", "Semarang", "Cilegon"]) {
+  for (const tgl of ["2026-12-08", "2026-12-15"]) {
+    for (const jenis of ["ACLS", "BTCLS"]) {
+      const h = cocokkanKak(KAK, { id: kota + tgl + jenis, jenis, kota, tanggal_mulai: tgl });
+      if (!h.pilih) continue;
+      const kunci = h.pilih.dcc_event_id;
+      if (diambil[kunci] && diambil[kunci] !== kota) {
+        bentrok++;
+        console.log("GAGAL KAK " + kunci + " (" + h.pilih.kota + ") dipungut dua kota: "
+          + diambil[kunci] + " dan " + kota);
+      }
+      diambil[kunci] = kota;
+    }
+  }
+}
+if (!bentrok) console.log("  ok  Tidak ada KAK yang dipungut dua kelas beda kota");
+gagal += bentrok;
 
 /* ------------------------------------------------------------------
    Bagian 2 — isi dropdown "KAK dari DCC" di tab Link Kelas.

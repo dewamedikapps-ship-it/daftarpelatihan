@@ -949,6 +949,7 @@ function kotaBesar(k) {
 const FOTO_KELAS = {
   BTCLS: ["foto-kelas/btcls-1.jpg", "foto-kelas/praktik-penilaian-pasien.jpg", "foto-kelas/praktik-jalan-napas.jpg", "foto-kelas/btcls-trauma.jpg", "foto-kelas/rjp-1.jpg", "foto-kelas/btcls-cedera.jpg"],
   ACLS: ["foto-kelas/acls-1.jpg", "foto-kelas/praktik-ventilasi-bvm.jpg", "foto-kelas/praktik-jalan-napas.jpg", "foto-kelas/acls-aed.jpg", "foto-kelas/rjp-1.jpg"],
+  PALS: ["foto-kelas/acls-1.jpg", "foto-kelas/rjp-1.jpg", "foto-kelas/praktik-ventilasi-bvm.jpg", "foto-kelas/praktik-jalan-napas.jpg"],
   EKG: ["foto-kelas/acls-aed.jpg", "foto-kelas/acls-1.jpg", "foto-kelas/umum-ujian.jpg"],
   PKID: ["foto-kelas/darurat-1.jpg", "foto-kelas/praktik-penilaian-pasien.jpg", "foto-kelas/praktik-ventilasi-bvm.jpg", "foto-kelas/darurat-2.jpg", "foto-kelas/btcls-trauma.jpg"],
   KKMN: ["foto-kelas/darurat-2.jpg", "foto-kelas/praktik-jalan-napas.jpg", "foto-kelas/darurat-1.jpg", "foto-kelas/btcls-trauma.jpg"],
@@ -964,6 +965,7 @@ function kelompokFoto(t) {
   if (FOTO_KELAS[jenis]) return FOTO_KELAS[jenis];
   const teks = (jenis + " " + String(t && t.judul || "")).toUpperCase();
   if (/BTCLS|BHD|BLS|TRAUMA|RJP|CPR/.test(teks)) return FOTO_KELAS.BTCLS;
+  if (/\bPALS\b|PEDIATRIC|PEDIATRI|ANAK/.test(teks)) return FOTO_KELAS.PALS;
   if (/ACLS|CARDIO|JANTUNG|RESUSITASI/.test(teks)) return FOTO_KELAS.ACLS;
   if (/EKG|ECG|ELEKTROKARDIO|ARITMIA/.test(teks)) return FOTO_KELAS.EKG;
   if (/GAWAT|DARURAT|EMERGENC|PKID|KKMN|BONELS/.test(teks)) return FOTO_KELAS.PKID;
@@ -1004,7 +1006,7 @@ function fotoUntukDaftar(daftar) {
 /* Cap, tanda tangan, dan nama finance diambil dari invoice resmi DMN.
    Disimpan sebagai gambar agar tidak pernah berubah. */
 const TTD_INVOICE = "ttd-dmn.jpg";
-const JENIS = ["BTCLS", "ACLS", "KKMN", "EKG", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS"];
+const JENIS = ["BTCLS", "ACLS", "PALS", "KKMN", "EKG", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS"];
 const PROFESI = ["Perawat", "Bidan", "Dokter", "Mahasiswa Keperawatan", "Lainnya"];
 const PLATARAN = ["Sudah punya", "Belum punya", "Belum tahu"];
 const UKURAN_TSHIRT = ["S", "M", "L", "XL", "XXL", "XXXL"];
@@ -2168,7 +2170,7 @@ function Footer({
    Data dikirim ke Edge Function Dewa Medik, bukan ke database portal,
    sehingga tidak menyentuh alur pendaftaran peserta sama sekali.
    ============================================================ */
-var KERJASAMA_PROGRAM = ["BTCLS", "ACLS for Nurse", "ACLS for Doctor", "EKG", "KKMN", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS", "Code Blue", "PPGD", "UKOM Academy", "Lainnya"];
+var KERJASAMA_PROGRAM = ["BTCLS", "ACLS for Nurse", "ACLS for Doctor", "PALS", "EKG", "KKMN", "PKID", "PPIK", "BONELS", "TOT BTCLS", "TOT ACLS", "Code Blue", "PPGD", "UKOM Academy", "Lainnya"];
 var KERJASAMA_BENTUK = [
   ["in-house", "In-house di tempat kami", "Tim DEWAMEDIK datang ke institusi Anda"],
   ["kirim-peserta", "Mengirim peserta ke kelas reguler", "Peserta bergabung di jadwal yang sudah berjalan"],
@@ -9278,7 +9280,14 @@ function TabLinkKelas({ beriTahu }) {
 
   /* Subdomain per jenis pelatihan (aturan pengalihan di Cloudflare):
      btcls.dewamedik911.com/smgnov -> daftarpelatihan.../btcls-smgnov.
-     Awalan yang lebih panjang dicek dulu (totbtcls sebelum btcls). */
+     Awalan yang lebih panjang dicek dulu (totbtcls sebelum btcls).
+
+     HANYA masukkan awalan yang subdomainnya BENAR-BENAR sudah ada DNS-nya.
+     Kalau awalan dimasukkan tanpa DNS, link kelas jenis itu jadi mati total.
+     26 Nov 2026: "pals" sengaja TIDAK dimasukkan karena pals.dewamedik911.com
+     belum punya DNS; kelas PALS memakai bentuk panjang
+     daftarpelatihan.dewamedik911.com/pals-xxx yang pasti jalan. Begitu DNS-nya
+     dibuat, cukup tambahkan "pals" ke daftar di bawah. */
   const SUB_JENIS = ["totbtcls", "workshop", "webinar", "bonels", "btcls", "acls", "kkmn", "pkid", "ekg"];
   function alamatPendek(slug) {
     slug = String(slug || "").replace(/^tot-btcls-/, "totbtcls-");
@@ -9670,6 +9679,7 @@ function TabLinkKelas({ beriTahu }) {
   const NAMA_RESMI_JENIS = {
     BTCLS: "Basic Trauma & Cardiac Life Support",
     ACLS: "Advanced Cardiac Life Support",
+    PALS: "Pediatric Advanced Life Support",
     PKID: "Pelatihan Keperawatan Intensif Dasar",
     EKG: "Elektrokardiografi"
   };

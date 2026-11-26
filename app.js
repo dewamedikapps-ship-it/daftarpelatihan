@@ -847,6 +847,53 @@ function kotaKelas(k) {
   return "";
 }
 
+/* ------------------------------------------------------------------
+   SATU-SATUNYA aturan pencocokan KAK kiriman DCC dengan kelas portal.
+   Dipakai tab Link Kelas (prompt flyer) dan tab Jadwal (penanda status),
+   supaya dua tempat itu tidak mungkin memberi jawaban berbeda.
+
+   26 Nov 2026: "ACLS Cirebon" 15 Des memungut KAK "ACLS Tangerang" 15 Des.
+   Sebabnya aturan lama hanya memeriksa kota bila KAK yang cocok lebih dari
+   satu. Kalau di DCC cuma ada satu KAK ACLS pada tanggal itu, semua kelas
+   ACLS tanggal itu memungutnya, apa pun kotanya. Sekarang: bila kelas DAN
+   KAK sama-sama menyebut kota, kotanya WAJIB sepadan.
+
+   Nilai sebab:
+     ada        tepat satu KAK yang sah -> ada di .pilih
+     belum      tidak ada KAK sejenis di tanggal itu
+     bedakota   ada KAK sejenis di tanggal itu, tapi kotanya lain semua
+     kembar     lebih dari satu KAK yang sama-sama sah
+     tanpatgl   kelasnya belum punya tanggal mulai
+   ------------------------------------------------------------------ */
+function normJenisKak(t) { return String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+function kotaRingkas(x) {
+  return String(x || "").toLowerCase().replace(/\b(kota|kab|kabupaten)\b\.?/g, "").replace(/[^a-z]/g, "");
+}
+function kotaSepadan(a, b) {
+  const x = kotaRingkas(a), y = kotaRingkas(b);
+  return !!x && !!y && (x.indexOf(y) > -1 || y.indexOf(x) > -1);
+}
+function cocokkanKak(daftar, k) {
+  if (!k || !k.tanggal_mulai) return { calon: [], pilih: null, sebab: "tanpatgl" };
+  const j = normJenisKak(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
+  const cocok = (daftar || []).filter(p => String(p.dcc_event_id || "").indexOf("kurikulum:") !== 0
+    && Array.isArray(p.trainer) && p.trainer.length
+    && String(p.mulai).slice(0, 10) === t && normJenisKak(p.jenis) === j);
+  if (!cocok.length) return { calon: [], pilih: null, sebab: "belum" };
+  const putus = (arr, sebab) => arr.length === 1
+    ? { calon: arr, pilih: arr[0], sebab: "ada" }
+    : { calon: arr, pilih: null, sebab: sebab };
+  const kk = kotaKelas(k) || (k && k.kota) || (k && k.lokasi);
+  if (!kotaRingkas(kk)) return putus(cocok, "kembar");
+  const perKota = cocok.filter(p => kotaSepadan(kk, p.kota));
+  if (perKota.length) return putus(perKota, "kembar");
+  /* Tidak ada yang kotanya sepadan. KAK yang memang tidak menyebut kota masih
+     boleh dipakai; yang kotanya jelas berbeda tidak boleh. */
+  const tanpaKota = cocok.filter(p => !kotaRingkas(p.kota));
+  if (tanpaKota.length) return putus(tanpaKota, "kembar");
+  return { calon: cocok, pilih: null, sebab: "bedakota" };
+}
+
 /* Kota pelaksanaan dalam huruf besar untuk flyer, lengkap dengan provinsinya
    bila diketahui: "SERANG, BANTEN". Provinsi dicari dari daftar di bawah,
    lalu dari teks lokasi/judul. Kalau tetap tidak ketemu, cukup nama kotanya. */
@@ -6158,35 +6205,33 @@ function TabJadwal({
   /* Status KAK sebuah kelas. Nilai "sendiri" dari pencocokan jenis + tanggal
      mulai, persis aturan yang dipakai tab Link Kelas, supaya dua tempat ini
      tidak pernah memberi jawaban berbeda untuk kelas yang sama. */
-  function normJenisJ(t) { return String(t || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }
+  function ringkasSatuKak(p) {
+    return (p.judul || p.jenis || "KAK") + " (" + (p.kota || "tanpa kota") + ", " + p.trainer.length + " pemateri)";
+  }
   function kakKelas(k) {
     if (!k) return { kode: "tak", pesan: "" };
-    const nyata = kakDcc.filter(p => String(p.dcc_event_id || "").indexOf("kurikulum:") !== 0
-      && Array.isArray(p.trainer) && p.trainer.length);
     const dipilih = kakPilihJ[k.id];
     if (dipilih) {
-      const row = nyata.find(p => String(p.dcc_event_id) === String(dipilih));
+      const row = kakDcc.find(p => String(p.dcc_event_id) === String(dipilih)
+        && Array.isArray(p.trainer) && p.trainer.length);
       if (row) return { kode: "pilih", jml: row.trainer.length,
         pesan: "KAK DCC dipilih tangan: " + (row.judul || row.jenis || "KAK") + " \u00b7 " + row.trainer.length + " pemateri" };
       return { kode: "hilang", pesan: "KAK yang dipilih sudah tidak ada di kiriman DCC \u2014 pilih ulang di tab Link Kelas" };
     }
-    if (!k.tanggal_mulai) return { kode: "tak", pesan: "Tanggal mulai belum diisi, jadi tidak bisa dicocokkan ke DCC" };
-    const j = normJenisJ(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
-    const cocok = nyata.filter(p => String(p.mulai).slice(0, 10) === t && normJenisJ(p.jenis) === j);
-    if (!cocok.length) return { kode: "belum", pesan: "Belum ada KAK " + String(k.jenis || "").toUpperCase()
-      + " di DCC untuk tanggal mulai ini" };
-    if (cocok.length === 1) return { kode: "ada", jml: cocok[0].trainer.length,
-      pesan: "KAK DCC: " + (cocok[0].judul || cocok[0].jenis || "KAK") + " \u00b7 " + cocok[0].trainer.length + " pemateri" };
-    /* Beberapa KAK sejenis di tanggal yang sama: coba bedakan dengan kota. */
-    const nk = x => String(x || "").toLowerCase().replace(/\b(kota|kab|kabupaten)\b\.?/g, "").replace(/[^a-z]/g, "");
-    const kk = nk(kotaKelas(k) || k.kota || k.lokasi);
-    const perKota = kk ? cocok.filter(p => { const pk = nk(p.kota); return pk && (pk.indexOf(kk) > -1 || kk.indexOf(pk) > -1); }) : [];
-    if (perKota.length === 1) return { kode: "ada", jml: perKota[0].trainer.length,
-      pesan: "KAK DCC: " + (perKota[0].judul || perKota[0].jenis || "KAK") + " \u00b7 " + perKota[0].trainer.length + " pemateri" };
-    return { kode: "kembar", jml: cocok.length,
-      pesan: "Di DCC ada " + cocok.length + " KAK " + String(k.jenis || "").toUpperCase()
-        + " dengan tanggal mulai sama: " + cocok.map(p => (p.judul || p.jenis || "KAK")
-        + " (" + (p.kota || "tanpa kota") + ", " + p.trainer.length + " pemateri)").join("; ")
+    const h = cocokkanKak(kakDcc, k);
+    const jen = String(k.jenis || "").toUpperCase();
+    const kot = kotaKelas(k) || k.kota || "kelas ini";
+    if (h.sebab === "tanpatgl") return { kode: "tak", pesan: "Tanggal mulai belum diisi, jadi tidak bisa dicocokkan ke DCC" };
+    if (h.sebab === "ada") return { kode: "ada", jml: h.pilih.trainer.length,
+      pesan: "KAK DCC: " + (h.pilih.judul || h.pilih.jenis || "KAK") + " \u00b7 " + h.pilih.trainer.length + " pemateri" };
+    if (h.sebab === "belum") return { kode: "belum",
+      pesan: "Belum ada KAK " + jen + " di DCC untuk tanggal mulai ini" };
+    if (h.sebab === "bedakota") return { kode: "belum",
+      pesan: "Belum ada KAK " + jen + " di DCC untuk " + kot + " di tanggal ini. Yang ada tanggal itu kotanya lain: "
+        + h.calon.map(ringkasSatuKak).join("; ") + " \u2014 sengaja tidak dipakai supaya nama narasumber tidak tertukar." };
+    return { kode: "kembar", jml: h.calon.length,
+      pesan: "Di DCC ada " + h.calon.length + " KAK " + jen + " yang sama-sama cocok untuk kelas ini: "
+        + h.calon.map(ringkasSatuKak).join("; ")
         + ". Rapikan entri kembarnya di DCC, atau pilih yang benar di tab Link Kelas." };
   }
   const RUPA_KAK = {
@@ -9174,11 +9219,8 @@ function TabLinkKelas({ beriTahu }) {
   /* KAK yang jenis dan tanggal mulainya sama persis. Lebih dari satu berarti
      di DCC ada entri kembar, dan portal sengaja tidak menebak. */
   function kakKembar(k) {
-    if (!k || !k.tanggal_mulai) return [];
-    const j = normJenis(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
-    return pemateri.filter(p => String(p.dcc_event_id || "").indexOf("kurikulum:") !== 0
-      && String(p.mulai).slice(0, 10) === t && normJenis(p.jenis) === j
-      && Array.isArray(p.trainer) && p.trainer.length);
+    const h = cocokkanKak(pemateri, k);
+    return h.sebab === "kembar" ? h.calon : [];
   }
   function ringkasKak(p) {
     return (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "tanpa kota")
@@ -9223,16 +9265,7 @@ function TabLinkKelas({ beriTahu }) {
     return m.length ? m.map(x => String(x).trim()).filter(Boolean) : null;
   }
   function pemateriDcc(k) {
-    if (!k || !k.tanggal_mulai) return null;
-    const j = normJenis(k.jenis), t = String(k.tanggal_mulai).slice(0, 10);
-    const cocok = pemateri.filter(p => String(p.mulai).slice(0, 10) === t && normJenis(p.jenis) === j
-      && Array.isArray(p.trainer) && p.trainer.length);
-    if (cocok.length <= 1) return cocok[0] || null;
-    /* Beberapa kelas sejenis mulai di hari yang sama: bedakan dengan kota. */
-    const nk = x => String(x || "").toLowerCase().replace(/\b(kota|kab|kabupaten)\b\.?/g, "").replace(/[^a-z]/g, "");
-    const kk = nk(kotaKelas(k) || k.kota || k.lokasi);
-    const perKota = kk ? cocok.filter(p => { const pk = nk(p.kota); return pk && (pk.indexOf(kk) > -1 || kk.indexOf(pk) > -1); }) : [];
-    return perKota.length === 1 ? perKota[0] : null;
+    return cocokkanKak(pemateri, k).pilih;
   }
 
   function rapikanSlug(t) {

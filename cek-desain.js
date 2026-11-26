@@ -112,6 +112,26 @@ for (const [labelPm, trainer, kurikulum] of PEMATERI) {
               rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
                 sebab: "ditandai TANPA nama narasumber, tapi " + ada + " nama tetap muncul di prompt" });
             }
+            /* Blok akreditasi. Ryan, 26 Nov 2026: huruf "B" harus seukuran
+               dan setebal baris "Institusi penyelenggara pelatihan
+               terakreditasi Kemenkes RI", bukan huruf display ~2,5x seperti
+               sebelumnya. Yang tidak boleh berubah: B tetap murni tipografi,
+               tidak di dalam perisai/lingkaran/stempel/pita/badge, karena
+               butir i14 mewajibkan status akreditasi berupa teks. */
+            if (/terakreditasi Kemenkes RI/i.test(t)) {
+              if (/2[.,]5\s?x|2,5 kali|display letter about/i.test(t)) {
+                rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
+                  sebab: "masih menyuruh huruf B dibesarkan jadi huruf display" });
+              }
+              if (!/SAME size and weight as line 1|SAMA PERSIS dengan baris/i.test(t)) {
+                rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
+                  sebab: "tidak menyebut bahwa huruf B harus seukuran baris akreditasi" });
+              }
+              if (!/shield|perisai/i.test(t)) {
+                rusak.push({ desain: d.id, kelas: labelK, pemateri: labelPm, link: labelR,
+                  sebab: "tidak melarang huruf B dipasang di dalam perisai/badge (butir i14)" });
+              }
+            }
             /* Butir i21: judul materi wajib tepat DI BAWAH nama narasumber yang
                membawakannya, bukan sebagai daftar materi terpisah. Diukur dengan
                menuntut seluruh materi seorang pemateri muncul dalam 300 karakter

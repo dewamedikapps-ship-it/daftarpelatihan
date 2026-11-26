@@ -9716,7 +9716,7 @@ function TabLinkKelas({ beriTahu }) {
     b.push("1. Pojok KIRI ATAS: logo Kementerian Kesehatan RI paling kiri, lalu logo Dewa Medik Nusantara tepat di sampingnya (berjajar sejajar). Proporsi dan warna logo tidak diubah.");
     b.push("2. Pojok KANAN ATAS, SEJAJAR dengan deretan logo (tengah-tengahnya segaris dengan tengah logo, rata kanan): status dan nomor akreditasi ditulis sebagai TEKS biasa \u2014 bukan badge, stempel, perisai, pita, atau gambar \u2014 3 baris berurutan:");
     b.push("   Baris 1: \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" \u2014 ditulis TEBAL, kontras tinggi, cukup besar untuk terbaca di layar ponsel.");
-    b.push("   Baris 2: kata \"Terakreditasi\" dengan ketebalan biasa, lalu huruf \"B\" sebagai huruf display besar dan tebal, sekitar 2,5 kali tinggi baris 1. Murni tipografi \u2014 huruf B TIDAK boleh ditaruh di dalam perisai, lingkaran, stempel, pita, atau badge.");
+    b.push("   Baris 2: kata \"Terakreditasi\" dengan ketebalan biasa, lalu huruf \"B\" berukuran dan setebal SAMA PERSIS dengan baris 1 \u2014 ukuran huruf sama, ketebalan sama, sejajar di garis dasar yang sama, jangan dibesarkan jadi huruf display. Murni tipografi \u2014 huruf B TIDAK boleh ditaruh di dalam perisai, lingkaran, stempel, pita, atau badge.");
     b.push("   Baris 3: \"No. HK.02.02/F/4052/2024\"");
     b.push("3. Judul kegiatan besar dan jelas. Ukuran huruf biaya TIDAK boleh lebih besar dari judul.");
     b.push(daring
@@ -9910,7 +9910,7 @@ function TabLinkKelas({ beriTahu }) {
     H("HEADER — Y 0–110 px");
     p("Upper-left: the ORIGINAL attached Kemenkes logo, a thin divider, then the ORIGINAL attached Dewa Medik Nusantara logo. Use the supplied images exactly; do not redraw, recolor or distort.", "",
       "Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:",
-      L(["**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "No. HK.02.02/F/4052/2024"]),
+      L(["**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** set at the SAME size and weight as line 1 \u2014 same type size, same bold, sitting on the same baseline, never enlarged into a display letter; typography only, never inside a shield, circle, seal, ribbon or badge", "No. HK.02.02/F/4052/2024"]),
       "No badge, stamp or seal anywhere in this block.");
     H("HERO — Y 110–470 px");
     p("LEFT side, stacked title (all lines mandatory):",
@@ -10015,7 +10015,7 @@ function TabLinkKelas({ beriTahu }) {
       "",
       "⚠️ WAJIB / MANDATORY — tetap tampilkan walaupun gambar referensi tidak memilikinya (do NOT copy the reference here):",
       "1. Judul ditulis 2 baris: \"PELATIHAN\" lalu \"" + J + "\" (PELATIHAN = huruf kapital tebal ±40% tinggi judul, tepat di atasnya). The title text is literally \"PELATIHAN " + J + "\" stacked on two lines — never render " + J + " alone.",
-      "2. Pojok kanan atas, SEJAJAR dengan deretan logo (bukan lebih tinggi, bukan lebih rendah), rata kanan. Urutan tiga baris: (a) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" ditulis TEBAL dan kontras agar terbaca jelas; (b) kata \"Terakreditasi\" ketebalan biasa lalu huruf \"B\" sebagai huruf display besar tebal sekitar 2,5x tinggi baris (a) — murni tipografi, tanpa perisai/lingkaran/stempel/pita/badge; (c) \"No. HK.02.02/F/4052/2024\".",
+      "2. Pojok kanan atas, SEJAJAR dengan deretan logo (bukan lebih tinggi, bukan lebih rendah), rata kanan. Urutan tiga baris: (a) \"Institusi penyelenggara pelatihan terakreditasi Kemenkes RI\" ditulis TEBAL dan kontras agar terbaca jelas; (b) kata \"Terakreditasi\" ketebalan biasa lalu huruf \"B\" berukuran dan setebal SAMA PERSIS dengan baris (a) — jangan dibesarkan jadi huruf display, murni tipografi, tanpa perisai/lingkaran/stempel/pita/badge; (c) \"No. HK.02.02/F/4052/2024\".",
       "3. Tepat DI BAWAH judul \"" + J + "\", tulis dua baris: baris pertama label kecil \"KOTA PELAKSANAAN\", baris kedua " + (daringSaja ? "\"DARING\"" : "\"" + (KOTA || "[KOTA PELAKSANAAN]") + "\"") + " dengan huruf kapital extra-bold disertai ikon pin lokasi. Baris kedua jauh lebih besar daripada teks informasi lain tetapi tetap lebih kecil daripada judul pelatihan, supaya pembaca langsung tahu kota pelaksanaannya hanya dengan melirik flyer di layar ponsel. Jangan pasang slogan seperti KOMPETENSI LEBIH KUAT, PASIEN LEBIH AMAN, atau PRAKTIK LEBIH TERARAH; ruang itu untuk blok kota.",
       "4. Kartu lokasi luring diperbesar: nama kota extra-bold merah #E91C25 (baris terbesar di kartu), nama venue tebal navy #0B1E3F, alamat lebih kecil tetapi tetap terbaca di ponsel.",
       "5. Urutan penonjolan visual: judul pelatihan \u2192 nama kota \u2192 tanggal pelaksanaan \u2192 nama venue.",
@@ -10098,7 +10098,7 @@ function TabLinkKelas({ beriTahu }) {
     p("Create a clean horizontal white header.", "");
     p("**Upper-left:**", "Place the original Kemenkes logo first, followed immediately by the original Dewa Medik Nusantara logo.", "");
     p("Use the original uploaded logo assets exactly as provided. Do not redraw, distort, recolor, or alter their lettering.", "");
-    p("**Upper-right — level with the logos, vertically centred against them, right-aligned:**", "Display accreditation as plain navy text, three lines in this order:", "", "**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge, stamp, seal or shield.", "");
+    p("**Upper-right — level with the logos, vertically centred against them, right-aligned:**", "Display accreditation as plain navy text, three lines in this order:", "", "**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** set at the SAME size and weight as line 1 \u2014 same type size, same bold, sitting on the same baseline, never enlarged into a display letter; typography only, never inside a shield, circle, seal, ribbon or badge", "", "No. HK.02.02/F/4052/2024", "", "No accreditation badge, stamp, seal or shield.", "");
     p("### 4. HERO — NEXT 30%", "");
     p("**LEFT SIDE:**", "", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "", "## PELATIHAN", "# " + J, "", "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the headline height, left-aligned with the headline. Line 2 \"" + J + "\": very large, bold, condensed navy headline.", "");
     if (untukPerawat) p("Directly underneath, exactly:", "", "**for Nurse**", "");
@@ -10253,7 +10253,7 @@ function TabLinkKelas({ beriTahu }) {
       "G. CONTACTS & COMPLAINTS: y=1130–1240 (110px)",
       "H. ORGANIZER FOOTER: y=1240–1305 (65px)", "");
     p("HEADER:", "At top left, place the ORIGINAL uploaded Kemenkes logo, followed horizontally by the ORIGINAL uploaded Dewa Medik Nusantara shield logo and wordmark. Never redraw, modify or regenerate either logo.",
-      "Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:", "**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "No. HK.02.02/F/4052/2024", "");
+      "Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:", "**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** set at the SAME size and weight as line 1 \u2014 same type size, same bold, sitting on the same baseline, never enlarged into a display letter; typography only, never inside a shield, circle, seal, ribbon or badge", "No. HK.02.02/F/4052/2024", "");
     p("HERO:", "TITLE BLOCK — render these lines as ONE stacked title, top to bottom (the first line is part of the title, NOT optional):", "PELATIHAN", J, "Line 1 \"PELATIHAN\": bold condensed navy capitals about 40% of the title height. Line 2: very large bold navy " + J + " title on left with thin red ECG line crossing the bottom of the letters.");
     if (untukPerawat) p("Directly below, exactly:", "for Nurse");
     if (namaResmi) p((untukPerawat ? "Then" : "Directly below") + ", exactly (do not translate, shorten, or rephrase):", namaResmi);
@@ -10374,7 +10374,7 @@ function TabLinkKelas({ beriTahu }) {
     p("1. Kemenkes logo with the turquoise word **Kemenkes**.", "2. Original Dewa Medik Nusantara logo.", "");
     p("Do not redraw, recreate, recolor, or distort either logo.", "");
     p("Upper-right, on the SAME horizontal line as the logos and vertically centred against them, right-aligned, three lines of navy text, as TEXT only — never a badge, stamp, seal, shield or ribbon:", "");
-    p("**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge", "", "**No. HK.02.02/F/4052/2024**", "");
+    p("**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone", "", "the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** set at the SAME size and weight as line 1 \u2014 same type size, same bold, sitting on the same baseline, never enlarged into a display letter; typography only, never inside a shield, circle, seal, ribbon or badge", "", "**No. HK.02.02/F/4052/2024**", "");
     p("## 4. HERO SECTION — 24%", "");
     p(hero, "");
     p("Modern medical simulation environment, navy uniforms, natural Indonesian faces, realistic equipment, and red-blue cinematic lighting.", "");
@@ -10790,7 +10790,7 @@ function TabLinkKelas({ beriTahu }) {
     b.push("");
     b.push("**Institusi penyelenggara pelatihan terakreditasi Kemenkes RI** — BOLD, high contrast, large enough to read on a phone");
     b.push("");
-    b.push("the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** as a large bold display letter about 2.5x the height of line 1 — typography only, never inside a shield, circle, seal, ribbon or badge");
+    b.push("the word \"Terakreditasi\" in regular weight, immediately followed by the letter **B** set at the SAME size and weight as line 1 \u2014 same type size, same bold, sitting on the same baseline, never enlarged into a display letter; typography only, never inside a shield, circle, seal, ribbon or badge");
     b.push("");
     b.push("No. HK.02.02/F/4052/2024");
     b.push("");

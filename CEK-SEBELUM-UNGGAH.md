@@ -1,6 +1,6 @@
 # Pemeriksa wajib sebelum app.js diunggah
 
-`cek-desain.js` dan `cek-scope.js` tidak ikut dijalankan oleh situs — keduanya
+`cek-desain.js`, `cek-kak.js`, `cek-scope.js` dan `cek-peran.js` tidak ikut dijalankan oleh situs — semuanya
 pemeriksa yang harus dijalankan **sebelum** app.js diunggah ke repo.
 
 `app.js` sudah dikompilasi (React.createElement, tanpa berkas sumber), jadi
@@ -12,8 +12,10 @@ hanya memeriksa sintaks, dan itu tidak cukup.
 ```bash
 node --check app.js            # 1. sintaks
 node cek-desain.js             # 2. semua desain flyer benar-benar jalan
-node cek-kak.js                # 3. penanda status KAK DCC di daftar kelas
+node cek-kak.js                # 3. pencocokan KAK DCC, dropdown, tombol muat
+                               #    ulang, daftar nama narasumber
 npm i acorn && node cek-scope.js app.js        # 4. variabel yang tidak pernah dideklarasikan
+node cek-peran.js              # 5. batas tab Manajer Diklat vs Pemilik
 ```
 
 Ketiganya harus bersih. Baru setelah itu naikkan tag versi di `index.html`
@@ -73,3 +75,27 @@ browser dan dari pustaka Supabase.
 `cek-desain.js` memotong app.js dari `function tglDL(` sampai akhir
 `function buatPromptMaster(`. Kalau nama fungsi itu berubah, ujinya berhenti
 dengan pesan jelas, bukan diam-diam lulus tanpa menguji apa pun.
+
+## 5. `cek-peran.js` — batas Manajer Diklat
+
+Ditambahkan 28 Nov 2026, waktu tab Kuitansi dibuka untuk Manajer Diklat (Hafid)
+supaya ia bisa membuat kuitansi. Perubahan peran menyentuh dua tempat sekaligus
+— daftar tab dan penjaga `peran !== "diklat"` saat tab dirender — dan kalau satu
+tertinggal, akibatnya diam: tabnya muncul tapi kosong, atau tab milik Pemilik
+ikut terbuka.
+
+Pemeriksa ini langsung menemukan lubang lama: **Invoice, Pengaturan, Keamanan,
+Member, Testimoni, Karir dan Fasilitas sama sekali tidak punya penjaga saat
+dirender** — aman hanya selama tombolnya tidak ditampilkan. Ketujuhnya sudah
+diberi penjaga, dan sekarang pemeriksa menuntut semuanya tetap ada.
+
+Batas yang sesungguhnya tetap di RLS database (`boleh_diklat()` / `is_admin()`),
+bukan di app.js. Pemeriksa ini menjaga agar tampilannya tidak berjanji lebih
+daripada yang diizinkan database — atau sebaliknya.
+
+**Menambah tab ke daftar `BOLEH_DIKLAT` di cek-peran.js adalah keputusan sadar:
+pastikan RLS tabelnya sudah mengizinkan peran `diklat` lebih dulu.**
+
+Untuk kuitansi, pembagiannya: `select`/`insert`/`update` → `boleh_diklat()`,
+`delete` → `is_admin()` saja. Kuitansi menyatakan uang sudah diterima, jadi
+penghapusannya tetap di tangan Pemilik.

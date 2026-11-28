@@ -4198,7 +4198,7 @@ function TabAkun({ beriTahu }) {
       React.createElement("button", { className: "dm-btn", onClick: () => setBuka(kosong) }, "Buat akun")
     ),
     React.createElement("p", { className: "dm-hint", style: { marginBottom: 12 } },
-      "Manajer Diklat hanya melihat tab Pendaftar dan Jadwal. Dia tidak bisa membuka kode member, invoice, pengaturan, keamanan, maupun akun pengguna, dan tidak melihat nilai terverifikasi. Batas ini dijaga di database, bukan hanya di tampilan."),
+      "Manajer Diklat melihat tab Pendaftar, Jadwal, Kerja Sama, Pelihat Harga, Kuitansi, dan Link Kelas. Dia tidak bisa membuka kode member, invoice, pengaturan, keamanan, maupun akun pengguna, dan di tab Pendaftar nilai uangnya disembunyikan. Kuitansi boleh dia buat dan ubah \u2014 menghapusnya tetap hanya Pemilik, karena kuitansi menyatakan uang sudah diterima. Batas ini dijaga di database, bukan hanya di tampilan."),
 
     React.createElement("div", { className: "dm-tabel-bungkus" },
       React.createElement("table", { className: "dm-tabel" },
@@ -4653,7 +4653,7 @@ function BackOffice({
   }, "Keluar")), /*#__PURE__*/React.createElement("div", {
     className: "dm-subtab"
   }, (peran === "diklat"
-      ? [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["linkkelas", "Link Kelas"]]
+      ? [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["kuitansi", "Kuitansi"], ["linkkelas", "Link Kelas"]]
       : [["pendaftar", "Pendaftar"], ["jadwal", "Jadwal"], ["voucher", "Member"], ["testimoni", "Testimoni"], ["kerjasama", "Kerja Sama"], ["prospek", "Pelihat Harga"], ["karir", "Karir"], ["fasilitas", "Fasilitas"], ["invoice", "Invoice"], ["kuitansi", "Kuitansi"], ["linkkelas", "Link Kelas"], ["akun", "Akun Pengguna"], ["setelan", "Pengaturan"], ["keamanan", "Keamanan"]]).map(([k, l]) => /*#__PURE__*/React.createElement("button", {
     key: k,
     className: tab === k ? "dm-tab dm-tab-on" : "dm-tab",
@@ -4666,9 +4666,9 @@ function BackOffice({
   }), tab === "jadwal" && /*#__PURE__*/React.createElement(TabJadwal, {
     beriTahu: beriTahu,
     peran: peran
-  }), tab === "voucher" && /*#__PURE__*/React.createElement(TabVoucher, {
+  }), tab === "voucher" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabVoucher, {
     beriTahu: beriTahu
-  }), tab === "testimoni" && /*#__PURE__*/React.createElement(TabTestimoni, {
+  }), tab === "testimoni" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabTestimoni, {
     beriTahu: beriTahu
   }), tab === "kerjasama" && /*#__PURE__*/React.createElement(TabKerjasama, {
     beriTahu: beriTahu,
@@ -4676,17 +4676,18 @@ function BackOffice({
   }), tab === "prospek" && /*#__PURE__*/React.createElement(TabProspek, {
     beriTahu: beriTahu,
     peran: peran
-  }), tab === "karir" && /*#__PURE__*/React.createElement(TabKarir, {
+  }), tab === "karir" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabKarir, {
     beriTahu: beriTahu
-  }), tab === "fasilitas" && /*#__PURE__*/React.createElement(TabFasilitas, {
+  }), tab === "fasilitas" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabFasilitas, {
     beriTahu: beriTahu
-  }), tab === "invoice" && /*#__PURE__*/React.createElement(TabInvoice, {
+  }), tab === "invoice" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabInvoice, {
     beriTahu: beriTahu
-  }), tab === "kuitansi" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabKuitansi, {
+  }), tab === "kuitansi" && /*#__PURE__*/React.createElement(TabKuitansi, {
+    beriTahu: beriTahu,
+    peran: peran
+  }), tab === "setelan" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabSetelan, {
     beriTahu: beriTahu
-  }), tab === "setelan" && /*#__PURE__*/React.createElement(TabSetelan, {
-    beriTahu: beriTahu
-  }), tab === "keamanan" && /*#__PURE__*/React.createElement(TabKeamanan, {
+  }), tab === "keamanan" && peran !== "diklat" && /*#__PURE__*/React.createElement(TabKeamanan, {
     beriTahu: beriTahu
   }), tab === "linkkelas" && /*#__PURE__*/React.createElement(TabLinkKelas, {
     beriTahu: beriTahu
@@ -8196,7 +8197,7 @@ function LembarKuitansi({ kw }) {
   );
 }
 
-function TabKuitansi({ beriTahu }) {
+function TabKuitansi({ beriTahu, peran }) {
   const [baris, setBaris] = useState(null);
   const [edit, setEdit] = useState(null);
   const [pratinjau, setPratinjau] = useState(null);
@@ -8391,7 +8392,7 @@ function TabKuitansi({ beriTahu }) {
                     className: "dm-btn-ghost",
                     onClick: () => setEdit({ ...v, jumlah: Number(v.jumlah) || 0 })
                   }, "Ubah"),
-                  React.createElement("button", {
+                  peran === "diklat" ? null : React.createElement("button", {
                     className: "dm-btn-ghost",
                     onClick: () => hapus(v)
                   }, "Hapus")))))))

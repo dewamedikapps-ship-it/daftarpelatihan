@@ -6066,6 +6066,34 @@ function TabJadwal({
   /* KAK kiriman DCC + KAK yang dipilih tangan di tab Link Kelas, dipakai
      hanya untuk menandai status tiap kelas di sini. */
   const [kakDcc, setKakDcc] = useState([]);
+  /* Jam daftar KAK terakhir diambil, plus tombol ambil-ulangnya. 26 Nov 2026
+     KAK baru di DCC tidak muncul di sini karena halaman sudah terbuka lebih
+     dulu dan daftarnya hanya diambil sekali saat halaman dimuat. */
+  const [kakJam, setKakJam] = useState(null);
+  const [kakSibuk, setKakSibuk] = useState(false);
+  function jamKak() {
+    if (!kakJam) return "";
+    try { return kakJam.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }); }
+    catch (e) { return ""; }
+  }
+  async function muatUlangKak() {
+    if (kakSibuk) return;
+    setKakSibuk(true);
+    try { await muatKak(); } finally { setKakSibuk(false); }
+  }
+  function tombolMuatKak(kecil) {
+    const teks = kakSibuk ? "Mengambil\u2026"
+      : (kecil ? "\u27f3 Muat ulang KAK" : "\u27f3 Muat ulang KAK dari DCC")
+        + (kakJam ? " (" + jamKak() + ")" : "");
+    return React.createElement("button", {
+      type: "button", className: "dm-btn-line", disabled: kakSibuk,
+      onClick: muatUlangKak,
+      title: "Ambil ulang daftar KAK dari DCC tanpa memuat ulang halaman",
+      style: kecil ? { padding: "4px 9px", fontSize: 12.5, whiteSpace: "nowrap" }
+                   : { whiteSpace: "nowrap" }
+    }, teks);
+  }
+
   const [kakPilihJ, setKakPilihJ] = useState({});
   /* Panel pilih bulan agar daftar jadwal tidak menumpuk. */
   const [bulanJ, setBulanJ] = useState(null);
@@ -6167,6 +6195,7 @@ function TabJadwal({
       if (kp && !kp.error && Array.isArray(kp.data)) kp.data.forEach(x => { m[x.pelatihan_id] = x.dcc_event_id; });
       setKakPilihJ(m);
     } catch (e) { setKakPilihJ({}); }
+    setKakJam(new Date());
   }
   useEffect(() => {
     muat();
@@ -6260,6 +6289,14 @@ function TabJadwal({
   }
   /* Ringkasan sebulan: berapa yang sudah sinkron, berapa yang terlewat,
      berapa yang kembar. Inilah yang dibaca sekilas sebelum membuat KAK baru. */
+  function barisMuatKak() {
+    return React.createElement("div", { style: { display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "0 0 12px" } },
+      tombolMuatKak(true),
+      React.createElement("span", { className: "dm-hint", style: { margin: 0 } },
+        kakJam
+          ? "Daftar KAK dari DCC terakhir diambil " + jamKak() + ". Habis membuat KAK baru di DCC, klik tombol ini \u2014 tidak perlu memuat ulang halaman."
+          : "Daftar KAK dari DCC diambil saat halaman ini dibuka."));
+  }
   function ringkasKakBulan() {
     const daftar = jadwalTampil() || [];
     if (!kakDcc.length || !daftar.length) return null;
@@ -6315,7 +6352,7 @@ function TabJadwal({
     onPilih: t => setEdit(t)
   }) : /*#__PURE__*/React.createElement("div", {
     className: "dm-tabel-bungkus"
-  }, baris && baris.length ? panelBlnJ() : null, baris && baris.length ? ringkasKakBulan() : null, /*#__PURE__*/React.createElement("table", {
+  }, baris && baris.length ? panelBlnJ() : null, baris && baris.length ? ringkasKakBulan() : null, baris && baris.length ? barisMuatKak() : null, /*#__PURE__*/React.createElement("table", {
     className: "dm-tabel"
   }, /*#__PURE__*/React.createElement("thead", null, /*#__PURE__*/React.createElement("tr", null, /*#__PURE__*/React.createElement("th", null, "Kelas"), /*#__PURE__*/React.createElement("th", null, "Jadwal"), /*#__PURE__*/React.createElement("th", null, "Harga"), /*#__PURE__*/React.createElement("th", null, "Kuota"), /*#__PURE__*/React.createElement("th", null, "Status"), /*#__PURE__*/React.createElement("th", null))), /*#__PURE__*/React.createElement("tbody", null, jadwalTampil().map(t => /*#__PURE__*/React.createElement("tr", {
     key: t.id
@@ -9060,8 +9097,36 @@ function TabLinkKelas({ beriTahu }) {
     try { localStorage.setItem("dm_desain_flyer_v2", JSON.stringify(n)); } catch (e) {}
     return n;
   });
-  /* Trainer & materi dari KAK DCC (dikirim otomatis per jam ke tabel pemateri_dcc). */
+  /* Trainer & materi dari KAK DCC (didorong otomatis ke tabel pemateri_dcc). */
   const [pemateri, setPemateri] = useState([]);
+  /* Jam daftar KAK terakhir diambil, plus tombol ambil-ulangnya. 26 Nov 2026
+     KAK baru di DCC tidak muncul di sini karena halaman sudah terbuka lebih
+     dulu dan daftarnya hanya diambil sekali saat halaman dimuat. */
+  const [kakJam, setKakJam] = useState(null);
+  const [kakSibuk, setKakSibuk] = useState(false);
+  function jamKak() {
+    if (!kakJam) return "";
+    try { return kakJam.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }); }
+    catch (e) { return ""; }
+  }
+  async function muatUlangKak() {
+    if (kakSibuk) return;
+    setKakSibuk(true);
+    try { await muatKakDcc(); } finally { setKakSibuk(false); }
+  }
+  function tombolMuatKak(kecil) {
+    const teks = kakSibuk ? "Mengambil\u2026"
+      : (kecil ? "\u27f3 Muat ulang KAK" : "\u27f3 Muat ulang KAK dari DCC")
+        + (kakJam ? " (" + jamKak() + ")" : "");
+    return React.createElement("button", {
+      type: "button", className: "dm-btn-line", disabled: kakSibuk,
+      onClick: muatUlangKak,
+      title: "Ambil ulang daftar KAK dari DCC tanpa memuat ulang halaman",
+      style: kecil ? { padding: "4px 9px", fontSize: 12.5, whiteSpace: "nowrap" }
+                   : { whiteSpace: "nowrap" }
+    }, teks);
+  }
+
   /* Jadwal pemateri yang diupload per kelas (mengalahkan data KAK DCC). */
   const [pemUpload, setPemUpload] = useState({});
   /* KAK DCC yang dipilih tangan untuk sebuah kelas: pelatihan_id -> dcc_event_id.
@@ -9122,6 +9187,12 @@ function TabLinkKelas({ beriTahu }) {
     if (a.error) return beriTahu("Gagal memuat: " + a.error.message);
     setBaris(a.data || []);
     setKelas(b.error ? [] : b.data || []);
+    await muatKakDcc();
+  }
+
+  /* Hanya bagian KAK/pemateri, supaya tombol "Muat ulang KAK dari DCC"
+     bisa mengambil ulang tanpa memuat ulang seluruh halaman. */
+  async function muatKakDcc() {
     /* Data pemateri boleh belum ada (tabel belum dibuat) — prompt tetap jalan. */
     try {
       const d = await SB.from("pemateri_dcc").select("dcc_event_id,jenis,mulai,kota,judul,trainer,diperbarui");
@@ -9139,6 +9210,7 @@ function TabLinkKelas({ beriTahu }) {
       (kp && !kp.error && Array.isArray(kp.data) ? kp.data : []).forEach(x => { n[x.pelatihan_id] = x.dcc_event_id; });
       setKakPilih(n);
     } catch (e) { setKakPilih({}); }
+    setKakJam(new Date());
   }
 
   async function simpanKakPilihan(k, id) {
@@ -9223,6 +9295,21 @@ function TabLinkKelas({ beriTahu }) {
   function kakKembar(k) {
     const h = cocokkanKak(pemateri, k);
     return h.sebab === "kembar" ? h.calon : [];
+  }
+  /* Nama narasumber yang benar-benar dipakai prompt, ditampilkan terbuka di
+     bawah baris status. Tanpa ini, satu-satunya cara memastikan KAK yang
+     terpungut memang milik kelas ini adalah membuka prompt dan membaca
+     namanya satu per satu. */
+  function rincianPemateri(pm) {
+    const t = pm && Array.isArray(pm.trainer) ? pm.trainer : [];
+    if (!t.length) return null;
+    return React.createElement("ul", {
+      style: { margin: "4px 0 0", padding: "0 0 0 18px", fontSize: 12.5, color: "#4A5A56", lineHeight: 1.5 }
+    }, t.map((x, i) => React.createElement("li", { key: i },
+      React.createElement("b", null, x.nama || "(nama kosong)"),
+      x.materi && x.materi.length
+        ? " \u2014 " + x.materi.join("; ")
+        : React.createElement("span", { style: { color: "#B4740A" } }, " \u2014 materi belum ada di KAK"))));
   }
   function ringkasKak(p) {
     return (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "tanpa kota")
@@ -11107,13 +11194,15 @@ function TabLinkKelas({ beriTahu }) {
                    + ". Portal sengaja tidak menebak supaya nama narasumber di flyer tidak tertukar. "
                    + "Pilih yang benar di menu \u201cKAK dari DCC\u201d di bawah, lalu rapikan entri kembarnya di DCC.");
               }
-              return React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
+              return React.createElement(React.Fragment, null,
+                React.createElement("p", { className: "dm-hint", style: { margin: "4px 0 0", color: pm ? "#1E6B4F" : undefined, fontWeight: pm ? 600 : undefined } },
                 !pm ? (sdhPilih ? "\u26A0\uFE0F KAK yang dipilih sudah tidak ada di kiriman DCC. Pilih ulang di bawah, atau kembalikan ke Cocokkan otomatis."
                       : materiKurikulum(k) ? "\u26A0\uFE0F Trainer belum ada \u2014 prompt memakai daftar materi " + String(k.jenis || "").toUpperCase() + " saja. Menurut SE Kemenkes 2692/2026 flyer WAJIB memuat nama narasumber + materi di bawah namanya: pilih KAK-nya di bawah, upload jadwal pemateri, atau susun KAK di DCC sebelum flyer diterbitkan."
                                          : "\u{1F7E8} Trainer & materi belum ada \u2014 pilih KAK dari DCC di bawah, upload jadwal pemateri, atau susun KAK-nya di DCC.")
                   : pm.sumber === "upload" ? "\u2705 Trainer & materi dari jadwal yang diupload" + (pm.nama_file ? ": " + pm.nama_file : "") + wkt + "."
-                  : pm.sumber === "pilih" ? "\u2705 Trainer & materi dari KAK DCC yang Anda pilih: " + (pm.judul || "KAK") + wkt + ". Ganti penugasannya di DCC, prompt ikut berubah."
-                  : "\u2705 Trainer & materi diambil otomatis dari KAK DCC" + wkt + ". Ganti trainer di DCC, flyer ikut berubah.");
+                  : pm.sumber === "pilih" ? "\u2705 Trainer & materi dari KAK DCC yang Anda pilih: " + ringkasKak(pm) + wkt + ". Ganti penugasannya di DCC, prompt ikut berubah."
+                  : "\u2705 Trainer & materi diambil otomatis dari KAK DCC: " + ringkasKak(pm) + wkt + ". Ganti trainer di DCC, flyer ikut berubah."),
+                rincianPemateri(pm));
             })(),
             (() => {
               const daftar = daftarKak(k);
@@ -11130,10 +11219,11 @@ function TabLinkKelas({ beriTahu }) {
                       "Cocokkan otomatis \u2014 " + (oto ? "ketemu: " + (oto.judul || "KAK") : "belum ketemu"))]
                    .concat(daftar.map(p => React.createElement("option", { key: p.dcc_event_id, value: p.dcc_event_id },
                       (p.lewat ? "(sudah lewat) " : "") + (p.judul || p.jenis || "KAK") + " \u00b7 " + (p.kota || "-") + " \u00b7 " + String(p.mulai).slice(0, 10) + " \u00b7 " + p.trainer.length + " pemateri")))),
+                tombolMuatKak(true),
                 React.createElement("p", { className: "dm-hint", style: { margin: 0, flex: "1 1 240px", minWidth: 200 } },
                   daftar.length
                     ? "Hanya KAK yang tanggalnya belum lewat yang ditawarkan. Pakai ini bila tanggal di portal dan di DCC berbeda, atau ada beberapa KAK sejenis di tanggal yang sama. Pilihannya tersimpan, dan namanya tetap ikut berubah bila penugasan di DCC diubah."
-                    : "Belum ada KAK mendatang di DCC yang bisa dipilih untuk kelas ini. Buat KAK-nya dulu di DCC, nanti muncul di sini."));
+                    : "Belum ada KAK mendatang di DCC yang bisa dipilih untuk kelas ini. Baru membuatnya di DCC? Klik Muat ulang KAK dulu. Kalau tetap kosong, KAK-nya memang belum ada di DCC."));
             })(),
             (() => {
               const up = pemUpload[k.id];
@@ -11202,10 +11292,12 @@ function TabLinkKelas({ beriTahu }) {
   return React.createElement("section", { className: "dm-card" },
     React.createElement("div", { className: "dm-toolbar" },
       React.createElement("h3", null, "Link Kelas"),
-      React.createElement("button", {
-        className: "dm-btn",
-        onClick: () => { setGalat(""); setEdit(Object.assign({}, kosong)); }
-      }, "Buat link baru")),
+      React.createElement("div", { style: { display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" } },
+        tombolMuatKak(false),
+        React.createElement("button", {
+          className: "dm-btn",
+          onClick: () => { setGalat(""); setEdit(Object.assign({}, kosong)); }
+        }, "Buat link baru"))),
 
     React.createElement("p", { className: "dm-hint", style: { marginBottom: 14 } },
       "Satu tautan khusus yang hanya menampilkan kelas pilihan Anda — cocok untuk broadcast " +

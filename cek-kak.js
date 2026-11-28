@@ -187,5 +187,153 @@ cek("Penanda (sudah lewat) hanya pada yang memang lewat",
     .map(x => x.dcc_event_id + ":" + (x.lewat ? "lewat" : "aktif")),
   ["lama-1:lewat", "besok:aktif", "depan:aktif", "acls:aktif"]);
 
-console.log("\n" + (gagal + gagal2 ? (gagal + gagal2) + " KASUS GAGAL" : "Semua lulus."));
-process.exit(gagal + gagal2 ? 1 : 0);
+/* --------------------------------------------------------------------------
+   BAGIAN 3 — tombol "Muat ulang KAK dari DCC".
+
+   27 Nov 2026 — Ryan membuat KAK BTCLS 8 Des di DCC dan tidak melihatnya di
+   menu "KAK dari DCC". Datanya sebenarnya sudah masuk ke tabel pemateri_dcc;
+   yang salah adalah halaman back office-nya sudah terbuka lebih dulu, dan
+   daftar KAK hanya diambil SEKALI saat halaman dimuat. Sejak itu ada tombol
+   ambil-ulang di tab Jadwal dan tab Link Kelas.
+
+   Yang dijaga di sini: tombolnya merender, mati selagi mengambil, menolak
+   klik ganda, menampilkan jam pengambilan terakhir, dan tidak melempar error
+   walau nilai jamnya rusak.
+   -------------------------------------------------------------------------- */
+const A3 = "  /* Jam daftar KAK terakhir diambil, plus tombol ambil-ulangnya.";
+const B3 = "  function tombolMuatKak(kecil) {";
+const C3 = "  function barisMuatKak() {";
+const TUTUP = "\n  }\n";
+let gagal3 = 0;
+function cek3(nama, syarat, rinci) {
+  if (syarat) { console.log("  ok  " + nama); return; }
+  gagal3++; console.log("  GAGAL  " + nama + (rinci ? "  -> " + rinci : ""));
+}
+
+async function jalan3() {
+  console.log("\nTombol muat ulang KAK:");
+  if (src.indexOf(A3) < 0 || src.indexOf(B3) < 0 || src.indexOf(C3) < 0) {
+    console.log("  GAGAL  penanda tombol tidak ketemu di app.js — perbarui A3/B3/C3 di cek-kak.js");
+    return 1;
+  }
+  const blok = src.slice(src.indexOf(A3), src.indexOf(TUTUP, src.indexOf(B3)) + TUTUP.length);
+  const brs = src.slice(src.indexOf(C3), src.indexOf(TUTUP, src.indexOf(C3)) + TUTUP.length);
+
+  let dipanggil = 0;
+  const React3 = { createElement: (tipe, prop, ...anak) => ({ tipe, prop: prop || {}, anak }) };
+  /* kakJam dan kakSibuk disuntik lewat useState tiruan, berurutan. */
+  function pasang(jam, sibuk) {
+    let n = 0;
+    const us = () => (n++ === 0 ? [jam, () => {}] : [sibuk, () => {}]);
+    const kode = blok + brs + "\nreturn { tombolMuatKak, barisMuatKak, muatUlangKak, jamKak };";
+    return new Function("React", "useState", "muatKakDcc", "muatKak", kode)(
+      React3, us, async () => { dipanggil++; }, async () => { dipanggil++; });
+  }
+
+  let api = pasang(null, false);
+  let t = api.tombolMuatKak(false);
+  cek3("Label panjang menyebut “Muat ulang KAK dari DCC”",
+    String(t.anak[0]).indexOf("Muat ulang KAK dari DCC") > -1, JSON.stringify(t.anak));
+  cek3("Tombol hidup selagi tidak mengambil", !t.prop.disabled);
+
+  t = api.tombolMuatKak(true);
+  cek3("Versi kecil memakai gaya ringkas",
+    !!t.prop.style && t.prop.style.fontSize === 12.5 && String(t.anak[0]).indexOf("Muat ulang KAK") > -1,
+    JSON.stringify(t.prop.style));
+
+  api = pasang(new Date("2026-11-27T05:44:00Z"), false);
+  cek3("Jam pengambilan terakhir ikut tampil di label",
+    /\(\d{2}[.:]\d{2}\)/.test(String(api.tombolMuatKak(false).anak[0])),
+    JSON.stringify(api.tombolMuatKak(false).anak));
+  cek3("jamKak() mengembalikan jam", !!api.jamKak());
+
+  let lempar = "";
+  try { pasang({ bukan: "date" }, false).tombolMuatKak(false); }
+  catch (e) { lempar = e.message; }
+  cek3("Nilai jam rusak tidak membuat back office blank", !lempar, lempar);
+
+  api = pasang(null, true);
+  t = api.tombolMuatKak(false);
+  cek3("Tombol mati dan berbunyi “Mengambil…” selagi mengambil",
+    !!t.prop.disabled && String(t.anak[0]).indexOf("Mengambil") > -1, JSON.stringify(t.anak));
+
+  dipanggil = 0;
+  await pasang(null, false).muatUlangKak();
+  cek3("Klik memanggil pengambilan ulang tepat sekali", dipanggil === 1, dipanggil + "x");
+  dipanggil = 0;
+  await pasang(null, true).muatUlangKak();
+  cek3("Klik selagi mengambil tidak menumpuk permintaan", dipanggil === 0, dipanggil + "x");
+
+  api = pasang(new Date("2026-11-27T05:44:00Z"), false);
+  cek3("Baris di tab Jadwal menyebut waktu pengambilan terakhir",
+    JSON.stringify(api.barisMuatKak()).indexOf("terakhir diambil") > -1);
+  api = pasang(null, false);
+  cek3("Sebelum pernah diambil, barisnya tetap memberi keterangan",
+    JSON.stringify(api.barisMuatKak()).indexOf("saat halaman ini dibuka") > -1);
+
+  return gagal3;
+}
+
+/* --------------------------------------------------------------------------
+   BAGIAN 4 — daftar nama narasumber di bawah baris status.
+
+   28 Nov 2026 — Ryan: "harusnya di sini include juga kasih tau nama2 di KAK
+   nya siapa aja, biar gak salah". Sebelumnya baris hijau hanya bilang trainer
+   sudah terambil; untuk tahu KAK siapa yang terpungut, promptnya harus dibuka
+   dulu. Itulah sebabnya tertukarnya KAK Cirebon/Tangerang 26 Nov baru
+   ketahuan belakangan.
+   -------------------------------------------------------------------------- */
+const R4 = "  function rincianPemateri(pm) {";
+let gagal4 = 0;
+function cek4(nama, syarat, rinci) {
+  if (syarat) { console.log("  ok  " + nama); return; }
+  gagal4++; console.log("  GAGAL  " + nama + (rinci ? "  -> " + rinci : ""));
+}
+function jalan4() {
+  console.log("\nDaftar nama narasumber:");
+  if (src.indexOf(R4) < 0) {
+    console.log("  GAGAL  penanda rincianPemateri tidak ketemu di app.js");
+    return 1;
+  }
+  const blok = src.slice(src.indexOf(R4), src.indexOf("\n  }\n", src.indexOf(R4)) + 4);
+  const React4 = { createElement: (tipe, prop, ...anak) => ({ tipe, prop: prop || {}, anak }) };
+  const rincianPemateri = new Function("React", blok + "\nreturn rincianPemateri;")(React4);
+  const datar = x => JSON.stringify(x);
+
+  const lima = { trainer: Array.from({ length: 5 }, (_, i) => ({
+    nama: "Ns. Pelatih " + (i + 1) + ", S.Kep", materi: ["Materi A" + i, "Materi B" + i] })) };
+  const h = datar(rincianPemateri(lima));
+  cek4("Kelima nama narasumber benar-benar tampil",
+    lima.trainer.every(x => h.indexOf(x.nama) > -1), h.slice(0, 160));
+  cek4("Materi tiap orang ikut tampil",
+    h.indexOf("Materi A0") > -1 && h.indexOf("Materi B4") > -1);
+
+  cek4("Materi kosong ditandai, bukan dibiarkan senyap",
+    datar(rincianPemateri({ trainer: [{ nama: "Ns. X", materi: [] }] })).indexOf("materi belum ada di KAK") > -1);
+
+  let lempar = "";
+  let hasil = null;
+  try { hasil = rincianPemateri({ trainer: [{}] }); } catch (e) { lempar = e.message; }
+  cek4("Baris KAK cacat tidak membuat back office blank", !lempar, lempar);
+  cek4("Nama kosong tetap diberi penanda",
+    !lempar && datar(hasil).indexOf("(nama kosong)") > -1);
+
+  cek4("Tanpa pemateri tidak merender apa pun",
+    rincianPemateri(null) === null
+      && rincianPemateri({}) === null
+      && rincianPemateri({ trainer: [] }) === null);
+
+  /* Jaring pengaman utama: baris status WAJIB memanggil daftar ini, bukan
+     cuma mendefinisikannya. */
+  cek4("Baris status memanggil rincianPemateri", src.indexOf("rincianPemateri(pm))") > -1);
+  cek4("Baris status menyebut KAK mana yang terpungut",
+    src.indexOf('diambil otomatis dari KAK DCC: " + ringkasKak(pm)') > -1);
+
+  return gagal4;
+}
+
+jalan3().then(g3 => {
+  const n = gagal + gagal2 + g3 + jalan4();
+  console.log("\n" + (n ? n + " KASUS GAGAL" : "Semua lulus."));
+  process.exit(n ? 1 : 0);
+});
